@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // В Prisma 6 тут можно url. Если у тебя Prisma 7 и оно ругается — скажи, дам версию под prisma.config.ts
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  trainer
+  client
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  tgUserId  BigInt   @unique
+  username  String?
+  firstName String?
+  lastName  String?
+  role      UserRole?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TrainingSession {
+  id               String   @id
+  trainerTgUserId  BigInt
+  clientUsername   String
+  clientName       String?
+  startAt          DateTime
+  endAt            DateTime
+  startTime        String
+  endTime          String
+  type             String?
+  remindAt         DateTime
+  remindedAt       DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([trainerTgUserId, startAt])
+  @@index([remindAt])
+}

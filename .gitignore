@@ -1,0 +1,30 @@
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Node
+node_modules/
+
+# Build
+frontend/dist/
+backend/dist/
+
+# Env
+.env
+backend/.env
+frontend/.env
+
+# Prisma
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# Vite
+frontend/.vite/
+
+# Misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
