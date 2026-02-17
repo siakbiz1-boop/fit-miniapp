@@ -1072,22 +1072,23 @@ export default function App() {
                 />
               )}
               {activeTab === "settings" && (
-                <TrainerSettings
-                  screen={settingsScreen}
-                  setScreen={setSettingsScreen}
-                  name={name}
-                  setName={setName}
-                  username={tgUsername}
-                  photoUrl={tgPhotoUrl}
-                  roleLabel={roleLabel(role, language)}
-                  theme={theme}
-                  setTheme={setTheme}
-                  language={language}
-                  setLanguage={setLanguage}
-                  t={t}
-                  onDeleteProfile={handleDeleteProfile}
-                />
-              )}
+              <TrainerSettings
+                screen={settingsScreen}
+                setScreen={setSettingsScreen}
+                name={name}
+                setName={setName}
+                username={tgUsername}
+                photoUrl={tgPhotoUrl}
+                roleLabel={roleLabel(role, language)}
+                theme={theme}
+                setTheme={setTheme}
+                language={language}
+                setLanguage={setLanguage}
+                t={t}
+                subscriptionTabLabel={tr("История тренировок", "Training history")}
+                onDeleteProfile={handleDeleteProfile}
+              />
+            )}
               <div style={{ height: 14 }} />
             </div>
 
@@ -2582,25 +2583,37 @@ function TrainerSchedule(props: {
               </div>
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
-                <input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={activeSession.price ?? ""}
-                  onChange={(e) => {
-                    const value = normalizePriceRUBWithDelete(e.target.value, activeSession.price ?? "");
-                    setActiveSession((prev) => (prev ? { ...prev, price: value } : prev));
-                    setSessionsByDate((prev) => {
-                      const dateKey = activeSession.dateKey;
-                      const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                      const nextList = list.map((item) =>
-                        item.id === activeSession.id ? { ...item, price: value } : item
-                      );
-                      return { ...prev, [dateKey]: nextList };
-                    });
-                  }}
-                  placeholder={tr("Введите стоимость", "Enter price")}
-                  style={styles.input}
-                />
+                <div style={styles.inputRow}>
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={activeSession.price ?? ""}
+                    onChange={(e) => {
+                      const value = normalizePriceRUBWithDelete(e.target.value, activeSession.price ?? "");
+                      setActiveSession((prev) => (prev ? { ...prev, price: value } : prev));
+                      setSessionsByDate((prev) => {
+                        const dateKey = activeSession.dateKey;
+                        const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                        const nextList = list.map((item) =>
+                          item.id === activeSession.id ? { ...item, price: value } : item
+                        );
+                        return { ...prev, [dateKey]: nextList };
+                      });
+                    }}
+                    placeholder={tr("Введите стоимость", "Enter price")}
+                    style={{ ...styles.input, flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    style={styles.inlineCheckBtn}
+                    onClick={() => {
+                      (document.activeElement as HTMLElement | null)?.blur?.();
+                    }}
+                    aria-label="save"
+                  >
+                    ✓
+                  </button>
+                </div>
               </div>
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Комментарий к тренировке", "Session notes")}</div>
