@@ -3337,20 +3337,28 @@ function TrainerClients(props: {
       }
     };
 
-    // ✅ Telegram-совместимое подтверждение (и без кнопок с text, чтобы не падали типы)
-    if (typeof WebApp?.showConfirm === "function") {
-      const message = tr(
-        `Точно хотите удалить клиента @${inv.username}?`,
-        `Are you sure you want to delete client @${inv.username}?`
+    const message = tr(
+      `Точно хотите удалить клиента @${inv.username}?`,
+      `Are you sure you want to delete client @${inv.username}?`
+    );
+    const title = tr("Удалить клиента", "Delete client");
+
+    if (typeof WebApp?.showPopup === "function") {
+      WebApp.showPopup(
+        {
+          title,
+          message,
+          buttons: [{ type: "cancel" }, { type: "ok" }],
+        },
+        (buttonId) => {
+          if (buttonId === "ok") doDelete();
+        }
       );
-      WebApp.showConfirm(message, (ok) => {
-        if (ok) doDelete();
-      });
       return;
     }
 
     // Фолбэк (браузер)
-    if (window.confirm(tr(`Точно хотите удалить клиента @${inv.username}?`, `Are you sure you want to delete client @${inv.username}?`))) doDelete();
+    if (window.confirm(message)) doDelete();
   }
 
   if (screen === "add") {
