@@ -3514,34 +3514,9 @@ function TrainerClients(props: {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          const message = tr(
-                            `Точно хотите удалить клиента @${inv.username}?`,
-                            `Are you sure you want to delete client @${inv.username}?`
-                          );
-                          const title = tr("Удалить клиента", "Delete client");
-                          if (typeof WebApp?.showPopup === "function") {
-                            WebApp.showPopup(
-                              {
-                                title,
-                                message,
-                                buttons: [{ type: "cancel" }, { type: "ok" }],
-                              },
-                              (buttonId) => {
-                                const id = String(buttonId);
-                                if (id === "ok" || id === "1") {
-                                  deleteClient(inv).catch(() => {
-                                    // ignore
-                                  });
-                                }
-                              }
-                            );
-                            return;
-                          }
-                          if (window.confirm(message)) {
-                            deleteClient(inv).catch(() => {
-                              // ignore
-                            });
-                          }
+                          deleteClient(inv).catch(() => {
+                            // ignore
+                          });
                         }}
                         style={styles.trashBtn}
                         aria-label={`delete ${inv.username}`}
