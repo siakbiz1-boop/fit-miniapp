@@ -13,6 +13,11 @@ enum UserRole {
   client
 }
 
+enum ClientStatus {
+  pending
+  active
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   tgUserId  BigInt   @unique
@@ -41,4 +46,46 @@ model TrainingSession {
 
   @@index([trainerTgUserId, startAt])
   @@index([remindAt])
+}
+
+model TrainerClient {
+  id                 String        @id @default(cuid())
+  trainerTgUserId    BigInt
+  clientUsername     String
+  code               String
+  status             ClientStatus  @default(pending)
+  archived           Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  fullName           String?
+  height             String?
+  weight             String?
+  goal               String?
+  comment            String?
+
+  subscriptionStart  String?
+  subscriptionEnd    String?
+  subscriptionPrice  String?
+  subscriptionTotal  String?
+  subscriptionLeft   String?
+
+  exercises          ClientExercise[]
+
+  @@unique([trainerTgUserId, clientUsername])
+  @@unique([trainerTgUserId, code])
+  @@index([trainerTgUserId])
+}
+
+model ClientExercise {
+  id         String        @id @default(cuid())
+  clientId   String
+  name       String
+  weight     String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  client     TrainerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
 }
