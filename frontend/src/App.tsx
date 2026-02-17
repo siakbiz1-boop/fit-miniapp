@@ -4825,7 +4825,9 @@ function PersonalDataScreen(props: {
       <div style={{ ...styles.topBarDivider, marginTop: 8 }} />
       {personalTab === "about" ? (
         <div style={styles.clientPanelPlain}>
-          <div style={styles.fieldLabel}>{tr("ФИО", "Full name")}</div>
+          <div style={styles.fieldLabel}>
+            {tr("ФИО (так будут видеть вас клиенты)", "Full name (visible to clients)")}
+          </div>
           <input
             value={fio}
             onChange={(e) => {
