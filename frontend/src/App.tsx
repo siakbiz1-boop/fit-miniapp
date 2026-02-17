@@ -3527,7 +3527,7 @@ function TrainerClients(props: {
                                 buttons: [{ type: "cancel" }, { type: "ok" }],
                               },
                               (buttonId) => {
-                                if (buttonId === "ok") {
+                                if (buttonId === "ok" || buttonId === 1) {
                                   deleteClient(inv).catch(() => {
                                     // ignore
                                   });
