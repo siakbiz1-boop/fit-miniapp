@@ -3319,18 +3319,39 @@ function TrainerClients(props: {
   }
 
   async function deleteClient(inv: TrainerClientInvite) {
-      setInvites((prev) => prev.filter((x) => x.id !== inv.id));
-      if (!token) return;
+    setInvites((prev) => prev.filter((x) => x.id !== inv.id));
+    if (!token) {
       try {
-        const res = await fetch(`${apiBase}/clients/${inv.id}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+        WebApp?.showPopup?.({
+          title: tr("Нет авторизации", "Not authorized"),
+          message: tr("Перезайди в приложение и попробуй снова.", "Please re-open the app and try again."),
+          buttons: [{ type: "ok" }],
         });
-        if (!res.ok) {
-          onRefreshClients?.();
-          return;
+      } catch {
+        // ignore
+      }
+    }
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(`${apiBase}/clients/${inv.id}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!res.ok) {
+        try {
+          WebApp?.showPopup?.({
+            title: tr("Не удалось удалить", "Delete failed"),
+            message: `${tr("Статус", "Status")}: ${res.status}`,
+            buttons: [{ type: "ok" }],
+          });
+        } catch {
+          // ignore
         }
         onRefreshClients?.();
+        return;
+      }
+      onRefreshClients?.();
       } catch {
         // ignore
       }
