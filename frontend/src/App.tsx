@@ -3318,8 +3318,7 @@ function TrainerClients(props: {
     }
   }
 
-  function confirmDelete(inv: TrainerClientInvite) {
-    const doDelete = async () => {
+  async function deleteClient(inv: TrainerClientInvite) {
       setInvites((prev) => prev.filter((x) => x.id !== inv.id));
       if (!token) return;
       try {
@@ -3335,6 +3334,13 @@ function TrainerClients(props: {
       } catch {
         // ignore
       }
+  }
+
+  function confirmDelete(inv: TrainerClientInvite) {
+    const doDelete = () => {
+      deleteClient(inv).catch(() => {
+        // ignore
+      });
     };
 
     const message = tr(
@@ -3518,7 +3524,9 @@ function TrainerClients(props: {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          confirmDelete(inv);
+                          deleteClient(inv).catch(() => {
+                            // ignore
+                          });
                         }}
                         style={styles.trashBtn}
                         aria-label={`delete ${inv.username}`}
