@@ -25,6 +25,8 @@ model User {
   firstName String?
   lastName  String?
   role      UserRole?
+  theme     String?
+  language  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

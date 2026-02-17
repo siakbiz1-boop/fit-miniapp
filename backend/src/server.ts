@@ -345,8 +345,35 @@ app.get("/profile", async (req, reply) => {
       firstName: dbUser.firstName,
       lastName: dbUser.lastName,
       role: dbUser.role, // null | "trainer" | "client"
+      theme: dbUser.theme,
+      language: dbUser.language,
     },
   };
+});
+
+// Update user preferences (theme/language)
+app.patch("/profile/preferences", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const theme = body?.theme;
+  const language = body?.language;
+
+  const data: Record<string, any> = {};
+  if (theme === "light" || theme === "dark") data.theme = theme;
+  if (language === "ru" || language === "en") data.language = language;
+
+  if (Object.keys(data).length === 0) {
+    return reply.code(400).send({ message: "Nothing to update" });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: dbUser.id },
+    data,
+  });
+
+  return { ok: true, theme: updated.theme, language: updated.language };
 });
 
 // Set role: trainer/client
