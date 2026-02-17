@@ -100,6 +100,19 @@ type TrainerClientInvite = {
   };
 };
 
+type TrainerProfile = {
+  fullName?: string;
+  fitnessClub?: string;
+  specialization?: string;
+  experience?: string;
+  about?: string;
+  requirements?: string;
+  extraInfo?: string;
+  phone?: string;
+  instagram?: string;
+  otherSocial?: string;
+};
+
 type FreeWindow = {
   id: string;
   start: string; // HH:MM
@@ -204,6 +217,7 @@ export default function App() {
       return "";
     }
   });
+  const [trainerProfile, setTrainerProfile] = useState<TrainerProfile | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreen>("main");
@@ -312,6 +326,34 @@ export default function App() {
     }
   }
 
+  async function fetchTrainerProfile() {
+    if (!token || role !== "trainer") return;
+    try {
+      const res = await fetch(`${apiBase}/profile/trainer`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; profile?: TrainerProfile };
+      if (data?.profile) setTrainerProfile(data.profile);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function saveTrainerProfile(patch: Partial<TrainerProfile>) {
+    if (!token || role !== "trainer") return;
+    try {
+      setTrainerProfile((prev) => ({ ...(prev || {}), ...patch }));
+      await fetch(`${apiBase}/profile/trainer`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(patch),
+      });
+    } catch {
+      // ignore
+    }
+  }
+
   const t = useMemo<UiText>(
     () => ({
       login: language === "en" ? "Login" : "Войти",
@@ -402,6 +444,10 @@ export default function App() {
 
   useEffect(() => {
     fetchClients();
+  }, [token, role, apiBase]);
+
+  useEffect(() => {
+    fetchTrainerProfile();
   }, [token, role, apiBase]);
 
   async function login() {
@@ -1148,6 +1194,8 @@ export default function App() {
                 language={language}
                 setLanguage={setLanguage}
                 t={t}
+                trainerProfile={trainerProfile}
+                onSaveTrainerProfile={saveTrainerProfile}
                 subscriptionTabLabel={tr("История тренировок", "Training history")}
                 onDeleteProfile={handleDeleteProfile}
               />
@@ -4145,6 +4193,8 @@ function TrainerSettings(props: {
   language: "ru" | "en";
   setLanguage: (v: "ru" | "en") => void;
   t: UiText;
+  trainerProfile?: TrainerProfile | null;
+  onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   personalShowSubscription?: boolean;
   personalShowExtendedAbout?: boolean;
   personalShowClientBasics?: boolean;
@@ -4169,6 +4219,8 @@ function TrainerSettings(props: {
     language,
     setLanguage,
     t,
+    trainerProfile,
+    onSaveTrainerProfile,
     personalShowSubscription = true,
     personalShowExtendedAbout = true,
     personalShowClientBasics = false,
@@ -4201,6 +4253,8 @@ function TrainerSettings(props: {
         username={username}
         photoUrl={photoUrl}
         onUpdateName={setName}
+        trainerProfile={trainerProfile}
+        onSaveTrainerProfile={onSaveTrainerProfile}
         showSubscriptionTab={personalShowSubscription}
         showExtendedAbout={personalShowExtendedAbout}
         showClientBasics={personalShowClientBasics}
@@ -4534,6 +4588,8 @@ function PersonalDataScreen(props: {
   username: string;
   photoUrl: string;
   onUpdateName: (v: string) => void;
+  trainerProfile?: TrainerProfile | null;
+  onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   showSubscriptionTab?: boolean;
   showExtendedAbout?: boolean;
   showClientBasics?: boolean;
@@ -4546,6 +4602,8 @@ function PersonalDataScreen(props: {
     username,
     photoUrl,
     onUpdateName,
+    trainerProfile,
+    onSaveTrainerProfile,
     showSubscriptionTab = true,
     showExtendedAbout = true,
     showClientBasics = false,
@@ -4598,6 +4656,27 @@ function PersonalDataScreen(props: {
             : tr("Тренер", "Coach"),
     }))
   );
+
+  useEffect(() => {
+    if (!trainerProfile) return;
+    if (trainerProfile.fullName !== undefined) setFio(trainerProfile.fullName || "");
+    if (trainerProfile.fitnessClub !== undefined) setFitnessClub(trainerProfile.fitnessClub || "");
+    if (trainerProfile.specialization !== undefined) setSpecialization(trainerProfile.specialization || "");
+    if (trainerProfile.experience !== undefined) setExperience(trainerProfile.experience || "");
+    if (trainerProfile.about !== undefined) setAbout(trainerProfile.about || "");
+    if (trainerProfile.requirements !== undefined) setRequirements(trainerProfile.requirements || "");
+    if (trainerProfile.extraInfo !== undefined) setExtraInfo(trainerProfile.extraInfo || "");
+    if (trainerProfile.phone !== undefined) setPhone(trainerProfile.phone || "");
+    if (trainerProfile.instagram !== undefined) setInstagram(trainerProfile.instagram || "");
+    if (trainerProfile.otherSocial !== undefined) setOtherSocial(trainerProfile.otherSocial || "");
+  }, [trainerProfile]);
+
+  const saveTrainerField = (field: keyof TrainerProfile, value: string) => {
+    if (!onSaveTrainerProfile) return;
+    const current = trainerProfile?.[field] ?? "";
+    if (String(current || "") === String(value || "")) return;
+    onSaveTrainerProfile({ [field]: value } as Partial<TrainerProfile>);
+  };
 
   useEffect(() => {
     if (!subscriptionTrainers.length) {
@@ -4754,6 +4833,9 @@ function PersonalDataScreen(props: {
               setFio(v);
               onUpdateName(v);
             }}
+            onBlur={() => {
+              saveTrainerField("fullName", fio);
+            }}
             placeholder={tr("Введите ФИО", "Enter full name")}
             style={styles.input}
           />
@@ -4828,6 +4910,7 @@ function PersonalDataScreen(props: {
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
                   }}
+                  onBlur={() => saveTrainerField("fitnessClub", fitnessClub)}
                   placeholder={tr("Введите адрес проведения занятий", "Enter the training address")}
                   rows={1}
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -4844,6 +4927,7 @@ function PersonalDataScreen(props: {
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
                   }}
+                  onBlur={() => saveTrainerField("specialization", specialization)}
                   placeholder={tr("Например: силовые тренировки...", "e.g., strength training...")}
                   rows={1}
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -4860,6 +4944,7 @@ function PersonalDataScreen(props: {
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
                   }}
+                  onBlur={() => saveTrainerField("experience", experience)}
                   placeholder={tr("Например: 5 лет", "e.g., 5 years")}
                   rows={1}
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -4876,6 +4961,7 @@ function PersonalDataScreen(props: {
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
                   }}
+                  onBlur={() => saveTrainerField("about", about)}
                   placeholder={tr("Коротко о себе...", "Short bio...")}
                   rows={1}
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -4892,6 +4978,7 @@ function PersonalDataScreen(props: {
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
                   }}
+                  onBlur={() => saveTrainerField("requirements", requirements)}
                   placeholder={tr("Опишите требования...", "Describe requirements...")}
                   rows={1}
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -4908,6 +4995,7 @@ function PersonalDataScreen(props: {
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
                   }}
+                  onBlur={() => saveTrainerField("extraInfo", extraInfo)}
                   placeholder={tr("Добавьте информацию...", "Add information...")}
                   rows={1}
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -4929,6 +5017,7 @@ function PersonalDataScreen(props: {
               el.style.height = "auto";
               el.style.height = `${el.scrollHeight}px`;
             }}
+            onBlur={() => saveTrainerField("phone", phone)}
             placeholder={tr("Введите номер телефона", "Enter phone number")}
             rows={1}
             style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -4954,35 +5043,37 @@ function PersonalDataScreen(props: {
           </div>
           <div style={{ marginTop: 16 }}>
             <div style={styles.fieldLabel}>Instagram</div>
-            <textarea
-              ref={instagramRef}
-              value={instagram}
-              onChange={(e) => setInstagram(e.target.value)}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-              placeholder={tr("Введите Instagram", "Enter Instagram")}
-              rows={1}
-              style={{ ...styles.input, resize: "none", overflow: "hidden" }}
-            />
+          <textarea
+            ref={instagramRef}
+            value={instagram}
+            onChange={(e) => setInstagram(e.target.value)}
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = `${el.scrollHeight}px`;
+            }}
+            onBlur={() => saveTrainerField("instagram", instagram)}
+            placeholder={tr("Введите Instagram", "Enter Instagram")}
+            rows={1}
+            style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+          />
           </div>
           <div style={{ marginTop: 16 }}>
             <div style={styles.fieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
-            <textarea
-              ref={otherSocialRef}
-              value={otherSocial}
-              onChange={(e) => setOtherSocial(e.target.value)}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-              placeholder={tr("Введите ссылку или ник", "Enter link or handle")}
-              rows={1}
-              style={{ ...styles.input, resize: "none", overflow: "hidden" }}
-            />
+          <textarea
+            ref={otherSocialRef}
+            value={otherSocial}
+            onChange={(e) => setOtherSocial(e.target.value)}
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = `${el.scrollHeight}px`;
+            }}
+            onBlur={() => saveTrainerField("otherSocial", otherSocial)}
+            placeholder={tr("Введите ссылку или ник", "Enter link or handle")}
+            rows={1}
+            style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+          />
           </div>
         </div>
       ) : personalTab === "weights" ? (
