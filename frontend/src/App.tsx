@@ -1131,6 +1131,7 @@ export default function App() {
                   token={token}
                   apiBase={apiBase}
                   onLoadHistory={loadClientHistory}
+                  onRefreshClients={fetchClients}
                 />
               )}
               {activeTab === "settings" && (
@@ -3234,8 +3235,19 @@ function TrainerClients(props: {
   token: string;
   apiBase: string;
   onLoadHistory?: (client: TrainerClientInvite) => void;
+  onRefreshClients?: () => void;
 }) {
-  const { screen, setScreen, invites, setInvites, historyByClient, token, apiBase, onLoadHistory } = props;
+  const {
+    screen,
+    setScreen,
+    invites,
+    setInvites,
+    historyByClient,
+    token,
+    apiBase,
+    onLoadHistory,
+    onRefreshClients,
+  } = props;
   const tr = useTr();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientsTab, setClientsTab] = useState<"my" | "pending" | "archive">("my");
@@ -3311,10 +3323,15 @@ function TrainerClients(props: {
       setInvites((prev) => prev.filter((x) => x.id !== inv.id));
       if (!token) return;
       try {
-        await fetch(`${apiBase}/clients/${inv.id}`, {
+        const res = await fetch(`${apiBase}/clients/${inv.id}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) {
+          onRefreshClients?.();
+          return;
+        }
+        onRefreshClients?.();
       } catch {
         // ignore
       }
