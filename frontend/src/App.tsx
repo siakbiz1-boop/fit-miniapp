@@ -114,6 +114,7 @@ type SessionItem = {
   end: string; // HH:MM
   clientUsername: string; // without @
   type?: string;
+  price?: string;
   comment?: string;
 };
 
@@ -2576,6 +2577,28 @@ function TrainerSchedule(props: {
                     });
                   }}
                   placeholder={tr("Введите тип тренировки", "Enter session type")}
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+                <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={activeSession.price ?? ""}
+                  onChange={(e) => {
+                    const value = normalizePriceRUBWithDelete(e.target.value, activeSession.price ?? "");
+                    setActiveSession((prev) => (prev ? { ...prev, price: value } : prev));
+                    setSessionsByDate((prev) => {
+                      const dateKey = activeSession.dateKey;
+                      const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                      const nextList = list.map((item) =>
+                        item.id === activeSession.id ? { ...item, price: value } : item
+                      );
+                      return { ...prev, [dateKey]: nextList };
+                    });
+                  }}
+                  placeholder={tr("Введите стоимость", "Enter price")}
                   style={styles.input}
                 />
               </div>
@@ -5388,6 +5411,9 @@ function parsePriceToNumber(raw: string | undefined) {
 }
 
 function getSessionPrice(clients: TrainerClientInvite[], session: SessionItem) {
+  if (session.price && session.price.trim()) {
+    return parsePriceToNumber(session.price);
+  }
   const client = clients.find((c) => c.username === session.clientUsername);
   return parsePriceToNumber(client?.subscriptionPrice);
 }
@@ -5506,6 +5532,24 @@ function endDateEnd(d: Date) {
   const out = new Date(d);
   out.setHours(23, 59, 59, 999);
   return out;
+}
+
+function normalizePriceRUB(raw: string) {
+  const v = (raw || "").trim();
+  if (!v) return "";
+  const cleaned = v.replace(/[^\d.,]/g, "").replace(",", ".");
+  if (!cleaned) return "";
+  const num = parseFloat(cleaned);
+  if (Number.isNaN(num)) return "";
+  const formatted = Number.isInteger(num) ? String(num) : String(num);
+  return `${formatted} ₽`;
+}
+
+function normalizePriceRUBWithDelete(raw: string, prev: string) {
+  if (prev && prev.includes("₽") && !raw.includes("₽") && raw.length < prev.length) {
+    return raw.trimEnd();
+  }
+  return normalizePriceRUB(raw);
 }
 
 function emptySessionsMessage(selected: Date, today: Date) {
