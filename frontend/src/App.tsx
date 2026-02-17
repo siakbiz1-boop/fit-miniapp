@@ -3336,37 +3336,6 @@ function TrainerClients(props: {
       }
   }
 
-  function confirmDelete(inv: TrainerClientInvite) {
-    const doDelete = () => {
-      deleteClient(inv).catch(() => {
-        // ignore
-      });
-    };
-
-    const message = tr(
-      `Точно хотите удалить клиента @${inv.username}?`,
-      `Are you sure you want to delete client @${inv.username}?`
-    );
-    const title = tr("Удалить клиента", "Delete client");
-
-    if (typeof WebApp?.showPopup === "function") {
-      WebApp.showPopup(
-        {
-          title,
-          message,
-          buttons: [{ type: "cancel" }, { type: "ok" }],
-        },
-        (buttonId) => {
-          if (buttonId === "ok") doDelete();
-        }
-      );
-      return;
-    }
-
-    // Фолбэк (браузер)
-    if (window.confirm(message)) doDelete();
-  }
-
   if (screen === "add") {
     return (
       <AddClientScreen
