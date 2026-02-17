@@ -18,6 +18,16 @@ enum ClientStatus {
   active
 }
 
+enum BookingMode {
+  trainer
+  both
+}
+
+enum SessionSource {
+  trainer
+  client
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   tgUserId  BigInt   @unique
@@ -43,6 +53,7 @@ model TrainingSession {
   startTime        String
   endTime          String
   type             String?
+  source           SessionSource @default(trainer)
   remindAt         DateTime
   remindedAt       DateTime?
   createdAt        DateTime @default(now())
@@ -65,6 +76,7 @@ model TrainerProfile {
   phone          String?
   instagram      String?
   otherSocial    String?
+  bookingMode    BookingMode @default(trainer)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -75,6 +87,7 @@ model TrainerClient {
   id                 String        @id @default(cuid())
   trainerTgUserId    BigInt
   clientUsername     String
+  clientTgUserId     BigInt?
   code               String
   status             ClientStatus  @default(pending)
   archived           Boolean       @default(false)
@@ -111,4 +124,16 @@ model ClientExercise {
   client     TrainerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
+}
+
+model TrainingSlot {
+  id              String   @id @default(cuid())
+  trainerTgUserId BigInt
+  dateKey         String
+  start           String
+  end             String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([trainerTgUserId, dateKey])
 }

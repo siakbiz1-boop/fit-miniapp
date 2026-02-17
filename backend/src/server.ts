@@ -121,11 +121,20 @@ function generateInviteCode(len = 8) {
   return out;
 }
 
+function parseDateKey(value: string) {
+  const parts = String(value || "").split("-").map((x) => parseInt(x, 10));
+  if (parts.length < 3) return null;
+  const [y, m, d] = parts;
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
 function serializeClient(client: any) {
   if (!client) return client;
   return {
     ...client,
     trainerTgUserId: client.trainerTgUserId?.toString?.() ?? client.trainerTgUserId,
+    clientTgUserId: client.clientTgUserId?.toString?.() ?? client.clientTgUserId,
   };
 }
 
@@ -134,6 +143,14 @@ function serializeSession(session: any) {
   return {
     ...session,
     trainerTgUserId: session.trainerTgUserId?.toString?.() ?? session.trainerTgUserId,
+  };
+}
+
+function serializeSlot(slot: any) {
+  if (!slot) return slot;
+  return {
+    ...slot,
+    trainerTgUserId: slot.trainerTgUserId?.toString?.() ?? slot.trainerTgUserId,
   };
 }
 
@@ -627,6 +644,7 @@ app.patch("/profile/trainer", async (req, reply) => {
     phone: body?.phone,
     instagram: body?.instagram,
     otherSocial: body?.otherSocial,
+    bookingMode: body?.bookingMode === "both" || body?.bookingMode === "trainer" ? body.bookingMode : undefined,
   };
 
   const profile = await prismaAny.trainerProfile.upsert({
@@ -636,6 +654,191 @@ app.patch("/profile/trainer", async (req, reply) => {
   });
 
   return { ok: true, profile };
+});
+
+// --------------------
+// Client activation & booking
+// --------------------
+app.post("/clients/activate", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const code = String(body?.code || "").trim();
+  if (!code) return reply.code(400).send({ message: "code required" });
+
+  const record = await prismaAny.trainerClient.findFirst({
+    where: { code },
+  });
+  if (!record) return reply.code(404).send({ message: "code not found" });
+
+  const updated = await prismaAny.trainerClient.update({
+    where: { id: record.id },
+    data: {
+      status: "active",
+      archived: false,
+      clientTgUserId: dbUser.tgUserId,
+      clientUsername: record.clientUsername || dbUser.username || record.clientUsername,
+    },
+    include: { exercises: true },
+  });
+
+  return { ok: true, client: serializeClient(updated) };
+});
+
+app.get("/client/trainers", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const username = dbUser.username || "";
+  const trainers = await prismaAny.trainerClient.findMany({
+    where: {
+      status: "active",
+      archived: false,
+      OR: [
+        { clientTgUserId: dbUser.tgUserId },
+        ...(username ? [{ clientUsername: username.replace(/^@/, "") }] : []),
+      ],
+    },
+  });
+
+  return { ok: true, trainers: trainers.map((c: any) => serializeClient(c)) };
+});
+
+app.get("/slots", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const trainerTgUserIdParam = (req.query as any)?.trainerTgUserId;
+  const trainerTgUserId = trainerTgUserIdParam
+    ? BigInt(trainerTgUserIdParam)
+    : dbUser.tgUserId;
+  const dateKey = (req.query as any)?.dateKey as string | undefined;
+
+  const slots = await prismaAny.trainingSlot.findMany({
+    where: {
+      trainerTgUserId,
+      ...(dateKey ? { dateKey } : {}),
+    },
+    orderBy: [{ dateKey: "asc" }, { start: "asc" }],
+  });
+
+  return { ok: true, slots: slots.map((s: any) => serializeSlot(s)) };
+});
+
+app.post("/slots", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const dateKey = String(body?.dateKey || "");
+  const start = String(body?.start || "");
+  const end = String(body?.end || "");
+  if (!dateKey || !start || !end) {
+    return reply.code(400).send({ message: "dateKey/start/end required" });
+  }
+
+  const slot = await prismaAny.trainingSlot.create({
+    data: { trainerTgUserId: dbUser.tgUserId, dateKey, start, end },
+  });
+
+  return { ok: true, slot: serializeSlot(slot) };
+});
+
+app.delete("/slots/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const slot = await prismaAny.trainingSlot.findUnique({ where: { id } });
+  if (!slot || slot.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "slot not found" });
+  }
+
+  await prismaAny.trainingSlot.delete({ where: { id } });
+  return { ok: true };
+});
+
+app.post("/book", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  let trainerTgUserId: bigint;
+  try {
+    trainerTgUserId = BigInt(body?.trainerTgUserId);
+  } catch {
+    return reply.code(400).send({ message: "trainerTgUserId invalid" });
+  }
+  const dateKey = String(body?.dateKey || "");
+  const start = String(body?.start || "");
+  const end = String(body?.end || "");
+  if (!trainerTgUserId || !dateKey || !start || !end) {
+    return reply.code(400).send({ message: "trainerTgUserId/dateKey/start/end required" });
+  }
+
+  const relation = await prismaAny.trainerClient.findFirst({
+    where: {
+      trainerTgUserId,
+      status: "active",
+      archived: false,
+      OR: [
+        { clientTgUserId: dbUser.tgUserId },
+        ...(dbUser.username ? [{ clientUsername: dbUser.username.replace(/^@/, "") }] : []),
+      ],
+    },
+  });
+  if (!relation) return reply.code(403).send({ message: "client not connected to trainer" });
+
+  const trainer = await prisma.user.findUnique({ where: { tgUserId: trainerTgUserId } });
+  const profile = trainer
+    ? await prismaAny.trainerProfile.findUnique({ where: { userId: trainer.id } })
+    : null;
+  const bookingMode = profile?.bookingMode || "trainer";
+  if (bookingMode !== "both") {
+    return reply.code(403).send({ message: "booking disabled" });
+  }
+
+  const slot = await prismaAny.trainingSlot.findFirst({
+    where: { trainerTgUserId, dateKey, start, end },
+  });
+  if (!slot) return reply.code(404).send({ message: "slot not found" });
+
+  const day = parseDateKey(dateKey);
+  if (!day) return reply.code(400).send({ message: "dateKey invalid" });
+  const [sh, sm] = start.split(":").map((x) => parseInt(x, 10));
+  const [eh, em] = end.split(":").map((x) => parseInt(x, 10));
+  if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
+    return reply.code(400).send({ message: "time invalid" });
+  }
+  const startAt = new Date(day);
+  startAt.setHours(sh, sm, 0, 0);
+  const endAt = new Date(day);
+  endAt.setHours(eh, em, 0, 0);
+  const remindAt = new Date(startAt.getTime() - 60 * 60 * 1000);
+  const id = `${trainerTgUserId.toString()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  const session = await prismaAny.trainingSession.create({
+    data: {
+      id,
+      trainerTgUserId,
+      clientUsername: relation.clientUsername,
+      clientName: relation.fullName || null,
+      startAt,
+      endAt,
+      startTime: start,
+      endTime: end,
+      type: null,
+      source: "client",
+      remindAt,
+    },
+  });
+
+  await prismaAny.trainingSlot.delete({ where: { id: slot.id } });
+
+  return { ok: true, session: serializeSession(session) };
 });
 
 // Sync trainer sessions for reminders
@@ -667,6 +870,7 @@ app.post("/sessions/sync", async (req, reply) => {
         startTime: String(s.startTime ?? ""),
         endTime: String(s.endTime ?? ""),
         type: s.type ? String(s.type) : null,
+        source: "trainer",
         remindAt,
       };
     })
@@ -703,6 +907,7 @@ app.post("/sessions/sync", async (req, reply) => {
         startTime: s.startTime,
         endTime: s.endTime,
         type: s.type,
+        source: "trainer",
         remindAt: s.remindAt,
         remindedAt: (() => {
           const prev = existingById.get(s.id);
@@ -718,6 +923,7 @@ app.post("/sessions/sync", async (req, reply) => {
     prismaAny.trainingSession.deleteMany({
       where: {
         trainerTgUserId: dbUser.tgUserId,
+        source: "trainer",
         ...(ids.length ? { id: { notIn: ids } } : {}),
       },
     })
