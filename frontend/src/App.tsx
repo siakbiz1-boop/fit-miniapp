@@ -2906,12 +2906,7 @@ function TrainerSchedule(props: {
                       <div style={styles.sessionBannerClient}>
                         {getClientLabel(clients, s.clientUsername)}
                       </div>
-                      {!isSessionEnded(s, new Date()) ? (
-                        <div style={styles.sessionBannerLeftCount}>
-                          {tr("Останется занятий в абонементе:", "Sessions left in subscription:")}{" "}
-                          {Math.max(0, clientRemainingSessions(clients, sessionsByDate, s.clientUsername))}
-                        </div>
-                      ) : null}
+                      {null}
                     <div
                       style={{
                         ...styles.sessionBannerStatus,
@@ -3049,24 +3044,7 @@ function TrainerSchedule(props: {
                             const value = e.target.value || undefined;
                             const dateKey = formatDateKey(selected);
                             if (value) {
-                              if (!canScheduleClientOnDate(clients, value, selected)) {
-                                const message = tr("Нельзя записать клиента до даты начала абонемента.", "You can't schedule before the subscription start date.");
-                                if (typeof WebApp?.showPopup === "function") {
-                                  WebApp.showPopup({
-                                    title: tr("Недоступно", "Unavailable"),
-                                    message,
-                                    buttons: [{ type: "ok" }],
-                                  });
-                                } else {
-                                  window.alert(message);
-                                }
-                                return;
-                              }
-                              const remaining = clientRemainingSessions(clients, sessionsByDate, value);
-                              if (remaining <= 0) {
-                                setFreeError(tr("У клиента закончились занятия по абонементу.", "The client has no remaining sessions."));
-                                return;
-                              }
+                              if (!canScheduleClientOnDate(clients, value)) return;
                               setSessionsByDate((prev) => {
                                 const list = prev[dateKey] ? [...prev[dateKey]] : [];
                                 list.push({
@@ -3095,11 +3073,7 @@ function TrainerSchedule(props: {
                         >
                           <option value="">{tr("Выбери клиента", "Choose client")}</option>
                           {clients
-                            .filter(
-                              (c) =>
-                                clientRemainingSessions(clients, sessionsByDate, c.username) > 0 &&
-                                canScheduleClientOnDate(clients, c.username, selected)
-                            )
+                            .filter((c) => canScheduleClientOnDate(clients, c.username))
                             .map((c) => (
                               <option key={c.id} value={c.username}>
                                 {c.fullName?.trim() ? c.fullName : `@${c.username}`}
@@ -3331,19 +3305,17 @@ function TrainerClients(props: {
                       borderBottom: isLast ? "none" : "1px solid var(--border-2)",
                     }}
                   >
-                    <div style={styles.rowBtnNoBorder}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedClientId(inv.id);
+                        setScreen("detail");
+                      }}
+                      style={styles.rowBtnNoBorder}
+                      aria-label={`open ${inv.username}`}
+                    >
                       <div style={styles.rowLeft}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedClientId(inv.id);
-                            setScreen("detail");
-                          }}
-                          style={styles.userIconBtn}
-                          aria-label={`open ${inv.username}`}
-                        >
-                          <IconUser />
-                        </button>
+                        <AvatarCircle name={inv.fullName?.trim() || inv.username} photoUrl={inv.photoUrl || ""} size={40} />
                         <div style={{ textAlign: "left" }}>
                           <div style={styles.rowTitle}>
                             {inv.fullName?.trim() ? inv.fullName : `@${inv.username}`}
@@ -3353,37 +3325,11 @@ function TrainerClients(props: {
                               <span>{tr("Ожидает активации", "Pending activation")}</span>
                             ) : clientsTab === "archive" ? (
                               <span style={{ opacity: 0.7 }}>{tr("Архивирован", "Archived")}</span>
-                            ) : (() => {
-                                const missing =
-                                  !inv.subscriptionStart ||
-                                  !inv.subscriptionEnd ||
-                                  !inv.subscriptionTotal;
-                                if (missing) {
-                                  return (
-                                    <span style={styles.subscriptionWarning}>
-                                      {tr("Заполните информацию об абонементе", "Fill in the subscription info")}
-                                    </span>
-                                  );
-                                }
-                                const total = inv.subscriptionTotal || "0";
-                                const left = inv.subscriptionLeft && inv.subscriptionLeft.length > 0
-                                  ? inv.subscriptionLeft
-                                  : total;
-                                return (
-                                  <div style={styles.subscriptionInfo}>
-                                    <div style={styles.subscriptionDates}>
-                                      {inv.subscriptionStart} — {inv.subscriptionEnd}
-                                    </div>
-                                    <div style={styles.subscriptionLeftText}>
-                                      {tr("Занятий осталось", "Sessions left")} {left} {tr("из", "of")} {total}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
+                            ) : null}
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {clientsTab === "pending" ? (
                       <button
@@ -3403,15 +3349,6 @@ function TrainerClients(props: {
                 );
               })}
             </div>
-
-            {clientsTab !== "archive" ? (
-              <div style={{ marginTop: 10, opacity: 0.6, fontSize: 12, lineHeight: 1.35 }}>
-                {tr(
-                  "Пока это локальная логика. Позже подключим бэкенд: инвайт → клиент вводит код → статус “Активен”.",
-                  "This is local-only for now. Later we will add backend: invite → client enters code → status “Active”."
-                )}
-              </div>
-            ) : null}
           </div>
         );
       })()}
@@ -5532,43 +5469,13 @@ function getClientLabel(clients: TrainerClientInvite[], username: string) {
   return `@${username}`;
 }
 
-function clientRemainingSessions(
-  clients: TrainerClientInvite[],
-  sessionsByDate: Record<string, SessionItem[]>,
-  username: string
-) {
-  const c = clients.find((x) => x.username === username);
-  if (c?.archived) return 0;
-  const left = parseInt(c?.subscriptionLeft || "", 10);
-  if (Number.isNaN(left)) return 0;
-  const now = new Date();
-  const scheduled = Object.values(sessionsByDate)
-    .flat()
-    .filter(
-      (s) =>
-        s.clientUsername === username &&
-        sessionEndTime(s).getTime() > now.getTime()
-    ).length;
-  return Math.max(0, left - scheduled);
-}
-
 function canScheduleClientOnDate(
   clients: TrainerClientInvite[],
-  username: string,
-  date: Date
+  username: string
 ) {
   const c = clients.find((x) => x.username === username);
   if (!c || c.archived) return false;
   if (c.status !== "active") return false;
-  const target = startOfDay(date);
-  if (c.subscriptionStart) {
-    const start = parseDateDMY(c.subscriptionStart);
-    if (start && target.getTime() < start.getTime()) return false;
-  }
-  if (c.subscriptionEnd) {
-    const end = parseDateDMY(c.subscriptionEnd);
-    if (end && target.getTime() > end.getTime()) return false;
-  }
   return true;
 }
 
