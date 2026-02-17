@@ -3343,14 +3343,9 @@ function TrainerClients(props: {
         `Точно хотите удалить клиента @${inv.username}?`,
         `Are you sure you want to delete client @${inv.username}?`
       );
-      const res = WebApp.showConfirm(message, (ok) => {
+      WebApp.showConfirm(message, (ok) => {
         if (ok) doDelete();
       });
-      if (res && typeof (res as Promise<boolean>).then === "function") {
-        (res as Promise<boolean>).then((ok) => {
-          if (ok) doDelete();
-        });
-      }
       return;
     }
 
