@@ -228,7 +228,28 @@ export default function App() {
 
   // ----- Clients state (локально, без бэка)
   const [clientsScreen, setClientsScreen] = useState<ClientsScreen>("list");
-  const [invites, setInvites] = useState<TrainerClientInvite[]>([]);
+  const [invites, setInvites] = useState<TrainerClientInvite[]>([
+    {
+      id: "test_client_1",
+      username: "test_client",
+      code: "TEST1234",
+      createdAt: Date.now(),
+      status: "active",
+      photoUrl: "",
+      fullName: "",
+      height: "",
+      weight: "",
+      goal: "",
+      comment: "",
+      exercises: [],
+      subscriptionStart: "",
+      subscriptionEnd: "",
+      subscriptionPrice: "",
+      subscriptionTotal: "",
+      subscriptionLeft: "",
+      archived: false,
+    },
+  ]);
   const [sessionsByDate, setSessionsByDate] = useState<Record<string, SessionItem[]>>({});
   const [historyByClient, setHistoryByClient] = useState<Record<string, SessionItem[]>>({});
   const processedSessionIdsRef = useRef<Set<string>>(new Set());
