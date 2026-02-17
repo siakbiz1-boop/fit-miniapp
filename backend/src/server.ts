@@ -121,6 +121,22 @@ function generateInviteCode(len = 8) {
   return out;
 }
 
+function serializeClient(client: any) {
+  if (!client) return client;
+  return {
+    ...client,
+    trainerTgUserId: client.trainerTgUserId?.toString?.() ?? client.trainerTgUserId,
+  };
+}
+
+function serializeSession(session: any) {
+  if (!session) return session;
+  return {
+    ...session,
+    trainerTgUserId: session.trainerTgUserId?.toString?.() ?? session.trainerTgUserId,
+  };
+}
+
 // --------------------
 // Auth helper: get DB user from JWT
 // --------------------
@@ -379,7 +395,7 @@ app.get("/clients", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, clients: list };
+  return { ok: true, clients: list.map((c: any) => serializeClient(c)) };
 });
 
 app.post("/clients", async (req, reply) => {
@@ -396,7 +412,7 @@ app.post("/clients", async (req, reply) => {
     where: { trainerTgUserId_clientUsername: { trainerTgUserId: dbUser.tgUserId, clientUsername: username } },
     include: { exercises: true },
   });
-  if (existing) return { ok: true, existing: true, client: existing };
+  if (existing) return { ok: true, existing: true, client: serializeClient(existing) };
 
   let code = generateInviteCode(8);
   for (let i = 0; i < 5; i++) {
@@ -418,7 +434,7 @@ app.post("/clients", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, client: created };
+  return { ok: true, client: serializeClient(created) };
 });
 
 app.patch("/clients/:id", async (req, reply) => {
@@ -455,7 +471,7 @@ app.patch("/clients/:id", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, client: updated };
+  return { ok: true, client: serializeClient(updated) };
 });
 
 app.post("/clients/:id/exercises", async (req, reply) => {
@@ -508,7 +524,7 @@ app.post("/clients/:id/exercises", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, client: next };
+  return { ok: true, client: serializeClient(next) };
 });
 
 app.get("/clients/:id/sessions", async (req, reply) => {
@@ -531,7 +547,7 @@ app.get("/clients/:id/sessions", async (req, reply) => {
     orderBy: { startAt: "desc" },
   });
 
-  return { ok: true, sessions };
+  return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
 });
 
 // Sync trainer sessions for reminders
