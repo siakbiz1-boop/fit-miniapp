@@ -664,13 +664,20 @@ app.post("/clients/activate", async (req, reply) => {
   if (!dbUser) return;
 
   const body = req.body as any;
-  const code = String(body?.code || "").trim();
+  const code = String(body?.code || "").trim().toUpperCase();
   if (!code) return reply.code(400).send({ message: "code required" });
+  const incomingUsername = normalizeUsername(dbUser.username || "").toLowerCase();
+  if (!incomingUsername) {
+    return reply.code(400).send({ message: "username required" });
+  }
 
   const record = await prismaAny.trainerClient.findFirst({
     where: { code },
   });
   if (!record) return reply.code(404).send({ message: "code not found" });
+  if (normalizeUsername(record.clientUsername || "").toLowerCase() !== incomingUsername) {
+    return reply.code(403).send({ message: "username mismatch" });
+  }
 
   const updated = await prismaAny.trainerClient.update({
     where: { id: record.id },
@@ -678,7 +685,7 @@ app.post("/clients/activate", async (req, reply) => {
       status: "active",
       archived: false,
       clientTgUserId: dbUser.tgUserId,
-      clientUsername: record.clientUsername || dbUser.username || record.clientUsername,
+      clientUsername: record.clientUsername || incomingUsername,
     },
     include: { exercises: true },
   });
@@ -702,7 +709,9 @@ app.get("/client/trainers", async (req, reply) => {
     },
   });
 
-  const trainerIds = Array.from(new Set(trainers.map((c: any) => c.trainerTgUserId)));
+  const trainerIds = Array.from(new Set(trainers.map((c: any) => c.trainerTgUserId)))
+    .filter((id: any) => id !== null && id !== undefined)
+    .map((id: any) => (typeof id === "bigint" ? id : BigInt(String(id))));
   const users = await prisma.user.findMany({
     where: { tgUserId: { in: trainerIds } },
   });

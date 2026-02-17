@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import WebApp from "@twa-dev/sdk";
 
 const SUBSCRIPTION_CLIENT_LIMIT = 9999;
-const UNIVERSAL_INVITE_CODE = "TEST-CLIENT";
 let currentLanguage: "ru" | "en" = "ru";
 
 function getRoleStorageKey(base: string, role: Role | null) {
@@ -77,6 +76,8 @@ type TrainerClientInvite = {
   createdAt: number;
   status: "pending" | "active";
   photoUrl?: string;
+  trainerTgUserId?: string;
+  bookingMode?: "trainer" | "both";
   fullName?: string;
   height?: string;
   weight?: string;
@@ -113,13 +114,15 @@ type TrainerProfile = {
   phone?: string;
   instagram?: string;
   otherSocial?: string;
+  bookingMode?: "trainer" | "both";
 };
 
-type FreeWindow = {
+type TrainingSlot = {
   id: string;
-  start: string; // HH:MM
-  end: string; // HH:MM
-  clientUsername?: string; // without @
+  trainerTgUserId: string;
+  dateKey: string;
+  start: string;
+  end: string;
 };
 
 type SessionItem = {
@@ -128,6 +131,7 @@ type SessionItem = {
   start: string; // HH:MM
   end: string; // HH:MM
   clientUsername: string; // without @
+  source?: "trainer" | "client";
   type?: string;
   price?: string;
   comment?: string;
@@ -186,6 +190,7 @@ export default function App() {
       return null;
     }
   });
+  const [tgUserId, setTgUserId] = useState<string>("");
   const [authChecking, setAuthChecking] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     try {
@@ -246,29 +251,10 @@ export default function App() {
 
   // ----- Clients state (локально, без бэка)
   const [clientsScreen, setClientsScreen] = useState<ClientsScreen>("list");
-  const [invites, setInvites] = useState<TrainerClientInvite[]>([
-    {
-      id: "test_client_1",
-      username: "test_client",
-      code: "TEST1234",
-      createdAt: Date.now(),
-      status: "active",
-      photoUrl: "",
-      fullName: "",
-      height: "",
-      weight: "",
-      goal: "",
-      comment: "",
-      exercises: [],
-      subscriptionStart: "",
-      subscriptionEnd: "",
-      subscriptionPrice: "",
-      subscriptionTotal: "",
-      subscriptionLeft: "",
-      archived: false,
-    },
-  ]);
+  const [invites, setInvites] = useState<TrainerClientInvite[]>([]);
+  const [clientTrainers, setClientTrainers] = useState<TrainerClientInvite[]>([]);
   const [sessionsByDate, setSessionsByDate] = useState<Record<string, SessionItem[]>>({});
+  const [clientSessionsByDate, setClientSessionsByDate] = useState<Record<string, SessionItem[]>>({});
   const [historyByClient, setHistoryByClient] = useState<Record<string, SessionItem[]>>({});
   const processedSessionIdsRef = useRef<Set<string>>(new Set());
   const [pendingSession, setPendingSession] = useState<SessionItem | null>(null);
@@ -285,6 +271,65 @@ export default function App() {
       const data = (await res.json()) as { ok: boolean; clients?: any[] };
       if (!data?.clients) return;
       setInvites(data.clients.map((c) => mapClientFromApi(c)));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function fetchClientTrainers() {
+    if (!token || role !== "client") return;
+    try {
+      const res = await fetch(`${apiBase}/client/trainers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; trainers?: any[] };
+      if (!data?.trainers) return;
+      setClientTrainers(data.trainers.map((c) => mapClientFromApi(c)));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function fetchTrainerSessions() {
+    if (!token || role !== "trainer") return;
+    try {
+      const res = await fetch(`${apiBase}/sessions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; sessions?: any[] };
+      if (!data?.sessions) return;
+      const mapped = data.sessions.map((s) => mapSessionFromApi(s));
+      const next: Record<string, SessionItem[]> = {};
+      mapped.forEach((s) => {
+        const list = next[s.dateKey] ? next[s.dateKey].slice() : [];
+        list.push(s);
+        next[s.dateKey] = list;
+      });
+      setSessionsByDate(next);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function fetchClientSessions() {
+    if (!token || role !== "client") return;
+    try {
+      const res = await fetch(`${apiBase}/client/sessions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; sessions?: any[] };
+      if (!data?.sessions) return;
+      const mapped = data.sessions.map((s) => mapSessionFromApi(s));
+      const next: Record<string, SessionItem[]> = {};
+      mapped.forEach((s) => {
+        const list = next[s.dateKey] ? next[s.dateKey].slice() : [];
+        list.push(s);
+        next[s.dateKey] = list;
+      });
+      setClientSessionsByDate(next);
     } catch {
       // ignore
     }
@@ -434,7 +479,9 @@ export default function App() {
     if (!token || role !== "trainer") return;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
-      const allSessions = Object.values(sessionsByDate).flat();
+      const allSessions = Object.values(sessionsByDate)
+        .flat()
+        .filter((s) => s.source !== "client");
       const payload = allSessions.map((s) => ({
         id: s.id,
         clientUsername: s.clientUsername,
@@ -471,6 +518,17 @@ export default function App() {
   useEffect(() => {
     fetchTrainerProfile();
   }, [token, role, apiBase]);
+
+  useEffect(() => {
+    fetchClientTrainers();
+    fetchClientSessions();
+  }, [token, role, apiBase]);
+
+  useEffect(() => {
+    if (role !== "trainer") return;
+    if (activeTab !== "schedule" && activeTab !== "home") return;
+    fetchTrainerSessions();
+  }, [token, role, apiBase, activeTab]);
 
   async function login() {
     try {
@@ -534,6 +592,7 @@ export default function App() {
 
     const data = JSON.parse(text) as ProfileResponse;
     setRole(data.user.role);
+    setTgUserId(data.user.tgUserId);
     try {
       if (data.user.role) {
         localStorage.setItem("role", data.user.role);
@@ -1194,6 +1253,9 @@ export default function App() {
                   historyByClient={historyByClient}
                   sessionsByDate={sessionsByDate}
                   setSessionsByDate={setSessionsByDate}
+                  token={token}
+                  apiBase={apiBase}
+                  trainerTgUserId={tgUserId}
                   pendingSession={pendingSession}
                   onConsumePendingSession={() => setPendingSession(null)}
                   onSaveExercises={saveClientExercises}
@@ -1282,42 +1344,34 @@ export default function App() {
                     setClientInviteMessage(tr("Введите инвайт-код.", "Enter an invite code."));
                     return;
                   }
-                  if (code.toLowerCase() === UNIVERSAL_INVITE_CODE.toLowerCase()) {
-                    setClientInviteMessage("");
-                    setClientInviteCode("");
-                    setClientConnected(true);
-                    setClientTab("home");
+                  (async () => {
                     try {
-                      localStorage.setItem("clientConnected", "true");
+                      const res = await fetch(`${apiBase}/clients/activate`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({ code }),
+                      });
+                      if (!res.ok) {
+                        setClientInviteMessage(
+                          tr("Код не найден. Проверь правильность.", "Code not found. Check it and try again.")
+                        );
+                        return;
+                      }
+                      setClientInviteMessage("");
+                      setClientInviteCode("");
+                      setClientConnected(true);
+                      setClientTab("home");
+                      fetchClientTrainers();
+                      fetchClientSessions();
+                      try {
+                        localStorage.setItem("clientConnected", "true");
+                      } catch {
+                        // ignore
+                      }
                     } catch {
-                      // ignore
+                      setClientInviteMessage(tr("Не удалось подключиться.", "Failed to connect."));
                     }
-                    return;
-                  }
-                  let found = false;
-                  setInvites((prev) => {
-                    const idx = prev.findIndex((c) => c.code.toLowerCase() === code.toLowerCase());
-                    if (idx === -1) return prev;
-                    found = true;
-                    return prev.map((c, i) =>
-                      i === idx ? { ...c, status: "active", archived: false } : c
-                    );
-                  });
-                  if (!found) {
-                    setClientInviteMessage(
-                      tr("Код не найден. Проверь правильность.", "Code not found. Check it and try again.")
-                    );
-                    return;
-                  }
-                  setClientInviteMessage("");
-                  setClientInviteCode("");
-                  setClientConnected(true);
-                  setClientTab("home");
-                  try {
-                    localStorage.setItem("clientConnected", "true");
-                  } catch {
-                    // ignore
-                  }
+                  })();
                 }}
                 style={{ ...styles.primaryBtn, marginTop: 10 }}
               >
@@ -1351,14 +1405,26 @@ export default function App() {
               name={name}
               photoUrl={tgPhotoUrl}
               onOpenSettings={() => setClientTab("settings")}
+              sessionsByDate={clientSessionsByDate}
             />
           )}
-          {clientTab === "schedule" && <ClientSchedule invites={invites} t={t} />}
+          {clientTab === "schedule" && (
+            <ClientSchedule
+              invites={clientTrainers}
+              t={t}
+              token={token}
+              apiBase={apiBase}
+              sessionsByDate={clientSessionsByDate}
+              onBooked={fetchClientSessions}
+            />
+          )}
           {clientTab === "book" && (
             <ClientBook
-              invites={invites}
-              setInvites={setInvites}
+              invites={clientTrainers}
               setClientConnected={setClientConnected}
+              token={token}
+              apiBase={apiBase}
+              onRefresh={fetchClientTrainers}
               t={t}
             />
           )}
@@ -1376,8 +1442,8 @@ export default function App() {
               language={language}
               setLanguage={setLanguage}
               t={t}
-              invites={invites}
-              setInvites={setInvites}
+              invites={clientTrainers}
+              setInvites={setClientTrainers}
               setClientConnected={setClientConnected}
               onDeleteProfile={handleDeleteProfile}
             />
@@ -2114,13 +2180,30 @@ function TrainerHome({
   );
 }
 
-function ClientHome(props: { name: string; photoUrl: string; onOpenSettings: () => void }) {
-  const { name, photoUrl, onOpenSettings } = props;
+function ClientHome(props: {
+  name: string;
+  photoUrl: string;
+  onOpenSettings: () => void;
+  sessionsByDate: Record<string, SessionItem[]>;
+}) {
+  const { name, photoUrl, onOpenSettings, sessionsByDate } = props;
   const tr = useTr();
-  const [nearest] = useState<SessionItem | null>(null);
-  const todayCount = 0;
-  const todayRemaining = 0;
-  const completedThisWeek = 0;
+  const now = new Date();
+  const todayKey = formatDateKey(now);
+  const allSessions = Object.values(sessionsByDate).flat();
+  const upcoming = allSessions
+    .filter((s) => sessionEndTime(s).getTime() > now.getTime())
+    .sort((a, b) => sessionStartTime(a).getTime() - sessionStartTime(b).getTime());
+  const nearest = upcoming[0] || null;
+  const todaySessions = sessionsByDate[todayKey] || [];
+  const todayCount = todaySessions.length;
+  const todayRemaining = todaySessions.filter((s) => sessionEndTime(s).getTime() > now.getTime()).length;
+  const weekStart = startOfWeekMonday(now);
+  const weekEnd = endOfWeekMonday(now);
+  const completedThisWeek = allSessions.filter((s) => {
+    const end = sessionEndTime(s);
+    return end.getTime() <= now.getTime() && end.getTime() >= weekStart.getTime() && end.getTime() <= weekEnd.getTime();
+  }).length;
 
   return (
     <div style={styles.pageContainer}>
@@ -2187,8 +2270,15 @@ function ClientHome(props: { name: string; photoUrl: string; onOpenSettings: () 
   );
 }
 
-function ClientSchedule(props: { invites: TrainerClientInvite[]; t: UiText }) {
-  const { invites, t } = props;
+function ClientSchedule(props: {
+  invites: TrainerClientInvite[];
+  t: UiText;
+  token: string;
+  apiBase: string;
+  sessionsByDate: Record<string, SessionItem[]>;
+  onBooked: () => void;
+}) {
+  const { invites, t, token, apiBase, sessionsByDate, onBooked } = props;
   const tr = useTr();
   const [today, setToday] = useState<Date>(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
@@ -2198,6 +2288,8 @@ function ClientSchedule(props: { invites: TrainerClientInvite[]; t: UiText }) {
   const todayRef = useRef<HTMLButtonElement | null>(null);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
   const trainers = invites.filter((c) => !c.archived && c.status === "active");
+  const [slots, setSlots] = useState<TrainingSlot[]>([]);
+  const [slotError, setSlotError] = useState("");
 
   useEffect(() => {
     const tick = () => setToday(startOfDay(new Date()));
@@ -2233,6 +2325,41 @@ function ClientSchedule(props: { invites: TrainerClientInvite[]; t: UiText }) {
     if (selectedTrainerId && trainers.some((t) => t.id === selectedTrainerId)) return;
     setSelectedTrainerId(trainers[0].id);
   }, [section, trainers, selectedTrainerId]);
+
+  useEffect(() => {
+    if (section !== "book") return;
+    const trainer = trainers.find((t) => t.id === selectedTrainerId);
+    const trainerTgId = trainer?.trainerTgUserId;
+    if (!trainerTgId) {
+      setSlots([]);
+      return;
+    }
+    if (trainer.bookingMode && trainer.bookingMode !== "both") {
+      setSlots([]);
+      return;
+    }
+    const dateKey = formatDateKey(selected);
+    const run = async () => {
+      try {
+        const res = await fetch(
+          `${apiBase}/slots?trainerTgUserId=${encodeURIComponent(trainerTgId)}&dateKey=${encodeURIComponent(
+            dateKey
+          )}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) {
+          setSlotError(tr("Не удалось загрузить свободные окна", "Failed to load slots"));
+          return;
+        }
+        const data = (await res.json()) as { ok: boolean; slots?: TrainingSlot[] };
+        setSlots(data.slots || []);
+        setSlotError("");
+      } catch {
+        setSlotError(tr("Не удалось загрузить свободные окна", "Failed to load slots"));
+      }
+    };
+    run();
+  }, [section, selectedTrainerId, selected, trainers, apiBase, token]);
 
   return (
     <div style={styles.pageContainer}>
@@ -2327,7 +2454,103 @@ function ClientSchedule(props: { invites: TrainerClientInvite[]; t: UiText }) {
       <div style={styles.scheduleTabsDivider} />
 
       <div style={styles.schedulePanelPlain}>
-        <div style={styles.schedulePanelBody}>{tr("Пока заглушка.", "Placeholder for now.")}</div>
+        {section === "today" ? (() => {
+          const list = (sessionsByDate[formatDateKey(selected)] || [])
+            .slice()
+            .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+          if (list.length === 0) {
+            return <div style={styles.schedulePanelBody}>{tr("Пока нет тренировок.", "No sessions yet.")}</div>;
+          }
+          return (
+            <div style={styles.sessionList}>
+              {list.map((s) => (
+                <div key={s.id} style={styles.sessionBanner}>
+                  <div style={styles.sessionBannerLeft}>
+                    <div style={styles.sessionBannerTitle}>
+                      {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
+                    </div>
+                    <div style={styles.sessionBannerTime}>
+                      {s.start} — {s.end}
+                    </div>
+                    <div
+                      style={{
+                        ...styles.sessionBannerStatus,
+                        color: sessionStatusColor(s),
+                      }}
+                    >
+                      {sessionStatusLabel(s)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })() : section === "book" ? (() => {
+          const trainer = trainers.find((t) => t.id === selectedTrainerId) || null;
+          if (!trainer) {
+            return <div style={styles.schedulePanelBody}>{tr("Нет тренеров.", "No coaches.")}</div>;
+          }
+          if (trainer.bookingMode && trainer.bookingMode !== "both") {
+            return (
+              <div style={styles.schedulePanelBody}>
+                {tr("Запись на тренировки доступна только у тренера.", "Booking is trainer-only.")}
+              </div>
+            );
+          }
+          if (slotError) {
+            return <div style={styles.errorText}>{slotError}</div>;
+          }
+          if (slots.length === 0) {
+            return <div style={styles.schedulePanelBody}>{tr("Нет свободных окон.", "No slots available.")}</div>;
+          }
+          return (
+            <div style={styles.freeList}>
+              {slots.map((w) => (
+                <div key={w.id} style={styles.freeBanner}>
+                  <div style={styles.freeBannerLeft}>
+                    <div style={styles.freeBannerTitle}>{tr("Свободное окно", "Available slot")}</div>
+                    <div style={styles.freeBannerTime}>
+                      {w.start} — {w.end}
+                    </div>
+                  </div>
+                  <div style={styles.freeBannerActions}>
+                    <button
+                      type="button"
+                      style={styles.freeBannerAdd}
+                      onClick={async () => {
+                        if (!trainer.trainerTgUserId) return;
+                        try {
+                          const res = await fetch(`${apiBase}/book`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                              trainerTgUserId: trainer.trainerTgUserId,
+                              dateKey: w.dateKey,
+                              start: w.start,
+                              end: w.end,
+                            }),
+                          });
+                          if (!res.ok) {
+                            setSlotError(tr("Не удалось записаться.", "Booking failed."));
+                            return;
+                          }
+                          setSlots((prev) => prev.filter((s) => s.id !== w.id));
+                          onBooked();
+                        } catch {
+                          setSlotError(tr("Не удалось записаться.", "Booking failed."));
+                        }
+                      }}
+                    >
+                      {tr("Записаться", "Book")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })() : (
+          <div style={styles.schedulePanelBody}>{tr("Пока заглушка.", "Placeholder for now.")}</div>
+        )}
       </div>
     </div>
   );
@@ -2335,11 +2558,13 @@ function ClientSchedule(props: { invites: TrainerClientInvite[]; t: UiText }) {
 
 function ClientBook(props: {
   invites: TrainerClientInvite[];
-  setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   setClientConnected: (v: boolean) => void;
+  token: string;
+  apiBase: string;
+  onRefresh: () => void;
   t: UiText;
 }) {
-  const { invites, setInvites, setClientConnected, t } = props;
+  const { invites, setClientConnected, token, apiBase, onRefresh, t } = props;
   const tr = useTr();
   const [section, setSection] = useState<"list" | "add">("list");
   const [view, setView] = useState<"tabs" | "detail">("tabs");
@@ -2468,11 +2693,13 @@ function ClientBook(props: {
           showTopBar={false}
           embedded
           onBack={() => setSection("list")}
-          invites={invites}
-          setInvites={setInvites}
+          token={token}
+          apiBase={apiBase}
+          onRefresh={onRefresh}
           onConnected={() => {
             setClientConnected(true);
             setSection("list");
+            onRefresh();
           }}
         />
       )}
@@ -2528,6 +2755,9 @@ function TrainerSchedule(props: {
   historyByClient: Record<string, SessionItem[]>;
   sessionsByDate: Record<string, SessionItem[]>;
   setSessionsByDate: React.Dispatch<React.SetStateAction<Record<string, SessionItem[]>>>;
+  token: string;
+  apiBase: string;
+  trainerTgUserId: string;
   pendingSession?: SessionItem | null;
   onConsumePendingSession?: () => void;
   onSaveExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
@@ -2538,6 +2768,9 @@ function TrainerSchedule(props: {
     historyByClient,
     sessionsByDate,
     setSessionsByDate,
+    token,
+    apiBase,
+    trainerTgUserId,
     pendingSession,
     onConsumePendingSession,
     onSaveExercises,
@@ -2589,12 +2822,14 @@ function TrainerSchedule(props: {
   }, [hasTgBack, scheduleScreen]);
   const [sessionExerciseError, setSessionExerciseError] = useState("");
   const [section, setSection] = useState<"sessions" | "free">("sessions");
-  const [freeByDate, setFreeByDate] = useState<Record<string, FreeWindow[]>>({});
+  const [slotsByDate, setSlotsByDate] = useState<Record<string, TrainingSlot[]>>({});
   const [showAddFree, setShowAddFree] = useState(false);
   const [freeStart, setFreeStart] = useState("");
   const [freeEnd, setFreeEnd] = useState("");
   const [freeError, setFreeError] = useState("");
+  const [slotError, setSlotError] = useState("");
   const [assignForId, setAssignForId] = useState<string | null>(null);
+  const [assignClientUsername, setAssignClientUsername] = useState<string>("");
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
@@ -2630,6 +2865,93 @@ function TrainerSchedule(props: {
     const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [selected, days]);
+
+  useEffect(() => {
+    if (!token || !trainerTgUserId) return;
+    const dateKey = formatDateKey(selected);
+    let cancelled = false;
+    const run = async () => {
+      setSlotError("");
+      try {
+        const res = await fetch(
+          `${apiBase}/slots?trainerTgUserId=${encodeURIComponent(trainerTgUserId)}&dateKey=${encodeURIComponent(
+            dateKey
+          )}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) {
+          throw new Error(`slots: ${res.status}`);
+        }
+        const data = (await res.json()) as { ok: boolean; slots?: TrainingSlot[] };
+        if (!cancelled) {
+          setSlotsByDate((prev) => ({ ...prev, [dateKey]: data.slots || [] }));
+        }
+      } catch {
+        if (!cancelled) {
+          setSlotError(tr("Не удалось загрузить свободные окна.", "Failed to load slots."));
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, token, trainerTgUserId, apiBase, tr]);
+
+  async function createSlot(dateKey: string, start: string, end: string) {
+    if (!token) {
+      setFreeError(tr("Сначала войдите в аккаунт.", "Please login first."));
+      return null;
+    }
+    try {
+      const res = await fetch(`${apiBase}/slots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ dateKey, start, end }),
+      });
+      if (!res.ok) {
+        throw new Error(`slots create: ${res.status}`);
+      }
+      const data = (await res.json()) as { ok: boolean; slot?: TrainingSlot };
+      const slot = data.slot;
+      if (slot) {
+        setSlotsByDate((prev) => {
+          const list = prev[dateKey] ? [...prev[dateKey]] : [];
+          list.push(slot);
+          list.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+          return { ...prev, [dateKey]: list };
+        });
+      }
+      return slot || null;
+    } catch {
+      setFreeError(tr("Не удалось создать окно.", "Failed to create slot."));
+      return null;
+    }
+  }
+
+  async function deleteSlot(slotId: string, dateKey: string) {
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/slots/${encodeURIComponent(slotId)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error(`slots delete: ${res.status}`);
+      }
+      setSlotsByDate((prev) => {
+        const list = prev[dateKey] ? prev[dateKey].filter((x) => x.id !== slotId) : [];
+        if (list.length === 0) {
+          const next = { ...prev };
+          delete next[dateKey];
+          return next;
+        }
+        return { ...prev, [dateKey]: list };
+      });
+    } catch {
+      setSlotError(tr("Не удалось удалить окно.", "Failed to delete slot."));
+    }
+  }
 
   if (scheduleScreen === "session" && activeSession) {
     const sessionClient = clients.find((c) => c.username === activeSession.clientUsername) || null;
@@ -2797,12 +3119,7 @@ function TrainerSchedule(props: {
                       }
                       return { ...prev, [dateKey]: list };
                     });
-                    setFreeByDate((prev) => {
-                      const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                      list.push({ id: cryptoId(), start: activeSession.start, end: activeSession.end });
-                      list.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
-                      return { ...prev, [dateKey]: list };
-                    });
+                    void createSlot(dateKey, activeSession.start, activeSession.end);
                     setScheduleScreen("list");
                     setActiveSession(null);
                   };
@@ -3138,7 +3455,7 @@ function TrainerSchedule(props: {
               {freeError ? <div style={styles.errorText}>{freeError}</div> : null}
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const dateKey = formatDateKey(selected);
                   const start = normalizeTimeInput(freeStart);
                   const end = normalizeTimeInput(freeEnd);
@@ -3167,7 +3484,7 @@ function TrainerSchedule(props: {
                   }
                   const startMin = timeToMinutes(start);
                   const endMin = timeToMinutes(end);
-                  const existing = freeByDate[dateKey] || [];
+                  const existing = slotsByDate[dateKey] || [];
                   const existingSessions = sessionsByDate[dateKey] || [];
                   const overlaps = existing.some((w) => {
                     const wStart = timeToMinutes(w.start);
@@ -3183,12 +3500,8 @@ function TrainerSchedule(props: {
                     setFreeError(tr("Окна не должны пересекаться или дублироваться с занятиями.", "Slots must not overlap with each other or sessions."));
                     return;
                   }
-                  const next: FreeWindow = { id: cryptoId(), start, end };
-                  setFreeByDate((prev) => {
-                    const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                    list.push(next);
-                    return { ...prev, [dateKey]: list };
-                  });
+                  const created = await createSlot(dateKey, start, end);
+                  if (!created) return;
                   setShowAddFree(false);
                   setFreeError("");
                   setFreeStart("");
@@ -3201,9 +3514,11 @@ function TrainerSchedule(props: {
             </div>
           ) : null}
 
+          {slotError ? <div style={styles.errorText}>{slotError}</div> : null}
+
           <div style={{ marginTop: 10 }}>
             <div style={styles.freeList}>
-              {(freeByDate[formatDateKey(selected)] || [])
+              {(slotsByDate[formatDateKey(selected)] || [])
                 .slice()
                 .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
                 .map((w) => (
@@ -3216,12 +3531,14 @@ function TrainerSchedule(props: {
                     {assignForId === w.id ? (
                       <div style={styles.assignRow}>
                         <select
-                          value={w.clientUsername ?? ""}
+                          value={assignClientUsername}
                           onChange={(e) => {
                             const value = e.target.value || undefined;
+                            setAssignClientUsername(e.target.value);
                             const dateKey = formatDateKey(selected);
                             if (value) {
                               if (!canScheduleClientOnDate(clients, value)) return;
+                              setAssignClientUsername("");
                               setSessionsByDate((prev) => {
                                 const list = prev[dateKey] ? [...prev[dateKey]] : [];
                                 list.push({
@@ -3230,18 +3547,11 @@ function TrainerSchedule(props: {
                                   start: w.start,
                                   end: w.end,
                                   clientUsername: value,
+                                  source: "trainer",
                                 });
                                 return { ...prev, [dateKey]: list };
                               });
-                              setFreeByDate((prev) => {
-                                const list = prev[dateKey] ? prev[dateKey].filter((x) => x.id !== w.id) : [];
-                                if (list.length === 0) {
-                                  const next = { ...prev };
-                                  delete next[dateKey];
-                                  return next;
-                                }
-                                return { ...prev, [dateKey]: list };
-                              });
+                              void deleteSlot(w.id, dateKey);
                             }
                             setAssignForId(null);
                           }}
@@ -3278,15 +3588,7 @@ function TrainerSchedule(props: {
                       type="button"
                       onClick={() => {
                         const dateKey = formatDateKey(selected);
-                        setFreeByDate((prev) => {
-                          const list = prev[dateKey] ? prev[dateKey].filter((x) => x.id !== w.id) : [];
-                          if (list.length === 0) {
-                            const next = { ...prev };
-                            delete next[dateKey];
-                            return next;
-                          }
-                          return { ...prev, [dateKey]: list };
-                        });
+                        void deleteSlot(w.id, dateKey);
                         setAssignForId((prev) => (prev === w.id ? null : prev));
                       }}
                       style={styles.freeBannerDelete}
@@ -4273,6 +4575,17 @@ function TrainerSettings(props: {
   const [remindersEnabled, setRemindersEnabled] = useState<boolean>(true);
 
   useEffect(() => {
+    if (trainerProfile?.bookingMode === "both" || trainerProfile?.bookingMode === "trainer") {
+      setBookingMode(trainerProfile.bookingMode);
+    }
+  }, [trainerProfile?.bookingMode]);
+
+  const handleBookingModeChange = (mode: "trainer" | "both") => {
+    setBookingMode(mode);
+    onSaveTrainerProfile?.({ bookingMode: mode });
+  };
+
+  useEffect(() => {
     if (!showBookingRow && screen === "booking") {
       setScreen("main");
     }
@@ -4306,7 +4619,7 @@ function TrainerSettings(props: {
       <BookingModeScreen
         onBack={() => setScreen("main")}
         bookingMode={bookingMode}
-        setBookingMode={setBookingMode}
+        setBookingMode={handleBookingModeChange}
         t={t}
       />
     );
@@ -5329,11 +5642,12 @@ function ClientTrainerConnectScreen(props: {
   showTopBar?: boolean;
   embedded?: boolean;
   onBack: () => void;
-  invites: TrainerClientInvite[];
-  setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
+  token: string;
+  apiBase: string;
+  onRefresh?: () => void;
   onConnected: () => void;
 }) {
-  const { showTopBar = true, embedded = false, onBack, invites: _invites, setInvites, onConnected } = props;
+  const { showTopBar = true, embedded = false, onBack, token, apiBase, onRefresh, onConnected } = props;
   const tr = useTr();
   const [inviteCode, setInviteCode] = useState("");
   const [message, setMessage] = useState("");
@@ -5364,36 +5678,34 @@ function ClientTrainerConnectScreen(props: {
               setMessage(tr("Введите инвайт-код.", "Enter an invite code."));
               return;
             }
-            if (code.toLowerCase() === UNIVERSAL_INVITE_CODE.toLowerCase()) {
-              setMessage("");
-              setInviteCode("");
-              onConnected();
+            if (!token) {
+              setMessage(tr("Сначала войдите в аккаунт.", "Please login first."));
+              return;
+            }
+            (async () => {
               try {
-                localStorage.setItem("clientConnected", "true");
+                const res = await fetch(`${apiBase}/clients/activate`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ code }),
+                });
+                if (!res.ok) {
+                  setMessage(tr("Код не найден. Проверь правильность.", "Code not found. Check it and try again."));
+                  return;
+                }
+                setMessage("");
+                setInviteCode("");
+                onConnected();
+                onRefresh?.();
+                try {
+                  localStorage.setItem("clientConnected", "true");
+                } catch {
+                  // ignore
+                }
               } catch {
-                // ignore
+                setMessage(tr("Не удалось подключиться.", "Failed to connect."));
               }
-              return;
-            }
-            let found = false;
-            setInvites((prev) => {
-              const idx = prev.findIndex((c) => c.code.toLowerCase() === code.toLowerCase());
-              if (idx === -1) return prev;
-              found = true;
-              return prev.map((c, i) => (i === idx ? { ...c, status: "active", archived: false } : c));
-            });
-            if (!found) {
-              setMessage(tr("Код не найден. Проверь правильность.", "Code not found. Check it and try again."));
-              return;
-            }
-            setMessage("");
-            setInviteCode("");
-            onConnected();
-            try {
-              localStorage.setItem("clientConnected", "true");
-            } catch {
-              // ignore
-            }
+            })();
           }}
           style={{ ...styles.primaryBtn, marginTop: 10 }}
         >
@@ -5770,6 +6082,8 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     createdAt: c.createdAt ? new Date(c.createdAt).getTime() : Date.now(),
     status: c.status === "active" ? "active" : "pending",
     photoUrl: "",
+    trainerTgUserId: c.trainerTgUserId ? String(c.trainerTgUserId) : undefined,
+    bookingMode: c.bookingMode === "both" ? "both" : c.bookingMode === "trainer" ? "trainer" : undefined,
     fullName: c.fullName ?? "",
     height: c.height ?? "",
     weight: c.weight ?? "",
@@ -5799,6 +6113,7 @@ function mapSessionFromApi(s: any): SessionItem {
     start: String(s.startTime || ""),
     end: String(s.endTime || ""),
     clientUsername: String(s.clientUsername || ""),
+    source: s.source === "client" ? "client" : "trainer",
     type: s.type ? String(s.type) : undefined,
     comment: s.comment ? String(s.comment) : undefined,
   };
