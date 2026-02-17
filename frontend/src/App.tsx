@@ -19,6 +19,8 @@ type ProfileResponse = {
     firstName: string | null;
     lastName: string | null;
     role: Role;
+    theme?: "light" | "dark" | null;
+    language?: "ru" | "en" | null;
   };
 };
 
@@ -218,6 +220,7 @@ export default function App() {
     }
   });
   const [trainerProfile, setTrainerProfile] = useState<TrainerProfile | null>(null);
+  const prefsSyncRef = useRef<number | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreen>("main");
@@ -354,6 +357,22 @@ export default function App() {
     }
   }
 
+  function schedulePrefsSync(nextTheme: "light" | "dark", nextLanguage: "ru" | "en") {
+    if (!token) return;
+    if (prefsSyncRef.current) window.clearTimeout(prefsSyncRef.current);
+    prefsSyncRef.current = window.setTimeout(async () => {
+      try {
+        await fetch(`${apiBase}/profile/preferences`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ theme: nextTheme, language: nextLanguage }),
+        });
+      } catch {
+        // ignore
+      }
+    }, 250);
+  }
+
   const t = useMemo<UiText>(
     () => ({
       login: language === "en" ? "Login" : "Войти",
@@ -405,6 +424,9 @@ export default function App() {
       localStorage.setItem(getRoleStorageKey("appLanguage", role), language);
     } catch {
       // ignore
+    }
+    if (role && token) {
+      schedulePrefsSync(theme, language);
     }
   }, [language, role]);
 
@@ -534,6 +556,13 @@ export default function App() {
 
     setName(fullName);
     setTgUsername(data.user.username ?? "");
+
+    if (data.user.theme === "dark" || data.user.theme === "light") {
+      setTheme(data.user.theme);
+    }
+    if (data.user.language === "ru" || data.user.language === "en") {
+      setLanguage(data.user.language);
+    }
 
     const tgUser = WebApp.initDataUnsafe?.user;
     if (tgUser?.photo_url) {
@@ -988,6 +1017,9 @@ export default function App() {
       localStorage.setItem(getRoleStorageKey("theme", role), theme);
     } catch {
       // ignore
+    }
+    if (role && token) {
+      schedulePrefsSync(theme, language);
     }
   }, [theme, role]);
 
