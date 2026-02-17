@@ -108,6 +108,19 @@ function parseTelegramUserFromInitData(initData: string) {
   }
 }
 
+function normalizeUsername(raw: string) {
+  const v = (raw || "").trim();
+  const cleaned = v.startsWith("@") ? v.slice(1) : v;
+  return cleaned.replace(/\s+/g, "");
+}
+
+function generateInviteCode(len = 8) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let out = "";
+  for (let i = 0; i < len; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
+}
+
 // --------------------
 // Auth helper: get DB user from JWT
 // --------------------
@@ -351,6 +364,174 @@ app.post("/role/reset", async (req, reply) => {
   });
 
   return { ok: true };
+});
+
+// --------------------
+// Clients
+// --------------------
+app.get("/clients", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const list = await prismaAny.trainerClient.findMany({
+    where: { trainerTgUserId: dbUser.tgUserId },
+    orderBy: { createdAt: "desc" },
+    include: { exercises: true },
+  });
+
+  return { ok: true, clients: list };
+});
+
+app.post("/clients", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const username = normalizeUsername(body?.username || "");
+  if (!/^[a-zA-Z0-9_]{5,32}$/.test(username)) {
+    return reply.code(400).send({ message: "Invalid username" });
+  }
+
+  const existing = await prismaAny.trainerClient.findUnique({
+    where: { trainerTgUserId_clientUsername: { trainerTgUserId: dbUser.tgUserId, clientUsername: username } },
+    include: { exercises: true },
+  });
+  if (existing) return { ok: true, existing: true, client: existing };
+
+  let code = generateInviteCode(8);
+  for (let i = 0; i < 5; i++) {
+    const collision = await prismaAny.trainerClient.findUnique({
+      where: { trainerTgUserId_code: { trainerTgUserId: dbUser.tgUserId, code } },
+    });
+    if (!collision) break;
+    code = generateInviteCode(8);
+  }
+
+  const created = await prismaAny.trainerClient.create({
+    data: {
+      trainerTgUserId: dbUser.tgUserId,
+      clientUsername: username,
+      code,
+      status: "pending",
+      fullName: body?.fullName ? String(body.fullName) : null,
+    },
+    include: { exercises: true },
+  });
+
+  return { ok: true, client: created };
+});
+
+app.patch("/clients/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  const body = req.body as any;
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const client = await prismaAny.trainerClient.findUnique({
+    where: { id },
+  });
+  if (!client || client.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "Client not found" });
+  }
+
+  const updated = await prismaAny.trainerClient.update({
+    where: { id },
+    data: {
+      status: body?.status,
+      archived: body?.archived,
+      fullName: body?.fullName,
+      height: body?.height,
+      weight: body?.weight,
+      goal: body?.goal,
+      comment: body?.comment,
+      subscriptionStart: body?.subscriptionStart,
+      subscriptionEnd: body?.subscriptionEnd,
+      subscriptionPrice: body?.subscriptionPrice,
+      subscriptionTotal: body?.subscriptionTotal,
+      subscriptionLeft: body?.subscriptionLeft,
+    },
+    include: { exercises: true },
+  });
+
+  return { ok: true, client: updated };
+});
+
+app.post("/clients/:id/exercises", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  const body = req.body as any;
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const client = await prismaAny.trainerClient.findUnique({
+    where: { id },
+  });
+  if (!client || client.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "Client not found" });
+  }
+
+  const exercises = Array.isArray(body?.exercises) ? body.exercises : [];
+  const normalized = exercises
+    .map((ex: any) => ({
+      id: ex?.id ? String(ex.id) : null,
+      name: String(ex?.name || "").trim(),
+      weight: String(ex?.weight || "").trim(),
+    }))
+    .filter((ex: any) => ex.name && ex.weight);
+
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.clientExercise.findMany({ where: { clientId: id } });
+    const keepIds = new Set(normalized.map((ex: any) => ex.id).filter(Boolean));
+    const toDelete = existing.filter((ex) => !keepIds.has(ex.id)).map((ex) => ex.id);
+    if (toDelete.length) {
+      await tx.clientExercise.deleteMany({ where: { id: { in: toDelete } } });
+    }
+    for (const ex of normalized) {
+      if (ex.id) {
+        await tx.clientExercise.update({
+          where: { id: ex.id },
+          data: { name: ex.name, weight: ex.weight },
+        });
+      } else {
+        await tx.clientExercise.create({
+          data: { clientId: id, name: ex.name, weight: ex.weight },
+        });
+      }
+    }
+  });
+
+  const next = await prismaAny.trainerClient.findUnique({
+    where: { id },
+    include: { exercises: true },
+  });
+
+  return { ok: true, client: next };
+});
+
+app.get("/clients/:id/sessions", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const client = await prismaAny.trainerClient.findUnique({ where: { id } });
+  if (!client || client.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "Client not found" });
+  }
+
+  const sessions = await prismaAny.trainingSession.findMany({
+    where: {
+      trainerTgUserId: dbUser.tgUserId,
+      clientUsername: client.clientUsername,
+    },
+    orderBy: { startAt: "desc" },
+  });
+
+  return { ok: true, sessions };
 });
 
 // Sync trainer sessions for reminders
