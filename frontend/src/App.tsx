@@ -258,6 +258,60 @@ export default function App() {
   const [clientInviteCode, setClientInviteCode] = useState("");
   const [clientInviteMessage, setClientInviteMessage] = useState("");
 
+  async function fetchClients() {
+    if (!token || role !== "trainer") return;
+    try {
+      const res = await fetch(`${apiBase}/clients`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; clients?: any[] };
+      if (!data?.clients) return;
+      setInvites(data.clients.map((c) => mapClientFromApi(c)));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function loadClientHistory(client: TrainerClientInvite) {
+    if (!token || role !== "trainer") return;
+    try {
+      const res = await fetch(`${apiBase}/clients/${client.id}/sessions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; sessions?: any[] };
+      if (!data?.sessions) return;
+      const mapped = data.sessions.map((s) => mapSessionFromApi(s));
+      setHistoryByClient((prev) => ({ ...prev, [client.username]: mapped }));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function saveClientExercises(
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) {
+    if (!token || role !== "trainer") return;
+    try {
+      const res = await fetch(`${apiBase}/clients/${clientId}/exercises`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ exercises }),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; client?: any };
+      if (data?.client) {
+        setInvites((prev) =>
+          prev.map((c) => (c.id === data.client.id ? mapClientFromApi(data.client) : c))
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const t = useMemo<UiText>(
     () => ({
       login: language === "en" ? "Login" : "Войти",
@@ -345,6 +399,10 @@ export default function App() {
       controller.abort();
     };
   }, [sessionsByDate, invites, token, role, apiBase]);
+
+  useEffect(() => {
+    fetchClients();
+  }, [token, role, apiBase]);
 
   async function login() {
     try {
@@ -1060,6 +1118,7 @@ export default function App() {
                   setSessionsByDate={setSessionsByDate}
                   pendingSession={pendingSession}
                   onConsumePendingSession={() => setPendingSession(null)}
+                  onSaveExercises={saveClientExercises}
                 />
               )}
               {activeTab === "clients" && (
@@ -1069,6 +1128,9 @@ export default function App() {
                   invites={invites}
                   setInvites={setInvites}
                   historyByClient={historyByClient}
+                  token={token}
+                  apiBase={apiBase}
+                  onLoadHistory={loadClientHistory}
                 />
               )}
               {activeTab === "settings" && (
@@ -2387,6 +2449,7 @@ function TrainerSchedule(props: {
   setSessionsByDate: React.Dispatch<React.SetStateAction<Record<string, SessionItem[]>>>;
   pendingSession?: SessionItem | null;
   onConsumePendingSession?: () => void;
+  onSaveExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
 }) {
   const {
     clients,
@@ -2396,6 +2459,7 @@ function TrainerSchedule(props: {
     setSessionsByDate,
     pendingSession,
     onConsumePendingSession,
+    onSaveExercises,
   } = props;
   const tr = useTr();
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
@@ -2721,14 +2785,14 @@ function TrainerSchedule(props: {
                         setSessionExerciseError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
                         return;
                       }
+                      const nextList = [
+                        ...(sessionClient.exercises ? sessionClient.exercises : []),
+                        { id: cryptoId(), name, weight },
+                      ];
                       setClients((prev) =>
-                        prev.map((c) => {
-                          if (c.id !== sessionClient.id) return c;
-                          const list = c.exercises ? [...c.exercises] : [];
-                          list.push({ id: cryptoId(), name, weight });
-                          return { ...c, exercises: list };
-                        })
+                        prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                       );
+                      onSaveExercises?.(sessionClient.id, nextList);
                       setDraftSessionExerciseName("");
                       setDraftSessionExerciseWeight("");
                       setShowSessionExerciseForm(false);
@@ -2765,16 +2829,14 @@ function TrainerSchedule(props: {
                                   onChange={(e) => {
                                     if (!sessionClient) return;
                                     const value = e.target.value;
-                                    setClients((prev) =>
-                                      prev.map((c) => {
-                                        if (c.id !== sessionClient.id) return c;
-                                        const list = c.exercises ? [...c.exercises] : [];
-                                        const nextList = list.map((item) =>
-                                          item.id === ex.id ? { ...item, weight: value } : item
-                                        );
-                                        return { ...c, exercises: nextList };
-                                      })
+                                    const list = sessionClient.exercises ? [...sessionClient.exercises] : [];
+                                    const nextList = list.map((item) =>
+                                      item.id === ex.id ? { ...item, weight: value } : item
                                     );
+                                    setClients((prev) =>
+                                      prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
+                                    );
+                                    onSaveExercises?.(sessionClient.id, nextList);
                                   }}
                                   placeholder={tr("Вес не указан", "Weight not set")}
                                   style={styles.exerciseInput}
@@ -2783,13 +2845,11 @@ function TrainerSchedule(props: {
                                   type="button"
                                   onClick={() => {
                                     if (!sessionClient) return;
+                                    const nextList = (sessionClient.exercises || []).filter((item) => item.id !== ex.id);
                                     setClients((prev) =>
-                                      prev.map((c) => {
-                                        if (c.id !== sessionClient.id) return c;
-                                        const nextList = (c.exercises || []).filter((item) => item.id !== ex.id);
-                                        return { ...c, exercises: nextList };
-                                      })
+                                      prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                                     );
+                                    onSaveExercises?.(sessionClient.id, nextList);
                                   }}
                                   style={styles.exerciseTrashBtn}
                                   aria-label="delete exercise"
@@ -3171,13 +3231,22 @@ function TrainerClients(props: {
   invites: TrainerClientInvite[];
   setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   historyByClient: Record<string, SessionItem[]>;
+  token: string;
+  apiBase: string;
+  onLoadHistory?: (client: TrainerClientInvite) => void;
 }) {
-  const { screen, setScreen, invites, setInvites, historyByClient } = props;
+  const { screen, setScreen, invites, setInvites, historyByClient, token, apiBase, onLoadHistory } = props;
   const tr = useTr();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientsTab, setClientsTab] = useState<"my" | "pending" | "archive">("my");
   const activeClientsCount = invites.filter((c) => !c.archived).length;
   const limitReached = activeClientsCount >= SUBSCRIPTION_CLIENT_LIMIT;
+
+  useEffect(() => {
+    if (screen !== "detail") return;
+    const client = invites.find((c) => c.id === selectedClientId) || null;
+    if (client) onLoadHistory?.(client);
+  }, [screen, selectedClientId, invites, onLoadHistory]);
 
   const showLimitWarning = () => {
     const message =
@@ -3196,10 +3265,45 @@ function TrainerClients(props: {
     window.alert(message);
   };
 
-  function updateClient(id: string, patch: Partial<TrainerClientInvite>) {
-    setInvites((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...patch } : c))
-    );
+  async function updateClient(id: string, patch: Partial<TrainerClientInvite>) {
+    setInvites((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/clients/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; client?: any };
+      if (data?.client) {
+        setInvites((prev) =>
+          prev.map((c) => (c.id === data.client.id ? mapClientFromApi(data.client) : c))
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function createClient(username: string) {
+    if (!token) return null;
+    try {
+      const res = await fetch(`${apiBase}/clients`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ username }),
+      });
+      const data = (await res.json()) as { ok: boolean; client?: any; existing?: boolean };
+      if (!res.ok || !data?.client) return null;
+      const mapped = mapClientFromApi(data.client);
+      if (!data.existing) {
+        setInvites((prev) => [mapped, ...prev]);
+      }
+      return { client: mapped, existing: Boolean(data.existing) };
+    } catch {
+      return null;
+    }
   }
 
   function confirmDelete(inv: TrainerClientInvite) {
@@ -3222,9 +3326,7 @@ function TrainerClients(props: {
       <AddClientScreen
         onBack={() => setScreen("list")}
         existingInvites={invites}
-        onCreated={(inv) => {
-          setInvites((prev) => [inv, ...prev]);
-        }}
+        onCreate={createClient}
       />
     );
   }
@@ -3236,6 +3338,10 @@ function TrainerClients(props: {
         client={client}
         onBack={() => setScreen("list")}
         onUpdateClient={updateClient}
+        onSaveExercises={(clientId, exercises) => {
+          if (!client) return;
+          updateClient(clientId, { exercises });
+        }}
         history={historyByClient[client?.username ?? ""] ?? []}
       />
     );
@@ -3394,10 +3500,10 @@ function TrainerClients(props: {
 
 function AddClientScreen(props: {
   onBack: () => void;
-  onCreated: (inv: TrainerClientInvite) => void;
+  onCreate: (username: string) => Promise<{ client: TrainerClientInvite; existing?: boolean } | null>;
   existingInvites: TrainerClientInvite[];
 }) {
-  const { onBack, onCreated, existingInvites } = props;
+  const { onBack, onCreate, existingInvites } = props;
   const tr = useTr();
 
   const [input, setInput] = useState<string>("@");
@@ -3429,7 +3535,7 @@ function AddClientScreen(props: {
     return cleaned.replace(/\s+/g, "");
   }
 
-  function createInvite() {
+  async function createInvite() {
     setError("");
     if (limitReached) {
       setError(tr("Достигнут лимит активных клиентов по тарифу.", "Active client limit reached for your plan."));
@@ -3447,25 +3553,12 @@ function AddClientScreen(props: {
       return;
     }
 
-    const existing = existingInvites.find(
-      (inv) => inv.username.toLowerCase() === u.toLowerCase()
-    );
-    if (existing) {
-      setCreated(existing);
+    const result = await onCreate(u);
+    if (!result?.client) {
+      setError(tr("Не удалось создать клиента. Попробуй позже.", "Failed to create client. Try again."));
       return;
     }
-
-    const code = generateInviteCode(8);
-    const inv: TrainerClientInvite = {
-      id: cryptoId(),
-      username: u,
-      code,
-      createdAt: Date.now(),
-      status: "pending",
-    };
-
-    setCreated(inv);
-    onCreated(inv);
+    setCreated(result.client);
   }
 
   function copyCode() {
@@ -3577,8 +3670,9 @@ function ClientDetailScreen(props: {
   onBack: () => void;
   onUpdateClient: (id: string, patch: Partial<TrainerClientInvite>) => void;
   history: SessionItem[];
+  onSaveExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
 }) {
-  const { client, onBack, onUpdateClient, history } = props;
+  const { client, onBack, onUpdateClient, history, onSaveExercises } = props;
   const tr = useTr();
   const [tab, setTab] = useState<"info" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
@@ -3919,8 +4013,9 @@ function ClientDetailScreen(props: {
                     return;
                   }
                   const list = client.exercises ? [...client.exercises] : [];
-                  list.push({ id: cryptoId(), name, weight });
-                  onUpdateClient(client.id, { exercises: list });
+                  const next = [...list, { id: cryptoId(), name, weight }];
+                  onUpdateClient(client.id, { exercises: next });
+                  onSaveExercises?.(client.id, next);
                   setDraftExerciseName("");
                   setDraftExerciseWeight("");
                   setShowExerciseForm(false);
@@ -3961,6 +4056,7 @@ function ClientDetailScreen(props: {
                                     item.id === ex.id ? { ...item, weight: value } : item
                                   );
                                   onUpdateClient(client.id, { exercises: next });
+                                  onSaveExercises?.(client.id, next);
                                 }}
                                 placeholder={tr("Вес не указан", "Weight not set")}
                                 style={styles.exerciseInput}
@@ -3971,6 +4067,7 @@ function ClientDetailScreen(props: {
                                   if (!client) return;
                                   const next = client.exercises!.filter((x) => x.id !== ex.id);
                                   onUpdateClient(client.id, { exercises: next });
+                                  onSaveExercises?.(client.id, next);
                                 }}
                                 style={styles.exerciseTrashBtn}
                                 aria-label="delete exercise"
@@ -5500,6 +5597,48 @@ function sessionStatusColor(s: SessionItem, now = new Date()) {
   if (now.getTime() < start) return "var(--accent)";
   if (now.getTime() >= start && now.getTime() < end) return "#22c55e";
   return "#8b93a6";
+}
+
+function mapClientFromApi(c: any): TrainerClientInvite {
+  return {
+    id: String(c.id),
+    username: String(c.clientUsername || ""),
+    code: String(c.code || ""),
+    createdAt: c.createdAt ? new Date(c.createdAt).getTime() : Date.now(),
+    status: c.status === "active" ? "active" : "pending",
+    photoUrl: "",
+    fullName: c.fullName ?? "",
+    height: c.height ?? "",
+    weight: c.weight ?? "",
+    goal: c.goal ?? "",
+    comment: c.comment ?? "",
+    exercises: Array.isArray(c.exercises)
+      ? c.exercises.map((ex: any) => ({
+          id: String(ex.id),
+          name: String(ex.name || ""),
+          weight: String(ex.weight || ""),
+        }))
+      : [],
+    subscriptionStart: c.subscriptionStart ?? "",
+    subscriptionEnd: c.subscriptionEnd ?? "",
+    subscriptionPrice: c.subscriptionPrice ?? "",
+    subscriptionTotal: c.subscriptionTotal ?? "",
+    subscriptionLeft: c.subscriptionLeft ?? "",
+    archived: Boolean(c.archived),
+  };
+}
+
+function mapSessionFromApi(s: any): SessionItem {
+  const startAt = s?.startAt ? new Date(s.startAt) : new Date();
+  return {
+    id: String(s.id),
+    dateKey: formatDateKey(startAt),
+    start: String(s.startTime || ""),
+    end: String(s.endTime || ""),
+    clientUsername: String(s.clientUsername || ""),
+    type: s.type ? String(s.type) : undefined,
+    comment: s.comment ? String(s.comment) : undefined,
+  };
 }
 
 function getClientLabel(clients: TrainerClientInvite[], username: string) {
