@@ -33,7 +33,7 @@ const app = Fastify({ logger: true });
 
 await app.register(cors, {
   origin: "*",
-  methods: ["GET", "POST", "OPTIONS"],
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 
