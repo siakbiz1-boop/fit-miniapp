@@ -3186,23 +3186,6 @@ function TrainerClients(props: {
     window.alert(message);
   };
 
-  const showUnarchiveLimitWarning = () => {
-    const message =
-      tr(
-        "Нельзя разархивировать клиента: достигнут лимит активных клиентов по вашему тарифу. Вы можете докупить дополнительные места или перейти на более высокий тариф.",
-        "Can't unarchive the client: active client limit reached for your plan. You can buy extra seats or upgrade your plan."
-      );
-    if (typeof WebApp?.showPopup === "function") {
-      WebApp.showPopup({
-        title: tr("Лимит клиентов", "Client limit"),
-        message,
-        buttons: [{ type: "ok" }],
-      });
-      return;
-    }
-    window.alert(message);
-  };
-
   function updateClient(id: string, patch: Partial<TrainerClientInvite>) {
     setInvites((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...patch } : c))
@@ -3243,22 +3226,6 @@ function TrainerClients(props: {
         client={client}
         onBack={() => setScreen("list")}
         onUpdateClient={updateClient}
-        onUnarchiveClient={(id) => {
-          if (limitReached) {
-            showUnarchiveLimitWarning();
-            return;
-          }
-          updateClient(id, { archived: false });
-          setScreen("list");
-        }}
-        onArchiveClient={(id) => {
-          updateClient(id, { archived: true });
-          setScreen("list");
-        }}
-        onDeleteClient={(id) => {
-          setInvites((prev) => prev.filter((c) => c.id !== id));
-          setScreen("list");
-        }}
         history={historyByClient[client?.username ?? ""] ?? []}
       />
     );
@@ -3636,14 +3603,11 @@ function ClientDetailScreen(props: {
   client: TrainerClientInvite | null;
   onBack: () => void;
   onUpdateClient: (id: string, patch: Partial<TrainerClientInvite>) => void;
-  onUnarchiveClient?: (id: string) => void;
-  onArchiveClient: (id: string) => void;
-  onDeleteClient?: (id: string) => void;
   history: SessionItem[];
 }) {
-  const { client, onBack, onUpdateClient, onUnarchiveClient, onArchiveClient, onDeleteClient, history } = props;
+  const { client, onBack, onUpdateClient, history } = props;
   const tr = useTr();
-  const [tab, setTab] = useState<"info" | "plan" | "weights" | "history">("info");
+  const [tab, setTab] = useState<"info" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
   const [draftFullName, setDraftFullName] = useState(client?.fullName ?? "");
@@ -3654,11 +3618,6 @@ function ClientDetailScreen(props: {
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [draftExerciseName, setDraftExerciseName] = useState("");
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
-  const [draftSubStart, setDraftSubStart] = useState("");
-  const [draftSubEnd, setDraftSubEnd] = useState("");
-  const [subscriptionError, setSubscriptionError] = useState("");
-  const [draftSubPrice, setDraftSubPrice] = useState("");
-  const [draftSubTotal, setDraftSubTotal] = useState("");
   const [exerciseError, setExerciseError] = useState("");
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -3673,11 +3632,6 @@ function ClientDetailScreen(props: {
     setDraftExerciseWeight("");
     setShowExerciseForm(false);
     setExerciseError("");
-    setDraftSubStart(client?.subscriptionStart ?? "");
-    setDraftSubEnd(client?.subscriptionEnd ?? "");
-    setSubscriptionError("");
-    setDraftSubPrice(client?.subscriptionPrice ?? "");
-    setDraftSubTotal(client?.subscriptionTotal ?? "");
     if (client?.status === "pending") setTab("info");
   }, [
     client?.id,
@@ -3686,10 +3640,6 @@ function ClientDetailScreen(props: {
     client?.weight,
     client?.goal,
     client?.comment,
-    client?.subscriptionStart,
-    client?.subscriptionEnd,
-    client?.subscriptionPrice,
-    client?.subscriptionTotal,
     client?.status,
   ]);
 
@@ -3760,16 +3710,6 @@ function ClientDetailScreen(props: {
                 }}
               >
                 {tr("Рабочие веса", "Working weights")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("plan")}
-                style={{
-                  ...styles.clientTab,
-                  ...(visibleTab === "plan" ? styles.clientTabActive : null),
-                }}
-              >
-                {tr("Информация об абонементе", "Subscription info")}
               </button>
               <button
                 type="button"
@@ -3922,206 +3862,6 @@ function ClientDetailScreen(props: {
               style={styles.goalTextarea}
             />
           </div>
-        </div>
-      ) : visibleTab === "plan" ? (
-        <div style={styles.clientPanelPlain}>
-          <div style={styles.subscriptionRow}>
-            <div style={styles.subscriptionField}>
-              <div style={styles.fieldLabel}>{tr("Дата начала", "Start date")}</div>
-              <input
-                type="date"
-                value={dmyToISO(draftSubStart)}
-                onChange={(e) => {
-                  const dmy = isoToDMY(e.target.value);
-                  setDraftSubStart(dmy);
-                  if (!client) return;
-                  const startErr = validateDateField(dmy);
-                  const endErr = validateDateField(draftSubEnd);
-                  const crossErr =
-                    !startErr && !endErr && dmy && draftSubEnd
-                      ? validateSubscriptionDates(dmy, draftSubEnd)
-                      : "";
-                  const err = startErr || endErr || crossErr;
-                  setSubscriptionError(err);
-                  if (!startErr) {
-                    if (!endErr && draftSubEnd) {
-                      if (!crossErr) onUpdateClient(client.id, { subscriptionStart: dmy });
-                    } else {
-                      onUpdateClient(client.id, { subscriptionStart: dmy });
-                    }
-                  } else if (!dmy) {
-                    onUpdateClient(client.id, { subscriptionStart: "" });
-                  }
-                }}
-                placeholder={tr("Например: 01.02.2026", "e.g., 01.02.2026")}
-                style={styles.input}
-              />
-            </div>
-            <div style={styles.subscriptionField}>
-              <div style={styles.fieldLabel}>{tr("Дата завершения", "End date")}</div>
-              <input
-                type="date"
-                value={dmyToISO(draftSubEnd)}
-                onChange={(e) => {
-                  const dmy = isoToDMY(e.target.value);
-                  setDraftSubEnd(dmy);
-                  if (!client) return;
-                  const endErr = validateDateField(dmy);
-                  const startErr = validateDateField(draftSubStart);
-                  const crossErr =
-                    !startErr && !endErr && draftSubStart && dmy
-                      ? validateSubscriptionDates(draftSubStart, dmy)
-                      : "";
-                  const err = startErr || endErr || crossErr;
-                  setSubscriptionError(err);
-                  if (!endErr) {
-                    if (!startErr && draftSubStart) {
-                      if (!crossErr) onUpdateClient(client.id, { subscriptionEnd: dmy });
-                    } else {
-                      onUpdateClient(client.id, { subscriptionEnd: dmy });
-                    }
-                  } else if (!dmy) {
-                    onUpdateClient(client.id, { subscriptionEnd: "" });
-                  }
-                }}
-                placeholder={tr("Например: 01.03.2026", "e.g., 01.03.2026")}
-                style={styles.input}
-              />
-            </div>
-          </div>
-          {subscriptionError ? <div style={styles.errorText}>{subscriptionError}</div> : null}
-          <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
-            <div style={styles.inputRow}>
-              <input
-                inputMode="numeric"
-                pattern="[0-9]*"
-                enterKeyHint="done"
-                value={draftSubPrice}
-                onChange={(e) => {
-                  const v = normalizePriceRUBWithDelete(e.target.value, draftSubPrice);
-                  setDraftSubPrice(v);
-                  if (!client) return;
-                  onUpdateClient(client.id, { subscriptionPrice: v });
-                }}
-                placeholder={tr("Например: 5000 ₽", "e.g., 5000 ₽")}
-                style={{ ...styles.input, flex: 1 }}
-              />
-              <button
-                type="button"
-                style={styles.inlineCheckBtn}
-                onClick={() => {
-                  (document.activeElement as HTMLElement | null)?.blur?.();
-                }}
-                aria-label="save"
-              >
-                ✓
-              </button>
-            </div>
-          </div>
-          <div style={styles.subscriptionRow}>
-            <div style={styles.subscriptionField}>
-              <div style={styles.fieldLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
-              <div style={styles.inputRow}>
-                <input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  enterKeyHint="done"
-                  value={draftSubTotal}
-                  onChange={(e) => {
-                    const v = e.target.value.replace(/[^\d]/g, "");
-                    setDraftSubTotal(v);
-                    if (!client) return;
-                    onUpdateClient(client.id, { subscriptionTotal: v, subscriptionLeft: v });
-                  }}
-                  placeholder={tr("Например: 12", "e.g., 12")}
-                  style={{ ...styles.input, flex: 1 }}
-                />
-                <button
-                  type="button"
-                  style={styles.inlineCheckBtn}
-                  onClick={() => {
-                    (document.activeElement as HTMLElement | null)?.blur?.();
-                  }}
-                  aria-label="save"
-                >
-                  ✓
-                </button>
-              </div>
-            </div>
-            <div style={styles.subscriptionField}>
-              <div style={styles.fieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
-              <div style={styles.readOnlyValue}>
-                {client?.subscriptionLeft && client.subscriptionLeft.length > 0
-                  ? client.subscriptionLeft
-                  : draftSubTotal || "—"}
-              </div>
-            </div>
-          </div>
-          {client?.archived ? (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!client || !onUnarchiveClient) return;
-                  const message = tr("Вы точно хотите разархивировать клиента?", "Are you sure you want to unarchive the client?");
-                  if (typeof WebApp?.showConfirm === "function") {
-                    WebApp.showConfirm(message, (ok) => {
-                      if (ok) onUnarchiveClient(client.id);
-                    });
-                    return;
-                  }
-                  if (window.confirm(message)) onUnarchiveClient(client.id);
-                }}
-                style={styles.saveBtn}
-              >
-                {tr("Разархивировать", "Unarchive")}
-              </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!client || !onDeleteClient) return;
-                const message =
-                  tr(
-                    "Вы точно хотите удалить клиента? Данные о клиенте удалятся, и у клиента не будет доступа к приложению",
-                    "Are you sure you want to delete the client? The client data will be removed and they will lose access."
-                  );
-                if (typeof WebApp?.showConfirm === "function") {
-                  WebApp.showConfirm(message, (ok) => {
-                    if (ok) onDeleteClient(client.id);
-                  });
-                  return;
-                }
-                if (window.confirm(message)) onDeleteClient(client.id);
-              }}
-              style={{ ...styles.saveBtn, ...styles.dangerBtn }}
-            >
-              {tr("Удалить", "Delete")}
-            </button>
-            </>
-          ) : client?.status === "pending" ? null : (
-            <button
-              type="button"
-              onClick={() => {
-                if (!client) return;
-                const message =
-                  tr(
-                    "Вы точно хотите архивировать клиента? Все данные о клиенте при переносе в архив сохранятся",
-                    "Are you sure you want to archive the client? All client data will be preserved."
-                  );
-                if (typeof WebApp?.showConfirm === "function") {
-                  WebApp.showConfirm(message, (ok) => {
-                    if (ok) onArchiveClient(client.id);
-                  });
-                  return;
-                }
-                if (window.confirm(message)) onArchiveClient(client.id);
-              }}
-              style={styles.saveBtn}
-            >
-              {tr("Архивировать", "Archive")}
-            </button>
-          )}
         </div>
       ) : visibleTab === "history" ? (
         <div style={styles.clientPanelPlain}>
@@ -5855,63 +5595,10 @@ function parseDateDMY(value: string) {
   return date;
 }
 
-function dmyToISO(value: string) {
-  const v = (value || "").trim();
-  if (!/^\d{2}\.\d{2}\.\d{4}$/.test(v)) return "";
-  const [d, m, y] = v.split(".");
-  const date = parseDateDMY(v);
-  if (!date) return "";
-  return `${y}-${m}-${d}`;
-}
-
-function isoToDMY(value: string) {
-  const v = (value || "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return "";
-  const [y, m, d] = v.split("-");
-  const out = `${d}.${m}.${y}`;
-  return parseDateDMY(out) ? out : "";
-}
-
-function validateSubscriptionDates(start: string, end: string) {
-  const s = parseDateDMY(start);
-  const e = parseDateDMY(end);
-  if (!start || !end) return "";
-  if (!s || !e) return trGlobal("Дата должна быть в формате ДД.ММ.ГГГГ", "Date must be in DD.MM.YYYY format");
-  if (e.getTime() < s.getTime())
-    return trGlobal("Дата завершения не может быть раньше даты начала", "End date cannot be earlier than start date");
-  return "";
-}
-
-function validateDateField(value: string) {
-  const v = (value || "").trim();
-  if (!v) return "";
-  if (!/^\d{2}\.\d{2}\.\d{4}$/.test(v)) return trGlobal("Дата должна быть в формате ДД.ММ.ГГГГ", "Date must be in DD.MM.YYYY format");
-  if (!parseDateDMY(v)) return trGlobal("Некорректная дата", "Invalid date");
-  return "";
-}
-
 function endDateEnd(d: Date) {
   const out = new Date(d);
   out.setHours(23, 59, 59, 999);
   return out;
-}
-
-function normalizePriceRUB(raw: string) {
-  const v = (raw || "").trim();
-  if (!v) return "";
-  const cleaned = v.replace(/[^\d.,]/g, "").replace(",", ".");
-  if (!cleaned) return "";
-  const num = parseFloat(cleaned);
-  if (Number.isNaN(num)) return "";
-  const formatted = Number.isInteger(num) ? String(num) : String(num);
-  return `${formatted} ₽`;
-}
-
-function normalizePriceRUBWithDelete(raw: string, prev: string) {
-  if (prev && prev.includes("₽") && !raw.includes("₽") && raw.length < prev.length) {
-    return raw.trimEnd();
-  }
-  return normalizePriceRUB(raw);
 }
 
 function emptySessionsMessage(selected: Date, today: Date) {
