@@ -527,6 +527,22 @@ app.post("/clients/:id/exercises", async (req, reply) => {
   return { ok: true, client: serializeClient(next) };
 });
 
+app.delete("/clients/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const client = await prismaAny.trainerClient.findUnique({ where: { id } });
+  if (!client || client.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "Client not found" });
+  }
+
+  await prismaAny.trainerClient.delete({ where: { id } });
+  return { ok: true };
+});
+
 app.get("/clients/:id/sessions", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;

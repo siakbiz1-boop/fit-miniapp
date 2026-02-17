@@ -3307,7 +3307,18 @@ function TrainerClients(props: {
   }
 
   function confirmDelete(inv: TrainerClientInvite) {
-    const doDelete = () => setInvites((prev) => prev.filter((x) => x.id !== inv.id));
+    const doDelete = async () => {
+      setInvites((prev) => prev.filter((x) => x.id !== inv.id));
+      if (!token) return;
+      try {
+        await fetch(`${apiBase}/clients/${inv.id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {
+        // ignore
+      }
+    };
 
     // ✅ Telegram-совместимое подтверждение (и без кнопок с text, чтобы не падали типы)
     if (typeof WebApp?.showConfirm === "function") {
