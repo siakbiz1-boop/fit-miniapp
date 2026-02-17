@@ -702,7 +702,25 @@ app.get("/client/trainers", async (req, reply) => {
     },
   });
 
-  return { ok: true, trainers: trainers.map((c: any) => serializeClient(c)) };
+  const trainerIds = Array.from(new Set(trainers.map((c: any) => c.trainerTgUserId)));
+  const users = await prisma.user.findMany({
+    where: { tgUserId: { in: trainerIds } },
+  });
+  const userIdByTg = new Map(users.map((u) => [u.tgUserId.toString(), u.id]));
+  const profiles = await prismaAny.trainerProfile.findMany({
+    where: { userId: { in: users.map((u) => u.id) } },
+  });
+  const modeByUserId = new Map(profiles.map((p: any) => [p.userId, p.bookingMode]));
+
+  return {
+    ok: true,
+    trainers: trainers.map((c: any) => {
+      const base = serializeClient(c);
+      const userId = userIdByTg.get(String(c.trainerTgUserId));
+      const bookingMode = userId ? modeByUserId.get(userId) : null;
+      return { ...base, bookingMode };
+    }),
+  };
 });
 
 app.get("/slots", async (req, reply) => {
@@ -839,6 +857,33 @@ app.post("/book", async (req, reply) => {
   await prismaAny.trainingSlot.delete({ where: { id: slot.id } });
 
   return { ok: true, session: serializeSession(session) };
+});
+
+// Trainer sessions (include client-created)
+app.get("/sessions", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const sessions = await prismaAny.trainingSession.findMany({
+    where: { trainerTgUserId: dbUser.tgUserId },
+    orderBy: { startAt: "asc" },
+  });
+  return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
+});
+
+// Client sessions
+app.get("/client/sessions", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const username = dbUser.username || "";
+  if (!username) return { ok: true, sessions: [] };
+
+  const sessions = await prismaAny.trainingSession.findMany({
+    where: { clientUsername: username.replace(/^@/, "") },
+    orderBy: { startAt: "asc" },
+  });
+  return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
 });
 
 // Sync trainer sessions for reminders
