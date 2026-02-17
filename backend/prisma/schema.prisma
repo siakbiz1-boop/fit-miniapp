@@ -27,6 +27,8 @@ model User {
   role      UserRole?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  trainerProfile TrainerProfile?
 }
 
 model TrainingSession {
@@ -46,6 +48,25 @@ model TrainingSession {
 
   @@index([trainerTgUserId, startAt])
   @@index([remindAt])
+}
+
+model TrainerProfile {
+  id             String   @id @default(cuid())
+  userId         Int      @unique
+  fullName       String?
+  fitnessClub    String?
+  specialization String?
+  experience     String?
+  about          String?
+  requirements   String?
+  extraInfo      String?
+  phone          String?
+  instagram      String?
+  otherSocial    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model TrainerClient {

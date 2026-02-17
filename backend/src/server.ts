@@ -566,6 +566,51 @@ app.get("/clients/:id/sessions", async (req, reply) => {
   return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
 });
 
+// --------------------
+// Trainer profile
+// --------------------
+app.get("/profile/trainer", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  let profile = await prismaAny.trainerProfile.findUnique({
+    where: { userId: dbUser.id },
+  });
+  if (!profile) {
+    profile = await prismaAny.trainerProfile.create({
+      data: { userId: dbUser.id },
+    });
+  }
+  return { ok: true, profile };
+});
+
+app.patch("/profile/trainer", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const data = {
+    fullName: body?.fullName,
+    fitnessClub: body?.fitnessClub,
+    specialization: body?.specialization,
+    experience: body?.experience,
+    about: body?.about,
+    requirements: body?.requirements,
+    extraInfo: body?.extraInfo,
+    phone: body?.phone,
+    instagram: body?.instagram,
+    otherSocial: body?.otherSocial,
+  };
+
+  const profile = await prismaAny.trainerProfile.upsert({
+    where: { userId: dbUser.id },
+    create: { userId: dbUser.id, ...data },
+    update: data,
+  });
+
+  return { ok: true, profile };
+});
+
 // Sync trainer sessions for reminders
 app.post("/sessions/sync", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
