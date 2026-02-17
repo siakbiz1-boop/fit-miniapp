@@ -3339,9 +3339,18 @@ function TrainerClients(props: {
 
     // ✅ Telegram-совместимое подтверждение (и без кнопок с text, чтобы не падали типы)
     if (typeof WebApp?.showConfirm === "function") {
-      WebApp.showConfirm(tr(`Точно хотите удалить клиента @${inv.username}?`, `Are you sure you want to delete client @${inv.username}?`), (ok) => {
+      const message = tr(
+        `Точно хотите удалить клиента @${inv.username}?`,
+        `Are you sure you want to delete client @${inv.username}?`
+      );
+      const res = WebApp.showConfirm(message, (ok) => {
         if (ok) doDelete();
       });
+      if (res && typeof (res as Promise<boolean>).then === "function") {
+        (res as Promise<boolean>).then((ok) => {
+          if (ok) doDelete();
+        });
+      }
       return;
     }
 
