@@ -309,7 +309,7 @@ app.post("/auth/telegram", async (req, reply) => {
       firstName: tgUser.first_name ?? null,
       lastName: tgUser.last_name ?? null,
       photoUrl: tgUser.photo_url ?? null,
-    },
+    } as any,
     create: {
       tgUserId: BigInt(tgUser.id),
       username: tgUser.username ?? null,
@@ -317,7 +317,7 @@ app.post("/auth/telegram", async (req, reply) => {
       lastName: tgUser.last_name ?? null,
       photoUrl: tgUser.photo_url ?? null,
       role: null,
-    },
+    } as any,
   });
 
   // ✅ issue JWT
@@ -740,7 +740,7 @@ app.get("/client/trainers", async (req, reply) => {
         (userId ? nameByUserId.get(userId) : null) ||
         [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
         null;
-      const profile = userId ? profileByUserId.get(userId) : null;
+      const profile = userId ? (profileByUserId.get(userId) as any) : null;
       const trainerProfile = profile
         ? {
             fitnessClub: profile.fitnessClub ?? null,
