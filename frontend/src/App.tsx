@@ -261,6 +261,12 @@ export default function App() {
   const [historyByClient, setHistoryByClient] = useState<Record<string, SessionItem[]>>({});
   const processedSessionIdsRef = useRef<Set<string>>(new Set());
   const [pendingSession, setPendingSession] = useState<SessionItem | null>(null);
+  const trainerHistory = useMemo(() => {
+    if (role !== "trainer") return [];
+    return Object.values(sessionsByDate)
+      .flat()
+      .filter((s) => isSessionEnded(s, new Date()));
+  }, [sessionsByDate, role]);
   const [clientInviteCode, setClientInviteCode] = useState("");
   const [clientInviteMessage, setClientInviteMessage] = useState("");
 
@@ -1302,6 +1308,8 @@ export default function App() {
                 trainerProfile={trainerProfile}
                 onSaveTrainerProfile={saveTrainerProfile}
                 subscriptionTabLabel={tr("История тренировок", "Training history")}
+                subscriptionItems={invites}
+                trainerHistory={trainerHistory}
                 onDeleteProfile={handleDeleteProfile}
               />
             )}
@@ -4538,6 +4546,7 @@ function TrainerSettings(props: {
   aboutCardText?: string;
   subscriptionTabLabel?: string;
   subscriptionItems?: TrainerClientInvite[];
+  trainerHistory?: SessionItem[];
   onDeleteProfile?: () => void;
 }) {
   const {
@@ -4564,6 +4573,7 @@ function TrainerSettings(props: {
     aboutCardText,
     subscriptionTabLabel,
     subscriptionItems,
+    trainerHistory,
     onDeleteProfile,
   } = props;
   const tr = useTr();
@@ -4606,6 +4616,7 @@ function TrainerSettings(props: {
         showClientWeights={personalShowClientWeights}
         subscriptionTabLabel={resolvedSubscriptionTabLabel}
         subscriptionItems={subscriptionItems}
+        trainerHistory={trainerHistory}
       />
     );
   }
@@ -4941,6 +4952,7 @@ function PersonalDataScreen(props: {
   showClientWeights?: boolean;
   subscriptionTabLabel?: string;
   subscriptionItems?: TrainerClientInvite[];
+  trainerHistory?: SessionItem[];
 }) {
   const {
     name,
@@ -4955,6 +4967,7 @@ function PersonalDataScreen(props: {
     showClientWeights = false,
     subscriptionTabLabel,
     subscriptionItems,
+    trainerHistory,
   } = props;
   const tr = useTr();
   const resolvedSubscriptionTabLabel = subscriptionTabLabel ?? tr("Моя подписка", "My subscription");
@@ -5547,13 +5560,46 @@ function PersonalDataScreen(props: {
         </div>
       ) : personalTab === "subscription" ? (
         <div style={styles.clientPanelPlain}>
-          {subscriptionItems ? (
+          {trainerHistory ? (
+            trainerHistory.length === 0 ? (
+              <div style={styles.clientPanelBody}>{tr("Пока нет завершённых тренировок.", "No completed sessions yet.")}</div>
+            ) : (
+              <div style={styles.listBlock}>
+                {trainerHistory
+                  .slice()
+                  .sort((a, b) => sessionEndTime(b).getTime() - sessionEndTime(a).getTime())
+                  .map((s, idx, arr) => {
+                    const isLast = idx === arr.length - 1;
+                    return (
+                      <div
+                        key={s.id}
+                        style={{
+                          ...styles.rowWrap,
+                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+                          padding: "12px 0",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={styles.rowTitle}>{s.type?.trim() ? s.type : tr("Тренировка", "Session")}</div>
+                          <div style={styles.rowSubtitle}>
+                            {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
+                          </div>
+                          <div style={styles.rowSubtitle}>
+                            {getClientLabel(subscriptionItems || [], s.clientUsername)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )
+          ) : subscriptionItems ? (
             subscriptionTrainers.length > 0 ? (
               <>
                 <div style={styles.subscriptionTrainerStrip}>
                   {subscriptionTrainers.map((trainer) => {
                     const isActive = trainer.id === selectedTrainerId;
-              const label = getTrainerLabel(trainer, tr);
+                    const label = getTrainerLabel(trainer, tr);
                     const statusInfo =
                       trainer.subscriptionEnd && trainer.subscriptionEnd !== "—"
                         ? getSubscriptionStatus(trainer.subscriptionEnd, new Date())
