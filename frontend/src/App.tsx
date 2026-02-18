@@ -3115,6 +3115,32 @@ function TrainerSchedule(props: {
     onConsumePendingSession?.();
   }, [pendingSession, onConsumePendingSession]);
 
+  const syncTrainerSessionsOnce = async () => {
+    if (!token) return;
+    const allSessions = Object.values(sessionsByDate)
+      .flat()
+      .filter((s) => s.source !== "client");
+    const payload = allSessions.map((s) => ({
+      id: s.id,
+      clientUsername: s.clientUsername,
+      clientName: getClientLabel(clients, s.clientUsername),
+      startAt: sessionStartTime(s).toISOString(),
+      endAt: sessionEndTime(s).toISOString(),
+      startTime: s.start,
+      endTime: s.end,
+      type: s.type ?? null,
+    }));
+    try {
+      await fetch(`${apiBase}/sessions/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ sessions: payload }),
+      });
+    } catch {
+      // ignore sync errors
+    }
+  };
+
   useEffect(() => {
     if (!hasTgBack) return;
     if (scheduleScreen !== "session") {
@@ -3438,6 +3464,13 @@ function TrainerSchedule(props: {
                           method: "DELETE",
                           headers: { Authorization: `Bearer ${token}` },
                         });
+                        if (res.status === 404) {
+                          await syncTrainerSessionsOnce();
+                          res = await fetch(`${apiBase}/sessions/${encodeURIComponent(derivedId)}`, {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+                        }
                         if (!res.ok && derivedId !== activeSession.id) {
                           res = await fetch(`${apiBase}/sessions/${encodeURIComponent(activeSession.id)}`, {
                             method: "DELETE",
