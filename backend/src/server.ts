@@ -411,6 +411,54 @@ app.patch("/profile/preferences", async (req, reply) => {
   return { ok: true, theme: updated.theme, language: updated.language };
 });
 
+// Delete profile (trainer/client) and related data
+app.delete("/profile", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  if (dbUser.role === "trainer") {
+    await prismaAny.trainerClient.deleteMany({
+      where: { trainerTgUserId: dbUser.tgUserId },
+    });
+    await prismaAny.trainingSlot.deleteMany({
+      where: { trainerTgUserId: dbUser.tgUserId },
+    });
+    await prismaAny.trainerProfile.deleteMany({
+      where: { userId: dbUser.id },
+    });
+    await prisma.user.delete({ where: { id: dbUser.id } });
+    return { ok: true };
+  }
+
+  const usernames = new Set<string>();
+  if (dbUser.username) usernames.add(dbUser.username.replace(/^@/, ""));
+  const relations = await prismaAny.trainerClient.findMany({
+    where: { clientTgUserId: dbUser.tgUserId },
+    select: { clientUsername: true },
+  });
+  relations.forEach((r: any) => {
+    if (r?.clientUsername) usernames.add(String(r.clientUsername));
+  });
+
+  await prismaAny.trainerClient.deleteMany({
+    where: {
+      OR: [
+        { clientTgUserId: dbUser.tgUserId },
+        ...(dbUser.username ? [{ clientUsername: dbUser.username.replace(/^@/, "") }] : []),
+      ],
+    },
+  });
+
+  if (usernames.size > 0) {
+    await prismaAny.trainingSession.deleteMany({
+      where: { clientUsername: { in: Array.from(usernames) } },
+    });
+  }
+
+  await prisma.user.delete({ where: { id: dbUser.id } });
+  return { ok: true };
+});
+
 // Set role: trainer/client
 app.post("/role", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);

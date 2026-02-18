@@ -1177,7 +1177,38 @@ export default function App() {
           "Are you sure? Your profile and connected coaches will be deleted."
         );
 
-    const doDelete = () => {
+    const doDelete = async () => {
+      if (token) {
+        try {
+          const res = await fetch(`${apiBase}/profile`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            try {
+              WebApp?.showPopup?.({
+                title: tr("Не удалось удалить", "Delete failed"),
+                message: `${tr("Статус", "Status")}: ${res.status}`,
+                buttons: [{ type: "ok" }],
+              });
+            } catch {
+              // ignore
+            }
+            return;
+          }
+        } catch {
+          try {
+            WebApp?.showPopup?.({
+              title: tr("Не удалось удалить", "Delete failed"),
+              message: tr("Проверьте соединение и попробуйте снова.", "Check your connection and try again."),
+              buttons: [{ type: "ok" }],
+            });
+          } catch {
+            // ignore
+          }
+          return;
+        }
+      }
       setInvites([]);
       setSessionsByDate({});
       setHistoryByClient({});
@@ -1204,11 +1235,11 @@ export default function App() {
 
     if (typeof WebApp?.showConfirm === "function") {
       WebApp.showConfirm(message, (ok) => {
-        if (ok) doDelete();
+        if (ok) void doDelete();
       });
       return;
     }
-    if (window.confirm(message)) doDelete();
+    if (window.confirm(message)) void doDelete();
   };
 
   if (!token && !suppressLogin) {
