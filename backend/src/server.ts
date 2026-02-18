@@ -1118,13 +1118,23 @@ app.delete("/sessions/:id", async (req, reply) => {
   const id = String((req.params as any)?.id || "");
   if (!id) return reply.code(400).send({ message: "id required" });
 
-  const session = await prismaAny.trainingSession.findUnique({ where: { id } });
-  if (!session || session.trainerTgUserId !== dbUser.tgUserId) {
-    return reply.code(404).send({ message: "session not found" });
-  }
+  const tryDelete = async (sessionId: string) => {
+    const session = await prismaAny.trainingSession.findUnique({ where: { id: sessionId } });
+    if (!session || session.trainerTgUserId !== dbUser.tgUserId) return false;
+    await prismaAny.trainingSession.delete({ where: { id: sessionId } });
+    return true;
+  };
 
-  await prismaAny.trainingSession.delete({ where: { id } });
-  return { ok: true };
+  const prefix = `${dbUser.tgUserId.toString()}_`;
+  if (await tryDelete(id)) return { ok: true };
+  if (id.startsWith(prefix)) {
+    const suffix = id.split(prefix).filter(Boolean).pop();
+    if (suffix) {
+      const normalized = `${prefix}${suffix}`;
+      if (normalized !== id && (await tryDelete(normalized))) return { ok: true };
+    }
+  }
+  return reply.code(404).send({ message: "session not found" });
 });
 
 // Client sessions
@@ -1160,7 +1170,9 @@ app.post("/sessions/sync", async (req, reply) => {
         return null;
       }
       const remindAt = new Date(startAt.getTime() - 60 * 60 * 1000);
-      const id = `${dbUser.tgUserId.toString()}_${s.id}`;
+      const rawId = String(s.id);
+      const prefix = `${dbUser.tgUserId.toString()}_`;
+      const id = rawId.startsWith(prefix) ? rawId : `${prefix}${rawId}`;
       return {
         id,
         trainerTgUserId: dbUser.tgUserId,
