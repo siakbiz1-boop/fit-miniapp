@@ -154,6 +154,7 @@ type SessionItem = {
   start: string; // HH:MM
   end: string; // HH:MM
   clientUsername: string; // without @
+  trainerTgUserId?: string;
   source?: "trainer" | "client";
   type?: string;
   price?: string;
@@ -2482,6 +2483,12 @@ function ClientSchedule(props: {
   }, [section, selectedTrainerId, selected, trainers, apiBase, token]);
 
   if (scheduleScreen === "session" && activeSession) {
+    const activeTrainer = activeSession.trainerTgUserId
+      ? invites.find((t) => t.trainerTgUserId === activeSession.trainerTgUserId)
+      : null;
+    const canClientDelete = activeTrainer?.bookingMode === "both";
+    const clientExercises = activeTrainer?.exercises || [];
+
     return (
       <div style={styles.pageContainer}>
         <div style={styles.topBar}>
@@ -2569,10 +2576,98 @@ function ClientSchedule(props: {
                     : "—"}
                 </div>
               </div>
+              {canClientDelete ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const message = tr(
+                      "Вы точно хотите удалить тренировку?",
+                      "Are you sure you want to delete this session?"
+                    );
+                    const doDelete = async () => {
+                      if (!token) return;
+                      try {
+                        const res = await fetch(`${apiBase}/client/sessions/${encodeURIComponent(activeSession.id)}`, {
+                          method: "DELETE",
+                          headers: { Authorization: `Bearer ${token}` },
+                        });
+                        if (!res.ok) {
+                          try {
+                            WebApp?.showPopup?.({
+                              title: tr("Не удалось удалить", "Delete failed"),
+                              message: `${tr("Статус", "Status")}: ${res.status}`,
+                              buttons: [{ type: "ok" }],
+                            });
+                          } catch {
+                            // ignore
+                          }
+                          return;
+                        }
+                      } catch {
+                        try {
+                          WebApp?.showPopup?.({
+                            title: tr("Не удалось удалить", "Delete failed"),
+                            message: tr(
+                              "Проверьте соединение и попробуйте снова.",
+                              "Check your connection and try again."
+                            ),
+                            buttons: [{ type: "ok" }],
+                          });
+                        } catch {
+                          // ignore
+                        }
+                        return;
+                      }
+                      onBooked();
+                      setScheduleScreen("list");
+                      setActiveSession(null);
+                    };
+                    if (typeof WebApp?.showConfirm === "function") {
+                      WebApp.showConfirm(message, (yes) => {
+                        if (yes) void doDelete();
+                      });
+                      return;
+                    }
+                    if (window.confirm(message)) void doDelete();
+                  }}
+                  style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
+                >
+                  {tr("Удалить тренировку", "Delete session")}
+                </button>
+              ) : null}
             </div>
           ) : (
-            <div style={styles.clientPanelBody}>
-              {tr("Пока нет упражнений.", "No exercises yet.")}
+            <div>
+              {clientExercises.length > 0 ? (
+                <div style={styles.listBlock}>
+                  {clientExercises.map((ex, idx) => {
+                    const isLast = idx === clientExercises.length - 1;
+                    return (
+                      <div
+                        key={ex.id}
+                        style={{
+                          ...styles.rowWrap,
+                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+                          padding: "12px 0",
+                        }}
+                      >
+                        <div style={styles.exerciseRow}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
+                            <div style={styles.readOnlyValue}>
+                              {ex.weight && ex.weight.trim() ? ex.weight : tr("Вес не указан", "Weight not set")}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={styles.clientPanelBody}>
+                  {tr("Пока нет упражнений.", "No exercises yet.")}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -6426,6 +6521,7 @@ function mapSessionFromApi(s: any): SessionItem {
     start: String(s.startTime || ""),
     end: String(s.endTime || ""),
     clientUsername: String(s.clientUsername || ""),
+    trainerTgUserId: s.trainerTgUserId ? String(s.trainerTgUserId) : undefined,
     source: s.source === "client" ? "client" : "trainer",
     type: s.type ? String(s.type) : undefined,
     comment: s.comment ? String(s.comment) : undefined,

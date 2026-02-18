@@ -846,6 +846,7 @@ app.get("/client/trainers", async (req, reply) => {
         ...(username ? [{ clientUsername: username.replace(/^@/, "") }] : []),
       ],
     },
+    include: { exercises: true },
   });
 
   const trainerIds = Array.from(new Set(trainers.map((c: any) => c.trainerTgUserId)))
@@ -893,6 +894,62 @@ app.get("/client/trainers", async (req, reply) => {
       return { ...base, bookingMode, trainerUsername, trainerName, trainerPhotoUrl, trainerProfile };
     }),
   };
+});
+
+// Client deletes a session (allowed only when trainer bookingMode is "both")
+app.delete("/client/sessions/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const session = await prismaAny.trainingSession.findUnique({ where: { id } });
+  if (!session) return reply.code(404).send({ message: "session not found" });
+
+  const normalizedUsername = dbUser.username ? dbUser.username.replace(/^@/, "") : "";
+  const ownsByUsername = normalizedUsername && session.clientUsername === normalizedUsername;
+  const relation = await prismaAny.trainerClient.findFirst({
+    where: { trainerTgUserId: session.trainerTgUserId, clientTgUserId: dbUser.tgUserId },
+  });
+  if (!ownsByUsername && !relation) {
+    return reply.code(403).send({ message: "forbidden" });
+  }
+
+  const trainer = await prisma.user.findUnique({ where: { tgUserId: session.trainerTgUserId } });
+  const profile = trainer
+    ? await prismaAny.trainerProfile.findUnique({ where: { userId: trainer.id } })
+    : null;
+  const bookingMode = profile?.bookingMode || "trainer";
+  if (bookingMode !== "both") {
+    return reply.code(403).send({ message: "booking disabled" });
+  }
+
+  const startAt = new Date(session.startAt);
+  const dateKey = `${startAt.getFullYear()}-${String(startAt.getMonth() + 1).padStart(2, "0")}-${String(
+    startAt.getDate()
+  ).padStart(2, "0")}`;
+  const existingSlot = await prismaAny.trainingSlot.findFirst({
+    where: {
+      trainerTgUserId: session.trainerTgUserId,
+      dateKey,
+      start: session.startTime,
+      end: session.endTime,
+    },
+  });
+  if (!existingSlot) {
+    await prismaAny.trainingSlot.create({
+      data: {
+        trainerTgUserId: session.trainerTgUserId,
+        dateKey,
+        start: session.startTime,
+        end: session.endTime,
+      },
+    });
+  }
+
+  await prismaAny.trainingSession.delete({ where: { id } });
+  return { ok: true };
 });
 
 app.get("/slots", async (req, reply) => {
