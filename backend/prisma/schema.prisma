@@ -34,6 +34,7 @@ model User {
   username  String?
   firstName String?
   lastName  String?
+  photoUrl  String?
   role      UserRole?
   theme     String?
   language  String?

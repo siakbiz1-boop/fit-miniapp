@@ -308,12 +308,14 @@ app.post("/auth/telegram", async (req, reply) => {
       username: tgUser.username ?? null,
       firstName: tgUser.first_name ?? null,
       lastName: tgUser.last_name ?? null,
+      photoUrl: tgUser.photo_url ?? null,
     },
     create: {
       tgUserId: BigInt(tgUser.id),
       username: tgUser.username ?? null,
       firstName: tgUser.first_name ?? null,
       lastName: tgUser.last_name ?? null,
+      photoUrl: tgUser.photo_url ?? null,
       role: null,
     },
   });
@@ -361,6 +363,7 @@ app.get("/profile", async (req, reply) => {
       username: dbUser.username,
       firstName: dbUser.firstName,
       lastName: dbUser.lastName,
+      photoUrl: (dbUser as any).photoUrl ?? null,
       role: dbUser.role, // null | "trainer" | "client"
       theme: dbUser.theme,
       language: dbUser.language,
@@ -722,6 +725,7 @@ app.get("/client/trainers", async (req, reply) => {
   });
   const modeByUserId = new Map(profiles.map((p: any) => [p.userId, p.bookingMode]));
   const nameByUserId = new Map(profiles.map((p: any) => [p.userId, p.fullName]));
+  const profileByUserId = new Map(profiles.map((p: any) => [p.userId, p]));
 
   return {
     ok: true,
@@ -731,11 +735,26 @@ app.get("/client/trainers", async (req, reply) => {
       const bookingMode = userId ? modeByUserId.get(userId) : null;
       const user = userByTg.get(String(c.trainerTgUserId));
       const trainerUsername = user?.username || null;
+      const trainerPhotoUrl = (user as any)?.photoUrl || null;
       const trainerName =
         (userId ? nameByUserId.get(userId) : null) ||
         [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
         null;
-      return { ...base, bookingMode, trainerUsername, trainerName };
+      const profile = userId ? profileByUserId.get(userId) : null;
+      const trainerProfile = profile
+        ? {
+            fitnessClub: profile.fitnessClub ?? null,
+            specialization: profile.specialization ?? null,
+            experience: profile.experience ?? null,
+            about: profile.about ?? null,
+            requirements: profile.requirements ?? null,
+            extraInfo: profile.extraInfo ?? null,
+            phone: profile.phone ?? null,
+            instagram: profile.instagram ?? null,
+            otherSocial: profile.otherSocial ?? null,
+          }
+        : null;
+      return { ...base, bookingMode, trainerUsername, trainerName, trainerPhotoUrl, trainerProfile };
     }),
   };
 });

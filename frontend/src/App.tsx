@@ -79,6 +79,7 @@ type TrainerClientInvite = {
   trainerTgUserId?: string;
   trainerUsername?: string;
   trainerName?: string;
+  trainerPhotoUrl?: string;
   bookingMode?: "trainer" | "both";
   fullName?: string;
   height?: string;
@@ -2671,9 +2672,7 @@ function ClientBook(props: {
                     style={styles.rowBtnNoBorder}
                   >
                     <div style={styles.rowLeft}>
-                      <div style={styles.userIconBtn}>
-                        <IconUser />
-                      </div>
+                      <AvatarCircle name={label} photoUrl={trainer.trainerPhotoUrl || ""} size={36} />
                       <div style={{ textAlign: "left" }}>
                         <div style={styles.rowTitle}>{label}</div>
                         <div style={styles.rowSubtitle}>
@@ -5763,7 +5762,7 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
       </div>
 
       <div style={styles.personalHeaderRow}>
-        <AvatarCircle name={displayName} photoUrl={trainer.photoUrl || ""} size={44} />
+        <AvatarCircle name={displayName} photoUrl={trainer.trainerPhotoUrl || ""} size={44} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)", lineHeight: 1.2 }}>
             {displayName}
@@ -6071,7 +6070,9 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     trainerTgUserId: c.trainerTgUserId ? String(c.trainerTgUserId) : undefined,
     trainerUsername: c.trainerUsername ? String(c.trainerUsername) : undefined,
     trainerName: c.trainerName ? String(c.trainerName) : undefined,
+    trainerPhotoUrl: c.trainerPhotoUrl ? String(c.trainerPhotoUrl) : undefined,
     bookingMode: c.bookingMode === "both" ? "both" : c.bookingMode === "trainer" ? "trainer" : undefined,
+    trainerProfile: c.trainerProfile ?? undefined,
     fullName: c.fullName ?? "",
     height: c.height ?? "",
     weight: c.weight ?? "",
