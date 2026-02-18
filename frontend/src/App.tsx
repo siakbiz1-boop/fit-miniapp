@@ -2633,7 +2633,7 @@ function ClientSchedule(props: {
                         }
                       }}
                     >
-                      {tr("Записаться", "Book")}
+                      <IconPlus />
                     </button>
                   </div>
                 </div>
@@ -3690,7 +3690,7 @@ function TrainerSchedule(props: {
                       title={tr("Записать клиента", "Assign client")}
                       disabled={clients.length === 0 || !canBookSlot(w.dateKey, w.start)}
                     >
-                      ➕
+                      <IconPlus />
                     </button>
                     <button
                       type="button"
@@ -3703,7 +3703,7 @@ function TrainerSchedule(props: {
                       aria-label="delete free window"
                       title={tr("Удалить", "Delete")}
                     >
-                      <span style={styles.trashEmoji}>🗑</span>
+                      <IconTrash />
                     </button>
                   </div>
                 </div>
@@ -6608,7 +6608,12 @@ function IconArrowLeft() {
 }
 
 function IconPlus() {
-  return <span style={{ fontSize: 26, lineHeight: 1 }}>➕</span>;
+  return (
+    <SvgIcon size={20} strokeWidth={2.2}>
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </SvgIcon>
+  );
 }
 
 function IconCopy() {
@@ -8395,10 +8400,11 @@ const styles: Record<string, any> = {
     marginTop: 6,
   },
   freeBanner: {
-    padding: 12,
-    borderRadius: 12,
-    background: "rgba(77, 163, 255, 0.18)",
-    border: "1px solid rgba(77, 163, 255, 0.35)",
+    padding: 14,
+    borderRadius: 16,
+    background: "linear-gradient(180deg, rgba(22, 119, 255, 0.14), rgba(22, 119, 255, 0.06))",
+    border: "1px solid rgba(22, 119, 255, 0.28)",
+    boxShadow: "0 10px 24px rgba(22, 119, 255, 0.12)",
     color: "var(--text)",
     display: "flex",
     alignItems: "center",
@@ -8410,22 +8416,21 @@ const styles: Record<string, any> = {
   },
   freeBannerTitle: {
     fontWeight: 800,
-    fontSize: 14,
+    fontSize: 15,
   },
   freeBannerTime: {
     marginTop: 6,
-    fontSize: 14,
-    opacity: 0.85,
+    fontSize: 13,
+    color: "var(--muted)",
   },
   freeBannerDelete: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    border: "none",
-    background: "transparent",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
     cursor: "pointer",
     color: "var(--text)",
-    opacity: 0.75,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -8438,17 +8443,18 @@ const styles: Record<string, any> = {
     flex: "0 0 auto",
   },
   freeBannerAdd: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    border: "1px solid var(--accent)",
-    background: "var(--surface)",
+    border: "1px solid rgba(22, 119, 255, 0.35)",
+    background: "var(--accent)",
     cursor: "pointer",
-    color: "var(--accent)",
+    color: "var(--accent-contrast)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flex: "0 0 auto",
+    boxShadow: "0 8px 16px rgba(22, 119, 255, 0.25)",
   },
   trashEmoji: {
     fontSize: 20,
