@@ -468,6 +468,7 @@ app.get("/clients", async (req, reply) => {
     ? await prismaAny.trainerProfile.findMany({ where: { userId: { in: users.map((u) => u.id) } } })
     : [];
   const profileByUserId = new Map(profiles.map((p: any) => [p.userId, p]));
+  const userByTg = new Map(users.map((u) => [u.tgUserId.toString(), u]));
 
   return {
     ok: true,
@@ -475,7 +476,11 @@ app.get("/clients", async (req, reply) => {
       const base = serializeClient(c);
       const userId = c.clientTgUserId ? userIdByTg.get(String(c.clientTgUserId)) : null;
       const profile = userId ? profileByUserId.get(userId) : null;
-      return { ...base, clientProfile: buildProfilePayload(profile) };
+      const user = c.clientTgUserId ? userByTg.get(String(c.clientTgUserId)) : null;
+      const clientName = user
+        ? [user.firstName, user.lastName].filter(Boolean).join(" ") || null
+        : null;
+      return { ...base, clientName, clientProfile: buildProfilePayload(profile) };
     }),
   };
 });
@@ -494,7 +499,14 @@ app.post("/clients", async (req, reply) => {
     where: { trainerTgUserId_clientUsername: { trainerTgUserId: dbUser.tgUserId, clientUsername: username } },
     include: { exercises: true },
   });
-  if (existing) return { ok: true, existing: true, client: serializeClient(existing) };
+  if (existing) {
+    let clientName: string | null = null;
+    if (existing.clientTgUserId) {
+      const user = await prisma.user.findUnique({ where: { tgUserId: existing.clientTgUserId } });
+      if (user) clientName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
+    }
+    return { ok: true, existing: true, client: { ...serializeClient(existing), clientName } };
+  }
 
   let code = generateInviteCode(8);
   for (let i = 0; i < 5; i++) {
@@ -516,7 +528,12 @@ app.post("/clients", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, client: { ...serializeClient(created), clientProfile: null } };
+  let clientName: string | null = null;
+  if (created.clientTgUserId) {
+    const user = await prisma.user.findUnique({ where: { tgUserId: created.clientTgUserId } });
+    if (user) clientName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
+  }
+  return { ok: true, client: { ...serializeClient(created), clientName, clientProfile: null } };
 });
 
 app.patch("/clients/:id", async (req, reply) => {
@@ -559,6 +576,8 @@ app.patch("/clients/:id", async (req, reply) => {
     if (user) {
       const profile = await prismaAny.trainerProfile.findUnique({ where: { userId: user.id } });
       clientProfile = buildProfilePayload(profile);
+      const clientName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
+      return { ok: true, client: { ...serializeClient(updated), clientName, clientProfile } };
     }
   }
 

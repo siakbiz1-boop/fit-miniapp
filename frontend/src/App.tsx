@@ -76,6 +76,7 @@ type TrainerClientInvite = {
   createdAt: number;
   status: "pending" | "active";
   photoUrl?: string;
+  clientName?: string;
   trainerTgUserId?: string;
   trainerUsername?: string;
   trainerName?: string;
@@ -3943,10 +3944,18 @@ function TrainerClients(props: {
                       aria-label={`open ${inv.username}`}
                     >
                       <div style={styles.rowLeft}>
-                        <AvatarCircle name={inv.fullName?.trim() || inv.username} photoUrl={inv.photoUrl || ""} size={40} />
+                        <AvatarCircle
+                          name={inv.fullName?.trim() || inv.clientName?.trim() || inv.username}
+                          photoUrl={inv.photoUrl || ""}
+                          size={40}
+                        />
                         <div style={{ textAlign: "left" }}>
                           <div style={styles.rowTitle}>
-                            {inv.fullName?.trim() ? inv.fullName : `@${inv.username}`}
+                            {inv.fullName?.trim()
+                              ? inv.fullName
+                              : inv.clientName?.trim()
+                                ? inv.clientName
+                                : `@${inv.username}`}
                           </div>
                           <div style={styles.rowSubtitle}>
                             {clientsTab === "pending" ? (
@@ -6170,6 +6179,7 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     createdAt: c.createdAt ? new Date(c.createdAt).getTime() : Date.now(),
     status: c.status === "active" ? "active" : "pending",
     photoUrl: "",
+    clientName: c.clientName ? String(c.clientName) : undefined,
     trainerTgUserId: c.trainerTgUserId ? String(c.trainerTgUserId) : undefined,
     trainerUsername: c.trainerUsername ? String(c.trainerUsername) : undefined,
     trainerName: c.trainerName ? String(c.trainerName) : undefined,
@@ -6215,6 +6225,7 @@ function mapSessionFromApi(s: any): SessionItem {
 function getClientLabel(clients: TrainerClientInvite[], username: string) {
   const c = clients.find((x) => x.username === username);
   if (c?.fullName && c.fullName.trim()) return c.fullName;
+  if (c?.clientName && c.clientName.trim()) return c.clientName;
   return `@${username}`;
 }
 
