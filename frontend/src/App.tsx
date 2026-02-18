@@ -2374,6 +2374,9 @@ function ClientSchedule(props: {
   const [today, setToday] = useState<Date>(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [section, setSection] = useState<"today" | "book" | "history">("today");
+  const [scheduleScreen, setScheduleScreen] = useState<"list" | "session">("list");
+  const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
+  const [sessionTab, setSessionTab] = useState<"info" | "weights">("info");
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
@@ -2381,6 +2384,7 @@ function ClientSchedule(props: {
   const trainers = invites.filter((c) => !c.archived && c.status === "active");
   const [slots, setSlots] = useState<TrainingSlot[]>([]);
   const [slotError, setSlotError] = useState("");
+  const hasTgBack = typeof WebApp?.BackButton?.show === "function";
 
   useEffect(() => {
     const tick = () => setToday(startOfDay(new Date()));
@@ -2406,6 +2410,31 @@ function ClientSchedule(props: {
     const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [selected, days]);
+
+  useEffect(() => {
+    if (!hasTgBack) return;
+    if (scheduleScreen !== "session") {
+      try {
+        WebApp.BackButton.hide();
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    const handler = () => {
+      setScheduleScreen("list");
+      setActiveSession(null);
+    };
+    WebApp.BackButton.show();
+    WebApp.BackButton.onClick(handler);
+    return () => {
+      try {
+        WebApp.BackButton.offClick(handler);
+      } catch {
+        // ignore
+      }
+    };
+  }, [hasTgBack, scheduleScreen]);
 
   useEffect(() => {
     if (section !== "book") return;
@@ -2451,6 +2480,105 @@ function ClientSchedule(props: {
     };
     run();
   }, [section, selectedTrainerId, selected, trainers, apiBase, token]);
+
+  if (scheduleScreen === "session" && activeSession) {
+    return (
+      <div style={styles.pageContainer}>
+        <div style={styles.topBar}>
+          {hasTgBack ? (
+            <div style={{ width: 36 }} />
+          ) : (
+            <button
+              onClick={() => {
+                setScheduleScreen("list");
+                setActiveSession(null);
+              }}
+              style={styles.backBtnInline}
+              aria-label="back"
+            >
+              <IconArrowLeft />
+            </button>
+          )}
+          <div style={styles.topBarTitle}>{tr("Тренировка", "Session")}</div>
+          <div style={{ width: 36 }} />
+        </div>
+
+        <div style={styles.clientTabsScroll}>
+          <div style={styles.clientTabs}>
+            <button
+              type="button"
+              onClick={() => setSessionTab("info")}
+              style={{
+                ...styles.clientTab,
+                ...(sessionTab === "info" ? styles.clientTabActive : null),
+              }}
+            >
+              {tr("Информация о тренировке", "Session info")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSessionTab("weights")}
+              style={{
+                ...styles.clientTab,
+                ...(sessionTab === "weights" ? styles.clientTabActive : null),
+              }}
+            >
+              {tr("Рабочие веса клиента", "Client weights")}
+            </button>
+          </div>
+        </div>
+        <div style={styles.clientTabsDivider} />
+
+        <div style={styles.clientPanelPlain}>
+          {sessionTab === "info" ? (
+            <div>
+              <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+              <div style={styles.readOnlyValue}>
+                {activeSession.clientUsername ? `@${activeSession.clientUsername}` : "—"}
+              </div>
+              <div style={{ marginTop: 16 }} />
+              <div style={styles.metricsRow}>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
+                  <div style={styles.readOnlyValue}>{activeSession.start}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+                  <div style={styles.readOnlyValue}>{activeSession.end}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
+                <div style={styles.readOnlyValue}>
+                  {activeSession.type && activeSession.type.trim() ? activeSession.type : "—"}
+                </div>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+                <div style={styles.readOnlyValue}>
+                  {activeSession.price && String(activeSession.price).trim()
+                    ? activeSession.price
+                    : "—"}
+                </div>
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Комментарий к тренировке", "Session notes")}</div>
+                <div style={styles.readOnlyValue}>
+                  {activeSession.comment && activeSession.comment.trim()
+                    ? activeSession.comment
+                    : "—"}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={styles.clientPanelBody}>
+              {tr("Пока нет упражнений.", "No exercises yet.")}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.pageContainer}>
@@ -2551,7 +2679,14 @@ function ClientSchedule(props: {
           return (
             <div style={styles.sessionList}>
               {list.map((s) => (
-                <div key={s.id} style={styles.sessionBanner}>
+                <div
+                  key={s.id}
+                  style={styles.sessionBanner}
+                  onClick={() => {
+                    setActiveSession(s);
+                    setScheduleScreen("session");
+                  }}
+                >
                   <div style={styles.sessionBannerLeft}>
                     <div style={styles.sessionBannerTitle}>
                       {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
