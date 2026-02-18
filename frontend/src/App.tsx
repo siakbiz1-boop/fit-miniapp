@@ -3442,10 +3442,19 @@ function TrainerSchedule(props: {
                   const doDelete = async () => {
                     if (token) {
                       try {
-                        const res = await fetch(`${apiBase}/sessions/${encodeURIComponent(activeSession.id)}`, {
+                        const derivedId = activeSession.id.startsWith(`${trainerTgUserId}_`)
+                          ? activeSession.id
+                          : `${trainerTgUserId}_${activeSession.id}`;
+                        let res = await fetch(`${apiBase}/sessions/${encodeURIComponent(derivedId)}`, {
                           method: "DELETE",
                           headers: { Authorization: `Bearer ${token}` },
                         });
+                        if (!res.ok && derivedId !== activeSession.id) {
+                          res = await fetch(`${apiBase}/sessions/${encodeURIComponent(activeSession.id)}`, {
+                            method: "DELETE",
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+                        }
                         if (!res.ok) {
                           try {
                             WebApp?.showPopup?.({
