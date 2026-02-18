@@ -2580,10 +2580,6 @@ function ClientSchedule(props: {
                 <button
                   type="button"
                   onClick={() => {
-                    const message = tr(
-                      "Вы точно хотите удалить тренировку?",
-                      "Are you sure you want to delete this session?"
-                    );
                     const doDelete = async () => {
                       if (!token) return;
                       try {
@@ -2622,13 +2618,7 @@ function ClientSchedule(props: {
                       setScheduleScreen("list");
                       setActiveSession(null);
                     };
-                    if (typeof WebApp?.showConfirm === "function") {
-                      WebApp.showConfirm(message, (yes) => {
-                        if (yes) void doDelete();
-                      });
-                      return;
-                    }
-                    if (window.confirm(message)) void doDelete();
+                    void doDelete();
                   }}
                   style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
                 >
@@ -3435,16 +3425,15 @@ function TrainerSchedule(props: {
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const message = tr("Вы точно хотите удалить тренировку?", "Are you sure you want to delete this session?");
-                  const doDelete = async () => {
-                    if (token) {
-                      try {
-                        const derivedId = activeSession.id.startsWith(`${trainerTgUserId}_`)
-                          ? activeSession.id
-                          : `${trainerTgUserId}_${activeSession.id}`;
+                <button
+                  type="button"
+                  onClick={() => {
+                    const doDelete = async () => {
+                      if (token) {
+                        try {
+                          const derivedId = activeSession.id.startsWith(`${trainerTgUserId}_`)
+                            ? activeSession.id
+                            : `${trainerTgUserId}_${activeSession.id}`;
                         let res = await fetch(`${apiBase}/sessions/${encodeURIComponent(derivedId)}`, {
                           method: "DELETE",
                           headers: { Authorization: `Bearer ${token}` },
@@ -3494,13 +3483,7 @@ function TrainerSchedule(props: {
                     setScheduleScreen("list");
                     setActiveSession(null);
                   };
-                  if (typeof WebApp?.showConfirm === "function") {
-                    WebApp.showConfirm(message, (yes) => {
-                      if (yes) void doDelete();
-                    });
-                    return;
-                  }
-                  if (window.confirm(message)) void doDelete();
+                  void doDelete();
                 }}
                 style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
               >
