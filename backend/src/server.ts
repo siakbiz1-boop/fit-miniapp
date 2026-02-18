@@ -1007,6 +1007,9 @@ app.post("/book", async (req, reply) => {
   startAt.setHours(sh, sm, 0, 0);
   const endAt = new Date(day);
   endAt.setHours(eh, em, 0, 0);
+  if (Date.now() >= startAt.getTime()) {
+    return reply.code(403).send({ message: "slot already started" });
+  }
   const remindAt = new Date(startAt.getTime() - 60 * 60 * 1000);
   const id = `${trainerTgUserId.toString()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 

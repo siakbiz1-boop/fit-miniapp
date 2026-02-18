@@ -2604,8 +2604,13 @@ function ClientSchedule(props: {
                     <button
                       type="button"
                       style={styles.freeBannerAdd}
+                      disabled={!canBookSlot(w.dateKey, w.start)}
                       onClick={async () => {
                         if (!trainer.trainerTgUserId) return;
+                        if (!canBookSlot(w.dateKey, w.start)) {
+                          setSlotError(tr("Окно уже началось.", "The slot has already started."));
+                          return;
+                        }
                         try {
                           const res = await fetch(`${apiBase}/book`, {
                             method: "POST",
@@ -3632,6 +3637,10 @@ function TrainerSchedule(props: {
                             setAssignClientUsername(e.target.value);
                             const dateKey = formatDateKey(selected);
                             if (value) {
+                              if (!canBookSlot(w.dateKey, w.start)) {
+                                setFreeError(tr("Окно уже началось.", "The slot has already started."));
+                                return;
+                              }
                               if (!canScheduleClientOnDate(clients, value)) return;
                               setAssignClientUsername("");
                               setSessionsByDate((prev) => {
@@ -3670,12 +3679,16 @@ function TrainerSchedule(props: {
                       type="button"
                       onClick={() => {
                         if (clients.length === 0) return;
+                        if (!canBookSlot(w.dateKey, w.start)) {
+                          setFreeError(tr("Окно уже началось.", "The slot has already started."));
+                          return;
+                        }
                         setAssignForId((prev) => (prev === w.id ? null : w.id));
                       }}
                       style={styles.freeBannerAdd}
                       aria-label="assign client"
                       title={tr("Записать клиента", "Assign client")}
-                      disabled={clients.length === 0}
+                      disabled={clients.length === 0 || !canBookSlot(w.dateKey, w.start)}
                     >
                       ➕
                     </button>
@@ -6284,6 +6297,16 @@ function normalizeNumberWithUnit(raw: string, unit: "см" | "кг") {
   const clean = Number.isInteger(num) ? String(num) : String(num);
   const mappedUnit = currentLanguage === "en" ? (unit === "см" ? "cm" : "kg") : unit;
   return `${clean} ${mappedUnit}`;
+}
+
+function canBookSlot(dateKey: string, start: string) {
+  const day = parseDateKey(dateKey);
+  if (!day) return false;
+  const [sh, sm] = start.split(":").map((x) => parseInt(x, 10));
+  if (Number.isNaN(sh) || Number.isNaN(sm)) return false;
+  const startAt = new Date(day);
+  startAt.setHours(sh, sm, 0, 0);
+  return Date.now() < startAt.getTime();
 }
 
 function parseDateDMY(value: string) {
