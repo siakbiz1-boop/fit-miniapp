@@ -4166,9 +4166,6 @@ function ClientDetailScreen(props: {
   const [tab, setTab] = useState<"info" | "contacts" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
-  const [draftFullName, setDraftFullName] = useState(client?.fullName ?? "");
-  const [draftHeight, setDraftHeight] = useState("");
-  const [draftWeight, setDraftWeight] = useState("");
   const [draftGoal, setDraftGoal] = useState("");
   const [draftComment, setDraftComment] = useState("");
   const [showExerciseForm, setShowExerciseForm] = useState(false);
@@ -4179,9 +4176,6 @@ function ClientDetailScreen(props: {
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    setDraftFullName(client?.fullName ?? "");
-    setDraftHeight(client?.height ?? "");
-    setDraftWeight(client?.weight ?? "");
     setDraftGoal(client?.goal ?? "");
     setDraftComment(client?.comment ?? "");
     setDraftExerciseName("");
@@ -4191,9 +4185,6 @@ function ClientDetailScreen(props: {
     if (client?.status === "pending") setTab("info");
   }, [
     client?.id,
-    client?.fullName,
-    client?.height,
-    client?.weight,
     client?.goal,
     client?.comment,
     client?.status,
@@ -4303,20 +4294,7 @@ function ClientDetailScreen(props: {
 
       {visibleTab === "info" ? (
         <div style={styles.clientPanelPlain}>
-          <div style={{ marginTop: 6 }}>
-            <div style={styles.fieldLabel}>{tr("ФИО клиента", "Client full name")}</div>
-            <input
-              value={draftFullName}
-              onChange={(e) => {
-                const v = e.target.value;
-                setDraftFullName(v);
-                if (!client) return;
-                onUpdateClient(client.id, { fullName: v.trim() });
-              }}
-              placeholder={tr("Введите ФИО клиента", "Enter client full name")}
-              style={styles.input}
-            />
-          </div>
+          {renderReadOnly(tr("ФИО клиента", "Client full name"), client?.fullName)}
           <div style={{ marginTop: 16 }}>
             <div style={styles.fieldLabel}>Username</div>
             <div style={styles.readOnlyValue}>{client?.username ? `@${client.username}` : "—"}</div>
@@ -4348,93 +4326,16 @@ function ClientDetailScreen(props: {
           <div style={styles.metricsRow}>
             <div style={{ flex: 1 }}>
               <div style={styles.fieldLabel}>{tr("Рост", "Height")}</div>
-              <input
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={draftHeight}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setDraftHeight(v);
-                  if (!client) return;
-                  onUpdateClient(client.id, { height: v });
-                }}
-                onBlur={() => {
-                  const v = normalizeNumberWithUnit(draftHeight, "см");
-                  if (!v || !client) return;
-                  setDraftHeight(v);
-                  onUpdateClient(client.id, { height: v });
-                }}
-                placeholder={tr("см", "cm")}
-                style={styles.input}
-              />
+              <div style={styles.readOnlyValue}>{client?.height && String(client.height).trim() ? client.height : "—"}</div>
             </div>
             <div style={{ flex: 1 }}>
               <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
-              <input
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={draftWeight}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setDraftWeight(v);
-                  if (!client) return;
-                  onUpdateClient(client.id, { weight: v });
-                }}
-                onBlur={() => {
-                  const v = normalizeNumberWithUnit(draftWeight, "кг");
-                  if (!v || !client) return;
-                  setDraftWeight(v);
-                  onUpdateClient(client.id, { weight: v });
-                }}
-                placeholder={tr("кг", "kg")}
-                style={styles.input}
-              />
+              <div style={styles.readOnlyValue}>{client?.weight && String(client.weight).trim() ? client.weight : "—"}</div>
             </div>
           </div>
 
-          <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>{tr("Цель", "Goal")}</div>
-            <textarea
-              ref={goalRef}
-              value={draftGoal}
-              onChange={(e) => {
-                const v = e.target.value;
-                setDraftGoal(v);
-                if (!client) return;
-                onUpdateClient(client.id, { goal: v });
-              }}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-              placeholder={tr("Например: похудеть на 5 кг", "e.g., lose 5 kg")}
-              rows={1}
-              style={styles.goalTextarea}
-            />
-          </div>
-
-          <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>{tr("Комментарии", "Comments")}</div>
-            <textarea
-              ref={commentRef}
-              value={draftComment}
-              onChange={(e) => {
-                const v = e.target.value;
-                setDraftComment(v);
-                if (!client) return;
-                onUpdateClient(client.id, { comment: v });
-              }}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-              placeholder={tr("Комментарий о клиенте", "Comment about the client")}
-              rows={1}
-              style={styles.goalTextarea}
-            />
-          </div>
+          {renderReadOnly(tr("Цель", "Goal"), client?.goal)}
+          {renderReadOnly(tr("Комментарии", "Comments"), client?.comment)}
           <button
             type="button"
             onClick={() => {
