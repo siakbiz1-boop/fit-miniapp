@@ -5059,6 +5059,12 @@ function PersonalDataScreen(props: {
     if (String(current || "") === String(value || "")) return;
     onSaveTrainerProfile({ [field]: value } as Partial<TrainerProfile>);
   };
+  const saveClientField = (field: keyof ClientProfile, value: string) => {
+    if (!onSaveClientProfile) return;
+    const current = clientProfile?.[field] ?? "";
+    if (String(current || "") === String(value || "")) return;
+    onSaveClientProfile({ [field]: value } as Partial<ClientProfile>);
+  };
 
   useEffect(() => {
     if (!subscriptionTrainers.length) {
@@ -5221,7 +5227,7 @@ function PersonalDataScreen(props: {
             }}
             onBlur={() => {
               if (isClientProfile) {
-                onSaveClientProfile?.({ fullName: fio });
+                saveClientField("fullName", fio);
               } else {
                 saveTrainerField("fullName", fio);
               }
@@ -5242,7 +5248,7 @@ function PersonalDataScreen(props: {
                     onBlur={() => {
                       const v = normalizeNumberWithUnit(height, "см");
                       if (v) setHeight(v);
-                      if (isClientProfile) onSaveClientProfile?.({ height: v });
+                      if (isClientProfile) saveClientField("height", v);
                     }}
                     placeholder={tr("см", "cm")}
                     style={styles.input}
@@ -5258,7 +5264,7 @@ function PersonalDataScreen(props: {
                     onBlur={() => {
                       const v = normalizeNumberWithUnit(weight, "кг");
                       if (v) setWeight(v);
-                      if (isClientProfile) onSaveClientProfile?.({ weight: v });
+                      if (isClientProfile) saveClientField("weight", v);
                     }}
                     placeholder={tr("кг", "kg")}
                     style={styles.input}
@@ -5276,7 +5282,7 @@ function PersonalDataScreen(props: {
                     el.style.height = `${el.scrollHeight}px`;
                   }}
                   onBlur={() => {
-                    if (isClientProfile) onSaveClientProfile?.({ goal: about });
+                    if (isClientProfile) saveClientField("goal", about);
                   }}
                   placeholder={tr("Например: сбросить 5 кг", "e.g., lose 5 kg")}
                   rows={1}
@@ -5294,7 +5300,7 @@ function PersonalDataScreen(props: {
                     el.style.height = `${el.scrollHeight}px`;
                   }}
                   onBlur={() => {
-                    if (isClientProfile) onSaveClientProfile?.({ comment: extraInfo });
+                    if (isClientProfile) saveClientField("comment", extraInfo);
                   }}
                   placeholder={tr("Комментарий", "Comment")}
                   rows={1}
