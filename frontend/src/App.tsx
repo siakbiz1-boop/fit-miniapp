@@ -3819,6 +3819,11 @@ function TrainerClients(props: {
         client={client}
         onBack={() => setScreen("list")}
         onUpdateClient={updateClient}
+        onToggleArchive={(target, nextArchived) => {
+          updateClient(target.id, { archived: nextArchived });
+          setScreen("list");
+          setClientsTab(nextArchived ? "archive" : "my");
+        }}
         onSaveExercises={(clientId, exercises) => {
           if (!client) return;
           updateClient(clientId, { exercises });
@@ -4152,10 +4157,11 @@ function ClientDetailScreen(props: {
   client: TrainerClientInvite | null;
   onBack: () => void;
   onUpdateClient: (id: string, patch: Partial<TrainerClientInvite>) => void;
+  onToggleArchive: (client: TrainerClientInvite, nextArchived: boolean) => void;
   history: SessionItem[];
   onSaveExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
 }) {
-  const { client, onBack, onUpdateClient, history, onSaveExercises } = props;
+  const { client, onBack, onUpdateClient, onToggleArchive, history, onSaveExercises } = props;
   const tr = useTr();
   const [tab, setTab] = useState<"info" | "contacts" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
@@ -4433,21 +4439,24 @@ function ClientDetailScreen(props: {
             type="button"
             onClick={() => {
               if (!client) return;
-              const message = tr("Переместить клиента в архив?", "Move client to archive?");
-              const doArchive = () => {
-                onUpdateClient(client.id, { archived: true });
+              const nextArchived = !client.archived;
+              const message = nextArchived
+                ? tr("Переместить клиента в архив?", "Move client to archive?")
+                : tr("Разархивировать клиента?", "Unarchive client?");
+              const doToggle = () => {
+                onToggleArchive(client, nextArchived);
               };
               if (typeof WebApp?.showConfirm === "function") {
                 WebApp.showConfirm(message, (yes) => {
-                  if (yes) doArchive();
+                  if (yes) doToggle();
                 });
                 return;
               }
-              if (window.confirm(message)) doArchive();
+              if (window.confirm(message)) doToggle();
             }}
             style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 18 }}
           >
-            {tr("Архивировать", "Archive")}
+            {client?.archived ? tr("Разархивировать", "Unarchive") : tr("Архивировать", "Archive")}
           </button>
         </div>
       ) : visibleTab === "contacts" ? (
