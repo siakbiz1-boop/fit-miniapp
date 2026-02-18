@@ -985,6 +985,13 @@ app.post("/slots", async (req, reply) => {
     return reply.code(400).send({ message: "dateKey/start/end required" });
   }
 
+  const existing = await prismaAny.trainingSlot.findFirst({
+    where: { trainerTgUserId: dbUser.tgUserId, dateKey, start, end },
+  });
+  if (existing) {
+    return { ok: true, slot: serializeSlot(existing) };
+  }
+
   const slot = await prismaAny.trainingSlot.create({
     data: { trainerTgUserId: dbUser.tgUserId, dateKey, start, end },
   });

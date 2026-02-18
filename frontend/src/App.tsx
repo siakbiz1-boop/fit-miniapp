@@ -3157,6 +3157,7 @@ function TrainerSchedule(props: {
   const [freeStart, setFreeStart] = useState("");
   const [freeEnd, setFreeEnd] = useState("");
   const [freeError, setFreeError] = useState("");
+  const [isCreatingSlot, setIsCreatingSlot] = useState(false);
   const [slotError, setSlotError] = useState("");
   const [assignForId, setAssignForId] = useState<string | null>(null);
   const [assignClientUsername, setAssignClientUsername] = useState<string>("");
@@ -3816,16 +3817,21 @@ function TrainerSchedule(props: {
               {freeError ? <div style={styles.errorText}>{freeError}</div> : null}
               <button
                 type="button"
+                disabled={isCreatingSlot}
                 onClick={async () => {
+                  if (isCreatingSlot) return;
+                  setIsCreatingSlot(true);
                   const dateKey = formatDateKey(selected);
                   const start = normalizeTimeInput(freeStart);
                   const end = normalizeTimeInput(freeEnd);
                   if (!start || !end) {
                     setFreeError(tr("Укажите время в формате ЧЧ:ММ (например 10:00).", "Enter time in HH:MM (e.g., 10:00)."));
+                    setIsCreatingSlot(false);
                     return;
                   }
                   if (end <= start) {
                     setFreeError(tr("Время окончания должно быть больше времени начала.", "End time must be after start time."));
+                    setIsCreatingSlot(false);
                     return;
                   }
                   const now = new Date();
@@ -3833,6 +3839,7 @@ function TrainerSchedule(props: {
                   const todayDay = startOfDay(now);
                   if (selectedDay.getTime() < todayDay.getTime()) {
                     setFreeError(tr("Нельзя создавать окна в прошедших датах.", "You can't create slots in past dates."));
+                    setIsCreatingSlot(false);
                     return;
                   }
                   if (selectedDay.getTime() === todayDay.getTime()) {
@@ -3840,6 +3847,7 @@ function TrainerSchedule(props: {
                     const nowMin = now.getHours() * 60 + now.getMinutes();
                     if (startMin <= nowMin) {
                       setFreeError(tr("Нельзя создавать окна в прошедшее время.", "You can't create slots in the past time."));
+                      setIsCreatingSlot(false);
                       return;
                     }
                   }
@@ -3859,14 +3867,19 @@ function TrainerSchedule(props: {
                   });
                   if (overlaps || overlapsSession) {
                     setFreeError(tr("Окна не должны пересекаться или дублироваться с занятиями.", "Slots must not overlap with each other or sessions."));
+                    setIsCreatingSlot(false);
                     return;
                   }
                   const created = await createSlot(dateKey, start, end);
-                  if (!created) return;
+                  if (!created) {
+                    setIsCreatingSlot(false);
+                    return;
+                  }
                   setShowAddFree(false);
                   setFreeError("");
                   setFreeStart("");
                   setFreeEnd("");
+                  setIsCreatingSlot(false);
                 }}
                 style={styles.saveBtn}
               >
