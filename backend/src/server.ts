@@ -740,6 +740,31 @@ app.post("/clients/activate", async (req, reply) => {
   return { ok: true, client: serializeClient(updated) };
 });
 
+// Client profile (basic fields shared with trainer)
+app.patch("/client/profile", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const data: Record<string, any> = {};
+  if (body?.fullName !== undefined) data.fullName = String(body.fullName || "");
+  if (body?.height !== undefined) data.height = String(body.height || "");
+  if (body?.weight !== undefined) data.weight = String(body.weight || "");
+  if (body?.goal !== undefined) data.goal = String(body.goal || "");
+  if (body?.comment !== undefined) data.comment = String(body.comment || "");
+
+  if (Object.keys(data).length === 0) {
+    return reply.code(400).send({ message: "Nothing to update" });
+  }
+
+  await prismaAny.trainerClient.updateMany({
+    where: { clientTgUserId: dbUser.tgUserId },
+    data,
+  });
+
+  return { ok: true };
+});
+
 app.get("/client/trainers", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;

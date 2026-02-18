@@ -131,6 +131,14 @@ type TrainerProfile = {
   bookingMode?: "trainer" | "both";
 };
 
+type ClientProfile = {
+  fullName?: string;
+  height?: string;
+  weight?: string;
+  goal?: string;
+  comment?: string;
+};
+
 type TrainingSlot = {
   id: string;
   trainerTgUserId: string;
@@ -425,6 +433,24 @@ export default function App() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(patch),
       });
+    } catch {
+      // ignore
+    }
+  }
+
+  async function saveClientProfile(patch: Partial<ClientProfile>) {
+    if (!token || role !== "client") return;
+    try {
+      await fetch(`${apiBase}/client/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(patch),
+      });
+      setClientTrainers((prev) =>
+        prev.map((c) =>
+          c.status === "active" ? { ...c, ...patch } : c
+        )
+      );
     } catch {
       // ignore
     }
@@ -1474,6 +1500,7 @@ export default function App() {
               t={t}
               trainerProfile={trainerProfile}
               onSaveTrainerProfile={saveTrainerProfile}
+              onSaveClientProfile={saveClientProfile}
               invites={clientTrainers}
               setInvites={setClientTrainers}
               setClientConnected={setClientConnected}
@@ -2362,7 +2389,7 @@ function ClientSchedule(props: {
     if (section !== "book") return;
     const trainer = trainers.find((t) => t.id === selectedTrainerId);
     const trainerTgId = trainer?.trainerTgUserId;
-    if (!trainerTgId) {
+    if (!trainerTgId || trainer?.archived) {
       setSlots([]);
       return;
     }
@@ -2743,6 +2770,7 @@ function ClientSettings(props: {
   t: UiText;
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
+  onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
   invites: TrainerClientInvite[];
   setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   setClientConnected: (v: boolean) => void;
@@ -2750,6 +2778,17 @@ function ClientSettings(props: {
 }) {
   const { screen, setScreen, invites, setInvites, setClientConnected, onDeleteProfile, ...rest } = props;
   const tr = useTr();
+  const clientProfile = useMemo(() => {
+    const active = invites.find((c) => c.status === "active") || null;
+    if (!active) return null;
+    return {
+      fullName: active.fullName || "",
+      height: active.height || "",
+      weight: active.weight || "",
+      goal: active.goal || "",
+      comment: active.comment || "",
+    } as ClientProfile;
+  }, [invites]);
 
   return (
     <TrainerSettings
@@ -2767,6 +2806,7 @@ function ClientSettings(props: {
       )}
       subscriptionTabLabel={tr("Мой абонемент", "My subscription")}
       subscriptionItems={invites}
+      clientProfile={clientProfile}
       onDeleteProfile={onDeleteProfile}
     />
   );
@@ -4389,6 +4429,26 @@ function ClientDetailScreen(props: {
               style={styles.goalTextarea}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (!client) return;
+              const message = tr("Переместить клиента в архив?", "Move client to archive?");
+              const doArchive = () => {
+                onUpdateClient(client.id, { archived: true });
+              };
+              if (typeof WebApp?.showConfirm === "function") {
+                WebApp.showConfirm(message, (yes) => {
+                  if (yes) doArchive();
+                });
+                return;
+              }
+              if (window.confirm(message)) doArchive();
+            }}
+            style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 18 }}
+          >
+            {tr("Архивировать", "Archive")}
+          </button>
         </div>
       ) : visibleTab === "contacts" ? (
         <div style={styles.clientPanelPlain}>
@@ -4576,6 +4636,8 @@ function TrainerSettings(props: {
   t: UiText;
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
+  clientProfile?: ClientProfile | null;
+  onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
   personalShowSubscription?: boolean;
   personalShowExtendedAbout?: boolean;
   personalShowClientBasics?: boolean;
@@ -4603,6 +4665,8 @@ function TrainerSettings(props: {
     t,
     trainerProfile,
     onSaveTrainerProfile,
+    clientProfile,
+    onSaveClientProfile,
     personalShowSubscription = true,
     personalShowExtendedAbout = true,
     personalShowClientBasics = false,
@@ -4656,6 +4720,8 @@ function TrainerSettings(props: {
         subscriptionTabLabel={resolvedSubscriptionTabLabel}
         subscriptionItems={subscriptionItems}
         trainerHistory={trainerHistory}
+        clientProfile={clientProfile}
+        onSaveClientProfile={onSaveClientProfile}
       />
     );
   }
@@ -4992,6 +5058,8 @@ function PersonalDataScreen(props: {
   subscriptionTabLabel?: string;
   subscriptionItems?: TrainerClientInvite[];
   trainerHistory?: SessionItem[];
+  clientProfile?: ClientProfile | null;
+  onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
 }) {
   const {
     name,
@@ -5007,6 +5075,8 @@ function PersonalDataScreen(props: {
     subscriptionTabLabel,
     subscriptionItems,
     trainerHistory,
+    clientProfile,
+    onSaveClientProfile,
   } = props;
   const tr = useTr();
   const resolvedSubscriptionTabLabel = subscriptionTabLabel ?? tr("Моя подписка", "My subscription");
@@ -5048,6 +5118,7 @@ function PersonalDataScreen(props: {
       trainerLabel: getTrainerLabel(trainer, tr),
     }))
   );
+  const isClientProfile = !!onSaveClientProfile;
 
   useEffect(() => {
     if (!trainerProfile) return;
@@ -5062,6 +5133,15 @@ function PersonalDataScreen(props: {
     if (trainerProfile.instagram !== undefined) setInstagram(trainerProfile.instagram || "");
     if (trainerProfile.otherSocial !== undefined) setOtherSocial(trainerProfile.otherSocial || "");
   }, [trainerProfile]);
+
+  useEffect(() => {
+    if (!clientProfile) return;
+    if (clientProfile.fullName !== undefined) setFio(clientProfile.fullName || "");
+    if (clientProfile.height !== undefined) setHeight(clientProfile.height || "");
+    if (clientProfile.weight !== undefined) setWeight(clientProfile.weight || "");
+    if (clientProfile.goal !== undefined) setAbout(clientProfile.goal || "");
+    if (clientProfile.comment !== undefined) setExtraInfo(clientProfile.comment || "");
+  }, [clientProfile]);
 
   const saveTrainerField = (field: keyof TrainerProfile, value: string) => {
     if (!onSaveTrainerProfile) return;
@@ -5218,7 +5298,9 @@ function PersonalDataScreen(props: {
       {personalTab === "about" ? (
         <div style={styles.clientPanelPlain}>
           <div style={styles.fieldLabel}>
-            {tr("ФИО (так будут видеть вас клиенты)", "Full name (visible to clients)")}
+            {isClientProfile
+              ? tr("ФИО (так будет видеть вас тренер)", "Full name (visible to coach)")
+              : tr("ФИО (так будут видеть вас клиенты)", "Full name (visible to clients)")}
           </div>
           <input
             value={fio}
@@ -5228,7 +5310,11 @@ function PersonalDataScreen(props: {
               onUpdateName(v);
             }}
             onBlur={() => {
-              saveTrainerField("fullName", fio);
+              if (isClientProfile) {
+                onSaveClientProfile?.({ fullName: fio });
+              } else {
+                saveTrainerField("fullName", fio);
+              }
             }}
             placeholder={tr("Введите ФИО", "Enter full name")}
             style={styles.input}
@@ -5243,6 +5329,11 @@ function PersonalDataScreen(props: {
                     pattern="[0-9]*"
                     value={height}
                     onChange={(e) => setHeight(e.target.value.replace(/[^\d]/g, ""))}
+                    onBlur={() => {
+                      const v = normalizeNumberWithUnit(height, "см");
+                      if (v) setHeight(v);
+                      if (isClientProfile) onSaveClientProfile?.({ height: v });
+                    }}
                     placeholder={tr("см", "cm")}
                     style={styles.input}
                   />
@@ -5254,6 +5345,11 @@ function PersonalDataScreen(props: {
                     pattern="[0-9]*"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value.replace(/[^\d]/g, ""))}
+                    onBlur={() => {
+                      const v = normalizeNumberWithUnit(weight, "кг");
+                      if (v) setWeight(v);
+                      if (isClientProfile) onSaveClientProfile?.({ weight: v });
+                    }}
                     placeholder={tr("кг", "kg")}
                     style={styles.input}
                   />
@@ -5269,6 +5365,9 @@ function PersonalDataScreen(props: {
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
                   }}
+                  onBlur={() => {
+                    if (isClientProfile) onSaveClientProfile?.({ goal: about });
+                  }}
                   placeholder={tr("Например: сбросить 5 кг", "e.g., lose 5 kg")}
                   rows={1}
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
@@ -5283,6 +5382,9 @@ function PersonalDataScreen(props: {
                     const el = e.currentTarget;
                     el.style.height = "auto";
                     el.style.height = `${el.scrollHeight}px`;
+                  }}
+                  onBlur={() => {
+                    if (isClientProfile) onSaveClientProfile?.({ comment: extraInfo });
                   }}
                   placeholder={tr("Комментарий", "Comment")}
                   rows={1}
