@@ -1046,6 +1046,23 @@ app.get("/sessions", async (req, reply) => {
   return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
 });
 
+// Delete trainer session (including client-created)
+app.delete("/sessions/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const session = await prismaAny.trainingSession.findUnique({ where: { id } });
+  if (!session || session.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "session not found" });
+  }
+
+  await prismaAny.trainingSession.delete({ where: { id } });
+  return { ok: true };
+});
+
 // Client sessions
 app.get("/client/sessions", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
