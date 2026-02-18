@@ -77,6 +77,8 @@ type TrainerClientInvite = {
   status: "pending" | "active";
   photoUrl?: string;
   trainerTgUserId?: string;
+  trainerUsername?: string;
+  trainerName?: string;
   bookingMode?: "trainer" | "both";
   fullName?: string;
   height?: string;
@@ -285,7 +287,15 @@ export default function App() {
       if (!res.ok) return;
       const data = (await res.json()) as { ok: boolean; trainers?: any[] };
       if (!data?.trainers) return;
-      setClientTrainers(data.trainers.map((c) => mapClientFromApi(c)));
+      const mapped = data.trainers.map((c) => mapClientFromApi(c));
+      setClientTrainers(mapped);
+      const connected = mapped.length > 0;
+      setClientConnected(connected);
+      try {
+        localStorage.setItem("clientConnected", connected ? "true" : "false");
+      } catch {
+        // ignore
+      }
     } catch {
       // ignore
     }
@@ -2380,11 +2390,7 @@ function ClientSchedule(props: {
               ) : (
                 trainers.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.fullName?.trim()
-                      ? t.fullName
-                      : t.username
-                      ? `@${t.username}`
-                      : tr("Тренер", "Coach")}
+                    {getTrainerLabel(t, tr)}
                   </option>
                 ))
               )}
@@ -2647,12 +2653,7 @@ function ClientBook(props: {
           <div style={styles.listBlock}>
             {trainersToShow.map((trainer, idx) => {
               const isLast = idx === trainersToShow.length - 1;
-              const label =
-                trainer.fullName?.trim()
-                    ? trainer.fullName
-                    : trainer.username
-                      ? `@${trainer.username}`
-                    : tr("Тренер", "Coach");
+              const label = getTrainerLabel(trainer, tr);
               return (
                 <div
                   key={trainer.id}
@@ -4993,12 +4994,7 @@ function PersonalDataScreen(props: {
     (trainer.exercises || []).map((ex) => ({
       ...ex,
       trainerId: trainer.id,
-      trainerLabel:
-        trainer.fullName?.trim()
-          ? trainer.fullName
-          : trainer.username
-            ? `@${trainer.username}`
-            : tr("Тренер", "Coach"),
+      trainerLabel: getTrainerLabel(trainer, tr),
     }))
   );
 
@@ -5558,12 +5554,7 @@ function PersonalDataScreen(props: {
                 <div style={styles.subscriptionTrainerStrip}>
                   {subscriptionTrainers.map((trainer) => {
                     const isActive = trainer.id === selectedTrainerId;
-                    const label =
-                      trainer.fullName?.trim()
-                        ? trainer.fullName
-                        : trainer.username
-                        ? `@${trainer.username}`
-                        : tr("Тренер", "Coach");
+              const label = getTrainerLabel(trainer, tr);
                     const statusInfo =
                       trainer.subscriptionEnd && trainer.subscriptionEnd !== "—"
                         ? getSubscriptionStatus(trainer.subscriptionEnd, new Date())
@@ -5747,12 +5738,7 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const [tab, setTab] = useState<"about" | "contacts">("about");
 
-  const displayName =
-    trainer.fullName?.trim()
-      ? trainer.fullName
-      : trainer.username
-      ? `@${trainer.username}`
-      : tr("Тренер", "Coach");
+  const displayName = getTrainerLabel(trainer, tr);
   const profile = trainer.trainerProfile;
 
   const renderReadOnly = (label: string, value?: string) => (
@@ -5783,7 +5769,7 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
             {displayName}
           </div>
           <div style={{ opacity: 0.62, fontSize: 13, marginTop: 2 }}>
-            {trainer.username ? `@${trainer.username}` : ""}
+            {trainer.trainerUsername ? `@${trainer.trainerUsername}` : ""}
           </div>
         </div>
       </div>
@@ -5827,7 +5813,7 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
       ) : (
         <div style={styles.clientPanelPlain}>
           {renderReadOnly(tr("Номер телефона", "Phone number"), profile?.phone)}
-          {renderReadOnly("Telegram", trainer.username ? `@${trainer.username}` : "")}
+          {renderReadOnly("Telegram", trainer.trainerUsername ? `@${trainer.trainerUsername}` : "")}
           {renderReadOnly("Instagram", profile?.instagram)}
           {renderReadOnly(tr("Иная социальная сеть", "Other social network"), profile?.otherSocial)}
         </div>
@@ -6083,6 +6069,8 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     status: c.status === "active" ? "active" : "pending",
     photoUrl: "",
     trainerTgUserId: c.trainerTgUserId ? String(c.trainerTgUserId) : undefined,
+    trainerUsername: c.trainerUsername ? String(c.trainerUsername) : undefined,
+    trainerName: c.trainerName ? String(c.trainerName) : undefined,
     bookingMode: c.bookingMode === "both" ? "both" : c.bookingMode === "trainer" ? "trainer" : undefined,
     fullName: c.fullName ?? "",
     height: c.height ?? "",
@@ -6123,6 +6111,12 @@ function getClientLabel(clients: TrainerClientInvite[], username: string) {
   const c = clients.find((x) => x.username === username);
   if (c?.fullName && c.fullName.trim()) return c.fullName;
   return `@${username}`;
+}
+
+function getTrainerLabel(trainer: TrainerClientInvite, tr: (ru: string, en: string) => string) {
+  if (trainer.trainerName && trainer.trainerName.trim()) return trainer.trainerName;
+  if (trainer.trainerUsername && trainer.trainerUsername.trim()) return `@${trainer.trainerUsername}`;
+  return tr("Тренер", "Coach");
 }
 
 function canScheduleClientOnDate(

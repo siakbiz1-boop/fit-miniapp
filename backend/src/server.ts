@@ -716,10 +716,12 @@ app.get("/client/trainers", async (req, reply) => {
     where: { tgUserId: { in: trainerIds } },
   });
   const userIdByTg = new Map(users.map((u) => [u.tgUserId.toString(), u.id]));
+  const userByTg = new Map(users.map((u) => [u.tgUserId.toString(), u]));
   const profiles = await prismaAny.trainerProfile.findMany({
     where: { userId: { in: users.map((u) => u.id) } },
   });
   const modeByUserId = new Map(profiles.map((p: any) => [p.userId, p.bookingMode]));
+  const nameByUserId = new Map(profiles.map((p: any) => [p.userId, p.fullName]));
 
   return {
     ok: true,
@@ -727,7 +729,13 @@ app.get("/client/trainers", async (req, reply) => {
       const base = serializeClient(c);
       const userId = userIdByTg.get(String(c.trainerTgUserId));
       const bookingMode = userId ? modeByUserId.get(userId) : null;
-      return { ...base, bookingMode };
+      const user = userByTg.get(String(c.trainerTgUserId));
+      const trainerUsername = user?.username || null;
+      const trainerName =
+        (userId ? nameByUserId.get(userId) : null) ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+        null;
+      return { ...base, bookingMode, trainerUsername, trainerName };
     }),
   };
 });
