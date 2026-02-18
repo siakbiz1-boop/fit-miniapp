@@ -154,6 +154,21 @@ function serializeSlot(slot: any) {
   };
 }
 
+function buildProfilePayload(profile: any) {
+  if (!profile) return null;
+  return {
+    fitnessClub: profile.fitnessClub ?? null,
+    specialization: profile.specialization ?? null,
+    experience: profile.experience ?? null,
+    about: profile.about ?? null,
+    requirements: profile.requirements ?? null,
+    extraInfo: profile.extraInfo ?? null,
+    phone: profile.phone ?? null,
+    instagram: profile.instagram ?? null,
+    otherSocial: profile.otherSocial ?? null,
+  };
+}
+
 // --------------------
 // Auth helper: get DB user from JWT
 // --------------------
@@ -442,7 +457,27 @@ app.get("/clients", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, clients: list.map((c: any) => serializeClient(c)) };
+  const clientTgIds = Array.from(new Set(list.map((c: any) => c.clientTgUserId)))
+    .filter((id: any) => id !== null && id !== undefined)
+    .map((id: any) => (typeof id === "bigint" ? id : BigInt(String(id))));
+  const users = clientTgIds.length
+    ? await prisma.user.findMany({ where: { tgUserId: { in: clientTgIds } } })
+    : [];
+  const userIdByTg = new Map(users.map((u) => [u.tgUserId.toString(), u.id]));
+  const profiles = users.length
+    ? await prismaAny.trainerProfile.findMany({ where: { userId: { in: users.map((u) => u.id) } } })
+    : [];
+  const profileByUserId = new Map(profiles.map((p: any) => [p.userId, p]));
+
+  return {
+    ok: true,
+    clients: list.map((c: any) => {
+      const base = serializeClient(c);
+      const userId = c.clientTgUserId ? userIdByTg.get(String(c.clientTgUserId)) : null;
+      const profile = userId ? profileByUserId.get(userId) : null;
+      return { ...base, clientProfile: buildProfilePayload(profile) };
+    }),
+  };
 });
 
 app.post("/clients", async (req, reply) => {
@@ -481,7 +516,7 @@ app.post("/clients", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, client: serializeClient(created) };
+  return { ok: true, client: { ...serializeClient(created), clientProfile: null } };
 });
 
 app.patch("/clients/:id", async (req, reply) => {
@@ -518,7 +553,16 @@ app.patch("/clients/:id", async (req, reply) => {
     include: { exercises: true },
   });
 
-  return { ok: true, client: serializeClient(updated) };
+  let clientProfile = null;
+  if (updated.clientTgUserId) {
+    const user = await prisma.user.findUnique({ where: { tgUserId: updated.clientTgUserId } });
+    if (user) {
+      const profile = await prismaAny.trainerProfile.findUnique({ where: { userId: user.id } });
+      clientProfile = buildProfilePayload(profile);
+    }
+  }
+
+  return { ok: true, client: { ...serializeClient(updated), clientProfile } };
 });
 
 app.post("/clients/:id/exercises", async (req, reply) => {

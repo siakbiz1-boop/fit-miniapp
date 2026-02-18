@@ -93,6 +93,17 @@ type TrainerClientInvite = {
   subscriptionTotal?: string;
   subscriptionLeft?: string;
   archived?: boolean;
+  clientProfile?: {
+    fitnessClub?: string;
+    specialization?: string;
+    experience?: string;
+    about?: string;
+    requirements?: string;
+    extraInfo?: string;
+    phone?: string;
+    instagram?: string;
+    otherSocial?: string;
+  };
   trainerProfile?: {
     fitnessClub?: string;
     specialization?: string;
@@ -392,7 +403,7 @@ export default function App() {
   }
 
   async function fetchTrainerProfile() {
-    if (!token || role !== "trainer") return;
+    if (!token || (role !== "trainer" && role !== "client")) return;
     try {
       const res = await fetch(`${apiBase}/profile/trainer`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -406,7 +417,7 @@ export default function App() {
   }
 
   async function saveTrainerProfile(patch: Partial<TrainerProfile>) {
-    if (!token || role !== "trainer") return;
+    if (!token || (role !== "trainer" && role !== "client")) return;
     try {
       setTrainerProfile((prev) => ({ ...(prev || {}), ...patch }));
       await fetch(`${apiBase}/profile/trainer`, {
@@ -1461,6 +1472,8 @@ export default function App() {
               language={language}
               setLanguage={setLanguage}
               t={t}
+              trainerProfile={trainerProfile}
+              onSaveTrainerProfile={saveTrainerProfile}
               invites={clientTrainers}
               setInvites={setClientTrainers}
               setClientConnected={setClientConnected}
@@ -2728,6 +2741,8 @@ function ClientSettings(props: {
   language: "ru" | "en";
   setLanguage: (v: "ru" | "en") => void;
   t: UiText;
+  trainerProfile?: TrainerProfile | null;
+  onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   invites: TrainerClientInvite[];
   setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   setClientConnected: (v: boolean) => void;
@@ -2741,7 +2756,7 @@ function ClientSettings(props: {
       {...rest}
       screen={screen}
       setScreen={setScreen}
-      personalShowSubscription
+      personalShowSubscription={false}
       personalShowExtendedAbout={false}
       personalShowClientBasics
       personalShowClientWeights
@@ -4102,7 +4117,7 @@ function ClientDetailScreen(props: {
 }) {
   const { client, onBack, onUpdateClient, history, onSaveExercises } = props;
   const tr = useTr();
-  const [tab, setTab] = useState<"info" | "weights" | "history">("info");
+  const [tab, setTab] = useState<"info" | "contacts" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
   const [draftFullName, setDraftFullName] = useState(client?.fullName ?? "");
@@ -4152,6 +4167,13 @@ function ClientDetailScreen(props: {
     el.style.height = `${el.scrollHeight}px`;
   }, [draftComment, tab]);
 
+  const renderReadOnly = (label: string, value?: string) => (
+    <div style={{ marginTop: 16 }}>
+      <div style={styles.fieldLabel}>{label}</div>
+      <div style={styles.readOnlyValue}>{value && String(value).trim() ? value : "—"}</div>
+    </div>
+  );
+
   return (
     <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -4196,6 +4218,16 @@ function ClientDetailScreen(props: {
           </button>
           {!showOnlyInfo ? (
             <>
+              <button
+                type="button"
+                onClick={() => setTab("contacts")}
+                style={{
+                  ...styles.clientTab,
+                  ...(visibleTab === "contacts" ? styles.clientTabActive : null),
+                }}
+              >
+                {tr("Контакты клиента", "Client contacts")}
+              </button>
               <button
                 type="button"
                 onClick={() => setTab("weights")}
@@ -4357,6 +4389,13 @@ function ClientDetailScreen(props: {
               style={styles.goalTextarea}
             />
           </div>
+        </div>
+      ) : visibleTab === "contacts" ? (
+        <div style={styles.clientPanelPlain}>
+          {renderReadOnly("Telegram", client?.username ? `@${client.username}` : "")}
+          {renderReadOnly(tr("Номер телефона", "Phone number"), client?.clientProfile?.phone)}
+          {renderReadOnly("Instagram", client?.clientProfile?.instagram)}
+          {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
         </div>
       ) : visibleTab === "history" ? (
         <div style={styles.clientPanelPlain}>
@@ -6118,6 +6157,7 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     trainerName: c.trainerName ? String(c.trainerName) : undefined,
     trainerPhotoUrl: c.trainerPhotoUrl ? String(c.trainerPhotoUrl) : undefined,
     bookingMode: c.bookingMode === "both" ? "both" : c.bookingMode === "trainer" ? "trainer" : undefined,
+    clientProfile: c.clientProfile ?? undefined,
     trainerProfile: c.trainerProfile ?? undefined,
     fullName: c.fullName ?? "",
     height: c.height ?? "",
