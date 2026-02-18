@@ -137,4 +137,5 @@ model TrainingSlot {
   updatedAt       DateTime @updatedAt
 
   @@index([trainerTgUserId, dateKey])
+  @@unique([trainerTgUserId, dateKey, start, end])
 }
