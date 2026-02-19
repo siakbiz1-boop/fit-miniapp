@@ -415,8 +415,8 @@ export default function App() {
   async function saveClientExercises(
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
-  ) {
-    if (!token) return;
+  ): Promise<TrainerClientInvite | null> {
+    if (!token) return null;
     try {
       const payload = exercises.map((ex) => ({
         ...ex,
@@ -427,7 +427,7 @@ export default function App() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ exercises: payload }),
       });
-      if (!res.ok) return;
+      if (!res.ok) return null;
       const data = (await res.json()) as { ok: boolean; client?: any };
       if (data?.client) {
         const mapped = mapClientFromApi(data.client);
@@ -436,10 +436,12 @@ export default function App() {
         } else if (role === "client") {
           setClientTrainers((prev) => prev.map((c) => (c.id === data.client.id ? mapped : c)));
         }
+        return mapped;
       }
     } catch {
       // ignore
     }
+    return null;
   }
 
   async function fetchTrainerProfile() {
@@ -2710,14 +2712,14 @@ function ClientSchedule(props: {
           ) : (
             <div>
               {clientExercises.length > 0 ? (
-                <div style={styles.listBlock}>
+                <div style={styles.exerciseListBlock}>
                   {clientExercises.map((ex, idx) => {
                     const isLast = idx === clientExercises.length - 1;
                     return (
                       <div
                         key={ex.id}
                         style={{
-                          ...styles.rowWrap,
+                          ...styles.exerciseCard,
                           borderBottom: isLast ? "none" : "1px solid var(--border-2)",
                           padding: "12px 0",
                         }}
@@ -3109,7 +3111,10 @@ function ClientSettings(props: {
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
-  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
+  onSaveClientExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
   invites: TrainerClientInvite[];
   setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   setClientConnected: (v: boolean) => void;
@@ -3172,7 +3177,10 @@ function TrainerSchedule(props: {
   trainerTgUserId: string;
   pendingSession?: SessionItem | null;
   onConsumePendingSession?: () => void;
-  onSaveExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
+  onSaveExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
 }) {
   const {
     clients,
@@ -3706,18 +3714,18 @@ function TrainerSchedule(props: {
               {sessionClient?.exercises && sessionClient.exercises.length > 0 ? (
                 <div style={{ marginTop: 16 }}>
                   <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
-                  <div style={styles.listBlock}>
-                    {sessionClient.exercises.map((ex, idx) => {
-                      const isLast = idx === sessionClient.exercises!.length - 1;
-                      return (
-                        <div
-                          key={ex.id}
-                          style={{
-                            ...styles.rowWrap,
-                            borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                            padding: "12px 0",
-                          }}
-                        >
+                <div style={styles.exerciseListBlock}>
+                  {sessionClient.exercises.map((ex, idx) => {
+                    const isLast = idx === sessionClient.exercises!.length - 1;
+                    return (
+                      <div
+                        key={ex.id}
+                        style={{
+                          ...styles.exerciseCard,
+                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+                          padding: "12px 0",
+                        }}
+                      >
                           <div style={styles.exerciseRow}>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
@@ -4144,7 +4152,10 @@ function TrainerClients(props: {
   apiBase: string;
   onLoadHistory?: (client: TrainerClientInvite) => void;
   onRefreshClients?: () => void;
-  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
+  onSaveClientExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
 }) {
   const {
     screen,
@@ -4629,7 +4640,10 @@ function ClientDetailScreen(props: {
   onUpdateClient: (id: string, patch: Partial<TrainerClientInvite>) => void;
   onToggleArchive: (client: TrainerClientInvite, nextArchived: boolean) => void;
   history: SessionItem[];
-  onSaveExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
+  onSaveExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
 }) {
   const { client, onBack, onUpdateClient, onToggleArchive, history, onSaveExercises } = props;
   const tr = useTr();
@@ -4938,18 +4952,18 @@ function ClientDetailScreen(props: {
           {client?.exercises && client.exercises.length > 0 ? (
             <div style={{ marginTop: 16 }}>
               <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
-              <div style={styles.listBlock}>
+              <div style={styles.exerciseListBlock}>
                 {client.exercises.map((ex, idx) => {
                   const isLast = idx === client.exercises!.length - 1;
                   return (
-                      <div
-                        key={ex.id}
-                        style={{
-                          ...styles.rowWrap,
-                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                          padding: "12px 0",
-                        }}
-                      >
+                    <div
+                      key={ex.id}
+                      style={{
+                        ...styles.exerciseCard,
+                        borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+                        padding: "12px 0",
+                      }}
+                    >
                         <div style={styles.exerciseRow}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
@@ -5024,7 +5038,10 @@ function TrainerSettings(props: {
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   clientProfile?: ClientProfile | null;
   onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
-  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
+  onSaveClientExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
   personalShowSubscription?: boolean;
   personalShowExtendedAbout?: boolean;
   personalShowClientBasics?: boolean;
@@ -5449,7 +5466,10 @@ function PersonalDataScreen(props: {
   trainerHistory?: SessionItem[];
   clientProfile?: ClientProfile | null;
   onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
-  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
+  onSaveClientExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
 }) {
   const {
     name,
@@ -6013,7 +6033,7 @@ function PersonalDataScreen(props: {
               {weightsError ? <div style={styles.errorText}>{weightsError}</div> : null}
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (!activeTrainer || !onSaveClientExercises) {
                     setWeightsError(tr("Нет доступного тренера.", "No available coach."));
                     return;
@@ -6029,7 +6049,10 @@ function PersonalDataScreen(props: {
                     { id: localExerciseId(), name: nameValue, weight: weightValue },
                   ];
                   setClientWeights(next);
-                  onSaveClientExercises(activeTrainer.id, next);
+                  const updated = await onSaveClientExercises(activeTrainer.id, next);
+                  if (updated?.exercises) {
+                    setClientWeights(updated.exercises.map((ex) => ({ ...ex })));
+                  }
                   setDraftWeightName("");
                   setDraftWeightValue("");
                   setShowWeightsForm(false);
@@ -6049,14 +6072,14 @@ function PersonalDataScreen(props: {
           ) : (
             <div style={{ marginTop: 16 }}>
               <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
-              <div style={styles.listBlock}>
+              <div style={styles.exerciseListBlock}>
                 {clientWeights.map((ex, idx, arr) => {
                   const isLast = idx === arr.length - 1;
                   return (
                     <div
                       key={ex.id}
                       style={{
-                        ...styles.rowWrap,
+                        ...styles.exerciseCard,
                         borderBottom: isLast ? "none" : "1px solid var(--border-2)",
                         padding: "12px 0",
                       }}
@@ -7414,10 +7437,22 @@ const styles: Record<string, any> = {
     borderTop: "1px solid var(--border-2)",
     borderBottom: "1px solid var(--border-2)",
   },
+  exerciseListBlock: {
+    border: "1px solid var(--border-2)",
+    borderRadius: 16,
+    background: "var(--panel)",
+    padding: "6px 14px",
+    boxShadow: "0 10px 20px rgba(15, 23, 42, 0.04)",
+  },
 
   rowWrap: {
     display: "flex",
     alignItems: "stretch",
+    gap: 10,
+  },
+  exerciseCard: {
+    display: "flex",
+    alignItems: "center",
     gap: 10,
   },
 
@@ -7583,31 +7618,32 @@ const styles: Record<string, any> = {
   },
   exerciseRow: {
     display: "flex",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 10,
   },
   exerciseWeightRow: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    marginTop: 6,
+    gap: 12,
+    marginTop: 8,
   },
   exerciseInput: {
-    border: "1px solid var(--border)",
-    borderRadius: 14,
-    padding: "10px 12px",
-    fontSize: 16,
-    background: "var(--panel-2)",
+    border: "1px solid var(--border-2)",
+    borderRadius: 12,
+    padding: "9px 12px",
+    fontSize: 15,
+    background: "var(--panel)",
     color: "var(--text)",
     flex: 1,
     minWidth: 0,
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.6)",
   },
   exerciseTrashBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "var(--panel-2)",
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    border: "1px solid var(--border-2)",
+    background: "var(--panel)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
