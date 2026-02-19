@@ -2453,6 +2453,7 @@ function ClientSchedule(props: {
   const [draftWeightValue, setDraftWeightValue] = useState("");
   const [weightsError, setWeightsError] = useState("");
   const [clientWeights, setClientWeights] = useState<{ id: string; name: string; weight: string }[]>([]);
+  const weightsDraftRef = useRef<{ id: string; name: string; weight: string }[]>([]);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
@@ -2469,6 +2470,10 @@ function ClientSchedule(props: {
     return invites.find((t) => t.trainerTgUserId === activeSession.trainerTgUserId) || null;
   }, [activeSession?.trainerTgUserId, invites]);
   const clientExercises = activeTrainer?.exercises || [];
+
+  useEffect(() => {
+    weightsDraftRef.current = clientWeights;
+  }, [clientWeights]);
 
   useEffect(() => {
     if (!activeTrainer) return;
@@ -2825,16 +2830,18 @@ function ClientSchedule(props: {
                               <input
                                 value={ex.weight || ""}
                                 onChange={(e) => {
-                                  const isLocal = ex.id.startsWith("local_");
                                   const value = e.target.value;
-                                  const next = clientWeights.map((item) =>
-                                    item.id === ex.id ? { ...item, weight: value } : item
-                                  );
-                                  setClientWeights(next);
-                                  if (!isLocal && activeTrainer && onSaveExercises) {
-                                    onSaveExercises(activeTrainer.id, next);
-                                  }
-                                }}
+                                const next = clientWeights.map((item) =>
+                                  item.id === ex.id ? { ...item, weight: value } : item
+                                );
+                                setClientWeights(next);
+                                weightsDraftRef.current = next;
+                              }}
+                              onBlur={() => {
+                                if (activeTrainer && onSaveExercises) {
+                                  onSaveExercises(activeTrainer.id, weightsDraftRef.current);
+                                }
+                              }}
                                 placeholder={tr("Вес не указан", "Weight not set")}
                                 style={styles.exerciseInput}
                               />
@@ -3333,6 +3340,7 @@ function TrainerSchedule(props: {
   const [showSessionExerciseForm, setShowSessionExerciseForm] = useState(false);
   const [draftSessionExerciseName, setDraftSessionExerciseName] = useState("");
   const [draftSessionExerciseWeight, setDraftSessionExerciseWeight] = useState("");
+  const sessionWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3866,7 +3874,6 @@ function TrainerSchedule(props: {
                                   value={ex.weight || ""}
                                   onChange={(e) => {
                                     if (!sessionClient) return;
-                                    const isLocal = ex.id.startsWith("local_");
                                     const value = e.target.value;
                                     const list = sessionClient.exercises ? [...sessionClient.exercises] : [];
                                     const nextList = list.map((item) =>
@@ -3875,9 +3882,14 @@ function TrainerSchedule(props: {
                                     setClients((prev) =>
                                       prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                                     );
-                                    if (!isLocal) {
-                                      onSaveExercises?.(sessionClient.id, nextList);
-                                    }
+                                    sessionWeightsRef.current[sessionClient.id] = nextList;
+                                  }}
+                                  onBlur={() => {
+                                    if (!sessionClient) return;
+                                    const list =
+                                      sessionWeightsRef.current[sessionClient.id] ??
+                                      (sessionClient.exercises ? [...sessionClient.exercises] : []);
+                                    onSaveExercises?.(sessionClient.id, list);
                                   }}
                                   placeholder={tr("Вес не указан", "Weight not set")}
                                   style={styles.exerciseInput}
@@ -4792,6 +4804,7 @@ function ClientDetailScreen(props: {
   const [draftExerciseName, setDraftExerciseName] = useState("");
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
   const [exerciseError, setExerciseError] = useState("");
+  const clientWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -5111,15 +5124,18 @@ function ClientDetailScreen(props: {
                                 value={ex.weight || ""}
                                 onChange={(e) => {
                                   if (!client) return;
-                                  const isLocal = ex.id.startsWith("local_");
                                   const value = e.target.value;
                                   const next = client.exercises!.map((item) =>
                                     item.id === ex.id ? { ...item, weight: value } : item
                                   );
                                   onUpdateClient(client.id, { exercises: next });
-                                  if (!isLocal) {
-                                    onSaveExercises?.(client.id, next);
-                                  }
+                                  clientWeightsRef.current[client.id] = next;
+                                }}
+                                onBlur={() => {
+                                  if (!client) return;
+                                  const list =
+                                    clientWeightsRef.current[client.id] ?? client.exercises ?? [];
+                                  onSaveExercises?.(client.id, list);
                                 }}
                                 placeholder={tr("Вес не указан", "Weight not set")}
                                 style={styles.exerciseInput}
@@ -5641,6 +5657,7 @@ function PersonalDataScreen(props: {
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [clientWeights, setClientWeights] = useState<{ id: string; name: string; weight: string }[]>([]);
+  const clientWeightsRef = useRef<{ id: string; name: string; weight: string }[]>([]);
   const [showWeightsForm, setShowWeightsForm] = useState(false);
   const [draftWeightName, setDraftWeightName] = useState("");
   const [draftWeightValue, setDraftWeightValue] = useState("");
@@ -5666,6 +5683,10 @@ function PersonalDataScreen(props: {
     subscriptionTrainers.find((t) => t.id === selectedTrainerId) || subscriptionTrainers[0] || null;
   const activeTrainerExercises = activeTrainer?.exercises || [];
   const weightsSigRef = useRef<string>("");
+
+  useEffect(() => {
+    clientWeightsRef.current = clientWeights;
+  }, [clientWeights]);
 
   useEffect(() => {
     if (!trainerProfile) return;
@@ -6230,14 +6251,16 @@ function PersonalDataScreen(props: {
                             <input
                               value={ex.weight || ""}
                               onChange={(e) => {
-                                const isLocal = ex.id.startsWith("local_");
                                 const value = e.target.value;
                                 const next = clientWeights.map((item) =>
                                   item.id === ex.id ? { ...item, weight: value } : item
                                 );
                                 setClientWeights(next);
-                                if (!isLocal && activeTrainer && onSaveClientExercises) {
-                                  onSaveClientExercises(activeTrainer.id, next);
+                                clientWeightsRef.current = next;
+                              }}
+                              onBlur={() => {
+                                if (activeTrainer && onSaveClientExercises) {
+                                  onSaveClientExercises(activeTrainer.id, clientWeightsRef.current);
                                 }
                               }}
                               placeholder={tr("Вес не указан", "Weight not set")}
@@ -7578,9 +7601,12 @@ const styles: Record<string, any> = {
   exerciseListBlock: {
     border: "none",
     borderRadius: 18,
-    background: "linear-gradient(180deg, rgba(22, 119, 255, 0.12), rgba(22, 119, 255, 0.04))",
-    padding: "10px 12px",
+    background: "transparent",
+    padding: 0,
     boxShadow: "none",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
   },
 
   rowWrap: {
@@ -7593,10 +7619,10 @@ const styles: Record<string, any> = {
     alignItems: "center",
     gap: 10,
     borderRadius: 16,
-    background: "transparent",
-    padding: "10px 12px",
+    background: "linear-gradient(180deg, rgba(22, 119, 255, 0.12), rgba(22, 119, 255, 0.04))",
+    padding: "14px 14px",
     border: "none",
-    boxShadow: "none",
+    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
   },
 
   rowBtn: {
@@ -7771,7 +7797,7 @@ const styles: Record<string, any> = {
     marginTop: 10,
   },
   exerciseInput: {
-    border: "1px solid var(--border-2)",
+    border: "1px solid rgba(15, 23, 42, 0.28)",
     borderRadius: 12,
     padding: "10px 12px",
     fontSize: 15,
@@ -7785,7 +7811,7 @@ const styles: Record<string, any> = {
     width: 38,
     height: 38,
     borderRadius: 8,
-    border: "1px solid var(--border-2)",
+    border: "1px solid rgba(15, 23, 42, 0.32)",
     background: "transparent",
     display: "flex",
     alignItems: "center",
