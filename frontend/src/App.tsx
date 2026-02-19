@@ -418,10 +418,14 @@ export default function App() {
   ) {
     if (!token) return;
     try {
+      const payload = exercises.map((ex) => ({
+        ...ex,
+        id: ex.id && ex.id.startsWith("local_") ? undefined : ex.id,
+      }));
       const res = await fetch(`${apiBase}/clients/${clientId}/exercises`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ exercises }),
+        body: JSON.stringify({ exercises: payload }),
       });
       if (!res.ok) return;
       const data = (await res.json()) as { ok: boolean; client?: any };
@@ -3681,7 +3685,7 @@ function TrainerSchedule(props: {
                       }
                       const nextList = [
                         ...(sessionClient.exercises ? sessionClient.exercises : []),
-                        { id: cryptoId(), name, weight },
+                        { id: localExerciseId(), name, weight },
                       ];
                       setClients((prev) =>
                         prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
@@ -3722,6 +3726,7 @@ function TrainerSchedule(props: {
                                   value={ex.weight || ""}
                                   onChange={(e) => {
                                     if (!sessionClient) return;
+                                    const isLocal = ex.id.startsWith("local_");
                                     const value = e.target.value;
                                     const list = sessionClient.exercises ? [...sessionClient.exercises] : [];
                                     const nextList = list.map((item) =>
@@ -3730,7 +3735,9 @@ function TrainerSchedule(props: {
                                     setClients((prev) =>
                                       prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                                     );
-                                    onSaveExercises?.(sessionClient.id, nextList);
+                                    if (!isLocal) {
+                                      onSaveExercises?.(sessionClient.id, nextList);
+                                    }
                                   }}
                                   placeholder={tr("Вес не указан", "Weight not set")}
                                   style={styles.exerciseInput}
@@ -3739,11 +3746,14 @@ function TrainerSchedule(props: {
                                   type="button"
                                   onClick={() => {
                                     if (!sessionClient) return;
+                                    const isLocal = ex.id.startsWith("local_");
                                     const nextList = (sessionClient.exercises || []).filter((item) => item.id !== ex.id);
                                     setClients((prev) =>
                                       prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                                     );
-                                    onSaveExercises?.(sessionClient.id, nextList);
+                                    if (!isLocal) {
+                                      onSaveExercises?.(sessionClient.id, nextList);
+                                    }
                                   }}
                                   style={styles.exerciseTrashBtn}
                                   aria-label="delete exercise"
@@ -4910,7 +4920,7 @@ function ClientDetailScreen(props: {
                     return;
                   }
                   const list = client.exercises ? [...client.exercises] : [];
-                  const next = [...list, { id: cryptoId(), name, weight }];
+                  const next = [...list, { id: localExerciseId(), name, weight }];
                   onUpdateClient(client.id, { exercises: next });
                   onSaveExercises?.(client.id, next);
                   setDraftExerciseName("");
@@ -4948,12 +4958,15 @@ function ClientDetailScreen(props: {
                                 value={ex.weight || ""}
                                 onChange={(e) => {
                                   if (!client) return;
+                                  const isLocal = ex.id.startsWith("local_");
                                   const value = e.target.value;
                                   const next = client.exercises!.map((item) =>
                                     item.id === ex.id ? { ...item, weight: value } : item
                                   );
                                   onUpdateClient(client.id, { exercises: next });
-                                  onSaveExercises?.(client.id, next);
+                                  if (!isLocal) {
+                                    onSaveExercises?.(client.id, next);
+                                  }
                                 }}
                                 placeholder={tr("Вес не указан", "Weight not set")}
                                 style={styles.exerciseInput}
@@ -4962,9 +4975,12 @@ function ClientDetailScreen(props: {
                                 type="button"
                                 onClick={() => {
                                   if (!client) return;
+                                  const isLocal = ex.id.startsWith("local_");
                                   const next = client.exercises!.filter((x) => x.id !== ex.id);
                                   onUpdateClient(client.id, { exercises: next });
-                                  onSaveExercises?.(client.id, next);
+                                  if (!isLocal) {
+                                    onSaveExercises?.(client.id, next);
+                                  }
                                 }}
                                 style={styles.exerciseTrashBtn}
                                 aria-label="delete exercise"
@@ -6010,7 +6026,7 @@ function PersonalDataScreen(props: {
                   }
                   const next = [
                     ...clientWeights,
-                    { id: cryptoId(), name: nameValue, weight: weightValue },
+                    { id: localExerciseId(), name: nameValue, weight: weightValue },
                   ];
                   setClientWeights(next);
                   onSaveClientExercises(activeTrainer.id, next);
@@ -6052,12 +6068,13 @@ function PersonalDataScreen(props: {
                             <input
                               value={ex.weight || ""}
                               onChange={(e) => {
+                                const isLocal = ex.id.startsWith("local_");
                                 const value = e.target.value;
                                 const next = clientWeights.map((item) =>
                                   item.id === ex.id ? { ...item, weight: value } : item
                                 );
                                 setClientWeights(next);
-                                if (activeTrainer && onSaveClientExercises) {
+                                if (!isLocal && activeTrainer && onSaveClientExercises) {
                                   onSaveClientExercises(activeTrainer.id, next);
                                 }
                               }}
@@ -6067,9 +6084,10 @@ function PersonalDataScreen(props: {
                             <button
                               type="button"
                               onClick={() => {
+                                const isLocal = ex.id.startsWith("local_");
                                 const next = clientWeights.filter((item) => item.id !== ex.id);
                                 setClientWeights(next);
-                                if (activeTrainer && onSaveClientExercises) {
+                                if (!isLocal && activeTrainer && onSaveClientExercises) {
                                   onSaveClientExercises(activeTrainer.id, next);
                                 }
                               }}
@@ -6509,6 +6527,10 @@ function BottomNav<T extends string>(props: {
 // -----------------------
 function cryptoId() {
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function localExerciseId() {
+  return `local_${cryptoId()}`;
 }
 
 function startOfDay(d: Date) {
