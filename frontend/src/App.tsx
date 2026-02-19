@@ -3341,6 +3341,7 @@ function TrainerSchedule(props: {
   const [draftSessionExerciseName, setDraftSessionExerciseName] = useState("");
   const [draftSessionExerciseWeight, setDraftSessionExerciseWeight] = useState("");
   const sessionWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
+  const [sessionWeightDrafts, setSessionWeightDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3349,6 +3350,10 @@ function TrainerSchedule(props: {
     setSessionTab("info");
     onConsumePendingSession?.();
   }, [pendingSession, onConsumePendingSession]);
+
+  useEffect(() => {
+    setSessionWeightDrafts({});
+  }, [activeSession?.clientUsername]);
 
   const syncTrainerSessionsOnce = async () => {
     if (!token) return;
@@ -3870,30 +3875,38 @@ function TrainerSchedule(props: {
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                               <div style={styles.exerciseWeightRow}>
-                                <input
-                                  value={ex.weight || ""}
-                                  onChange={(e) => {
-                                    if (!sessionClient) return;
-                                    const value = e.target.value;
-                                    const list = sessionClient.exercises ? [...sessionClient.exercises] : [];
-                                    const nextList = list.map((item) =>
-                                      item.id === ex.id ? { ...item, weight: value } : item
-                                    );
-                                    setClients((prev) =>
-                                      prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
-                                    );
-                                    sessionWeightsRef.current[sessionClient.id] = nextList;
-                                  }}
-                                  onBlur={() => {
-                                    if (!sessionClient) return;
-                                    const list =
-                                      sessionWeightsRef.current[sessionClient.id] ??
-                                      (sessionClient.exercises ? [...sessionClient.exercises] : []);
-                                    onSaveExercises?.(sessionClient.id, list);
-                                  }}
-                                  placeholder={tr("Вес не указан", "Weight not set")}
-                                  style={styles.exerciseInput}
-                                />
+                              <input
+                                value={sessionWeightDrafts[`${sessionClient.id}:${ex.id}`] ?? ex.weight ?? ""}
+                                onChange={(e) => {
+                                  if (!sessionClient) return;
+                                  const value = e.target.value;
+                                  setSessionWeightDrafts((prev) => ({
+                                    ...prev,
+                                    [`${sessionClient.id}:${ex.id}`]: value,
+                                  }));
+                                }}
+                                onBlur={() => {
+                                  if (!sessionClient) return;
+                                  const key = `${sessionClient.id}:${ex.id}`;
+                                  const value = sessionWeightDrafts[key] ?? ex.weight ?? "";
+                                  const list = sessionClient.exercises ? [...sessionClient.exercises] : [];
+                                  const nextList = list.map((item) =>
+                                    item.id === ex.id ? { ...item, weight: value } : item
+                                  );
+                                  setClients((prev) =>
+                                    prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
+                                  );
+                                  sessionWeightsRef.current[sessionClient.id] = nextList;
+                                  setSessionWeightDrafts((prev) => {
+                                    const next = { ...prev };
+                                    delete next[key];
+                                    return next;
+                                  });
+                                  onSaveExercises?.(sessionClient.id, nextList);
+                                }}
+                                placeholder={tr("Вес не указан", "Weight not set")}
+                                style={styles.exerciseInput}
+                              />
                                 <button
                                   type="button"
                                   onClick={async () => {
@@ -4805,6 +4818,7 @@ function ClientDetailScreen(props: {
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
   const [exerciseError, setExerciseError] = useState("");
   const clientWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
+  const [clientWeightDrafts, setClientWeightDrafts] = useState<Record<string, string>>({});
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -4816,6 +4830,7 @@ function ClientDetailScreen(props: {
     setShowExerciseForm(false);
     setExerciseError("");
     if (client?.status === "pending") setTab("info");
+    setClientWeightDrafts({});
   }, [
     client?.id,
     client?.goal,
@@ -5121,21 +5136,31 @@ function ClientDetailScreen(props: {
                             <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                             <div style={styles.exerciseWeightRow}>
                               <input
-                                value={ex.weight || ""}
+                                value={clientWeightDrafts[`${client.id}:${ex.id}`] ?? ex.weight ?? ""}
                                 onChange={(e) => {
                                   if (!client) return;
                                   const value = e.target.value;
-                                  const next = client.exercises!.map((item) =>
+                                  setClientWeightDrafts((prev) => ({
+                                    ...prev,
+                                    [`${client.id}:${ex.id}`]: value,
+                                  }));
+                                }}
+                                onBlur={() => {
+                                  if (!client) return;
+                                  const key = `${client.id}:${ex.id}`;
+                                  const value = clientWeightDrafts[key] ?? ex.weight ?? "";
+                                  const list = client.exercises ? [...client.exercises] : [];
+                                  const next = list.map((item) =>
                                     item.id === ex.id ? { ...item, weight: value } : item
                                   );
                                   onUpdateClient(client.id, { exercises: next });
                                   clientWeightsRef.current[client.id] = next;
-                                }}
-                                onBlur={() => {
-                                  if (!client) return;
-                                  const list =
-                                    clientWeightsRef.current[client.id] ?? client.exercises ?? [];
-                                  onSaveExercises?.(client.id, list);
+                                  setClientWeightDrafts((prev) => {
+                                    const nextDrafts = { ...prev };
+                                    delete nextDrafts[key];
+                                    return nextDrafts;
+                                  });
+                                  onSaveExercises?.(client.id, next);
                                 }}
                                 placeholder={tr("Вес не указан", "Weight not set")}
                                 style={styles.exerciseInput}
