@@ -290,6 +290,11 @@ export default function App() {
   }, [sessionsByDate, role]);
   const [clientInviteCode, setClientInviteCode] = useState("");
   const [clientInviteMessage, setClientInviteMessage] = useState("");
+  const invitesSigRef = useRef<string>("");
+  const clientTrainersSigRef = useRef<string>("");
+  const trainerSessionsSigRef = useRef<string>("");
+  const clientSessionsSigRef = useRef<string>("");
+  const trainerProfileSigRef = useRef<string>("");
 
   async function fetchClients() {
     if (!token || role !== "trainer") return;
@@ -300,7 +305,11 @@ export default function App() {
       if (!res.ok) return;
       const data = (await res.json()) as { ok: boolean; clients?: any[] };
       if (!data?.clients) return;
-      setInvites(data.clients.map((c) => mapClientFromApi(c)));
+      const mapped = data.clients.map((c) => mapClientFromApi(c));
+      const sig = buildInvitesSignature(mapped);
+      if (sig === invitesSigRef.current) return;
+      invitesSigRef.current = sig;
+      setInvites(mapped);
     } catch {
       // ignore
     }
@@ -316,6 +325,9 @@ export default function App() {
       const data = (await res.json()) as { ok: boolean; trainers?: any[] };
       if (!data?.trainers) return;
       const mapped = data.trainers.map((c) => mapClientFromApi(c));
+      const sig = buildInvitesSignature(mapped);
+      if (sig === clientTrainersSigRef.current) return;
+      clientTrainersSigRef.current = sig;
       setClientTrainers(mapped);
       const connected = mapped.length > 0;
       setClientConnected(connected);
@@ -345,6 +357,9 @@ export default function App() {
         list.push(s);
         next[s.dateKey] = list;
       });
+      const sig = buildSessionsSignature(next);
+      if (sig === trainerSessionsSigRef.current) return;
+      trainerSessionsSigRef.current = sig;
       setSessionsByDate(next);
     } catch {
       // ignore
@@ -367,6 +382,9 @@ export default function App() {
         list.push(s);
         next[s.dateKey] = list;
       });
+      const sig = buildSessionsSignature(next);
+      if (sig === clientSessionsSigRef.current) return;
+      clientSessionsSigRef.current = sig;
       setClientSessionsByDate(next);
     } catch {
       // ignore
@@ -420,7 +438,12 @@ export default function App() {
       });
       if (!res.ok) return;
       const data = (await res.json()) as { ok: boolean; profile?: TrainerProfile };
-      if (data?.profile) setTrainerProfile(data.profile);
+      if (data?.profile) {
+        const sig = stableStringify(data.profile);
+        if (sig === trainerProfileSigRef.current) return;
+        trainerProfileSigRef.current = sig;
+        setTrainerProfile(data.profile);
+      }
     } catch {
       // ignore
     }
@@ -585,6 +608,25 @@ export default function App() {
     if (activeTab !== "schedule" && activeTab !== "home") return;
     fetchTrainerSessions();
   }, [token, role, apiBase, activeTab]);
+
+  useEffect(() => {
+    if (!token || !role) return;
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      fetchClients();
+      fetchTrainerSessions();
+      fetchClientTrainers();
+      fetchClientSessions();
+      fetchTrainerProfile();
+    };
+    tick();
+    const id = window.setInterval(tick, 10 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [token, role, apiBase]);
 
   async function login() {
     try {
@@ -2386,6 +2428,14 @@ function ClientSchedule(props: {
   const [slots, setSlots] = useState<TrainingSlot[]>([]);
   const [slotError, setSlotError] = useState("");
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
+  const slotsSigRef = useRef<string>("");
+
+  const applySlots = useCallback((next: TrainingSlot[]) => {
+    const sig = buildSlotsSignature(next);
+    if (sig === slotsSigRef.current) return;
+    slotsSigRef.current = sig;
+    setSlots(next);
+  }, []);
 
   useEffect(() => {
     const tick = () => setToday(startOfDay(new Date()));
@@ -2452,14 +2502,15 @@ function ClientSchedule(props: {
     const trainer = trainers.find((t) => t.id === selectedTrainerId);
     const trainerTgId = trainer?.trainerTgUserId;
     if (!trainerTgId || trainer?.archived) {
-      setSlots([]);
+      applySlots([]);
       return;
     }
     if (trainer.bookingMode && trainer.bookingMode !== "both") {
-      setSlots([]);
+      applySlots([]);
       return;
     }
     const dateKey = formatDateKey(selected);
+    let cancelled = false;
     const run = async () => {
       try {
         const res = await fetch(
@@ -2473,14 +2524,23 @@ function ClientSchedule(props: {
           return;
         }
         const data = (await res.json()) as { ok: boolean; slots?: TrainingSlot[] };
-        setSlots(data.slots || []);
-        setSlotError("");
+        if (!cancelled) {
+          applySlots(data.slots || []);
+          setSlotError((prev) => (prev ? "" : prev));
+        }
       } catch {
-        setSlotError(tr("Не удалось загрузить свободные окна", "Failed to load slots"));
+        if (!cancelled) {
+          setSlotError(tr("Не удалось загрузить свободные окна", "Failed to load slots"));
+        }
       }
     };
     run();
-  }, [section, selectedTrainerId, selected, trainers, apiBase, token]);
+    const id = window.setInterval(run, 10 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [section, selectedTrainerId, selected, trainers, apiBase, token, tr, applySlots]);
 
   if (scheduleScreen === "session" && activeSession) {
     const activeTrainer = activeSession.trainerTgUserId
@@ -3175,11 +3235,30 @@ function TrainerSchedule(props: {
   const [freeError, setFreeError] = useState("");
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
   const [slotError, setSlotError] = useState("");
+  const slotsSigRef = useRef<Record<string, string>>({});
   const [assignForId, setAssignForId] = useState<string | null>(null);
   const [assignClientUsername, setAssignClientUsername] = useState<string>("");
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
+
+  const applySlots = useCallback(
+    (dateKey: string, nextSlots: TrainingSlot[]) => {
+      const sig = buildSlotsSignature(nextSlots);
+      if (slotsSigRef.current[dateKey] === sig) return;
+      slotsSigRef.current[dateKey] = sig;
+      setSlotsByDate((prev) => {
+        if (nextSlots.length === 0) {
+          if (!prev[dateKey]) return prev;
+          const next = { ...prev };
+          delete next[dateKey];
+          return next;
+        }
+        return { ...prev, [dateKey]: nextSlots };
+      });
+    },
+    [setSlotsByDate]
+  );
 
   useEffect(() => {
     const tick = () => setToday(startOfDay(new Date()));
@@ -3218,7 +3297,7 @@ function TrainerSchedule(props: {
     const dateKey = formatDateKey(selected);
     let cancelled = false;
     const run = async () => {
-      setSlotError("");
+      setSlotError((prev) => (prev ? "" : prev));
       try {
         const res = await fetch(
           `${apiBase}/slots?trainerTgUserId=${encodeURIComponent(trainerTgUserId)}&dateKey=${encodeURIComponent(
@@ -3231,7 +3310,7 @@ function TrainerSchedule(props: {
         }
         const data = (await res.json()) as { ok: boolean; slots?: TrainingSlot[] };
         if (!cancelled) {
-          setSlotsByDate((prev) => ({ ...prev, [dateKey]: data.slots || [] }));
+          applySlots(dateKey, data.slots || []);
         }
       } catch {
         if (!cancelled) {
@@ -3240,10 +3319,12 @@ function TrainerSchedule(props: {
       }
     };
     run();
+    const id = window.setInterval(run, 10 * 1000);
     return () => {
       cancelled = true;
+      window.clearInterval(id);
     };
-  }, [selected, token, trainerTgUserId, apiBase, tr]);
+  }, [selected, token, trainerTgUserId, apiBase, tr, applySlots]);
 
   async function createSlot(dateKey: string, start: string, end: string) {
     if (!token) {
@@ -6512,6 +6593,79 @@ function sessionStatusColor(s: SessionItem, now = new Date()) {
   if (now.getTime() < start) return "var(--accent)";
   if (now.getTime() >= start && now.getTime() < end) return "#22c55e";
   return "#8b93a6";
+}
+
+function stableStringify(value: any): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => stableStringify(v)).join(",")}]`;
+  }
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(",")}}`;
+}
+
+function buildInvitesSignature(list: TrainerClientInvite[]) {
+  const normalized = list
+    .slice()
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((inv) => ({
+      ...inv,
+      exercises: inv.exercises
+        ? inv.exercises.slice().sort((a, b) => a.id.localeCompare(b.id))
+        : [],
+    }));
+  return stableStringify(normalized);
+}
+
+function buildSessionsSignature(map: Record<string, SessionItem[]>) {
+  const keys = Object.keys(map).sort();
+  const normalized = keys.map((key) => ({
+    dateKey: key,
+    sessions: (map[key] || [])
+      .slice()
+      .sort((a, b) => {
+        const byStart = a.start.localeCompare(b.start);
+        if (byStart !== 0) return byStart;
+        const byEnd = a.end.localeCompare(b.end);
+        if (byEnd !== 0) return byEnd;
+        return a.id.localeCompare(b.id);
+      })
+      .map((s) => ({
+        id: s.id,
+        dateKey: s.dateKey,
+        start: s.start,
+        end: s.end,
+        clientUsername: s.clientUsername,
+        trainerTgUserId: s.trainerTgUserId ?? null,
+        source: s.source ?? null,
+        type: s.type ?? null,
+        price: s.price ?? null,
+        comment: s.comment ?? null,
+      })),
+  }));
+  return stableStringify(normalized);
+}
+
+function buildSlotsSignature(list: TrainingSlot[]) {
+  const normalized = list
+    .slice()
+    .sort((a, b) => {
+      const byStart = a.start.localeCompare(b.start);
+      if (byStart !== 0) return byStart;
+      const byEnd = a.end.localeCompare(b.end);
+      if (byEnd !== 0) return byEnd;
+      return a.id.localeCompare(b.id);
+    })
+    .map((slot) => ({
+      id: slot.id,
+      trainerTgUserId: slot.trainerTgUserId,
+      dateKey: slot.dateKey,
+      start: slot.start,
+      end: slot.end,
+    }));
+  return stableStringify(normalized);
 }
 
 function mapClientFromApi(c: any): TrainerClientInvite {
