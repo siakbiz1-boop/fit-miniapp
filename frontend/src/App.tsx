@@ -2840,12 +2840,15 @@ function ClientSchedule(props: {
                               />
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                   const isLocal = ex.id.startsWith("local_");
                                   const next = clientWeights.filter((item) => item.id !== ex.id);
                                   setClientWeights(next);
                                   if (!isLocal && activeTrainer && onSaveExercises) {
-                                    onSaveExercises(activeTrainer.id, next);
+                                    const updated = await onSaveExercises(activeTrainer.id, next);
+                                    if (updated?.exercises) {
+                                      setClientWeights(updated.exercises.map((item) => ({ ...item })));
+                                    }
                                   }
                                 }}
                                 style={styles.exerciseTrashBtn}
@@ -7563,11 +7566,11 @@ const styles: Record<string, any> = {
     borderBottom: "1px solid var(--border-2)",
   },
   exerciseListBlock: {
-    border: "1px solid rgba(22, 119, 255, 0.18)",
+    border: "none",
     borderRadius: 18,
-    background: "linear-gradient(180deg, rgba(22, 119, 255, 0.08), rgba(22, 119, 255, 0.02))",
-    padding: "8px 14px",
-    boxShadow: "0 14px 30px rgba(15, 23, 42, 0.08)",
+    background: "linear-gradient(180deg, rgba(22, 119, 255, 0.12), rgba(22, 119, 255, 0.04))",
+    padding: "10px 12px",
+    boxShadow: "0 14px 28px rgba(15, 23, 42, 0.1)",
   },
 
   rowWrap: {
@@ -7579,11 +7582,11 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    borderRadius: 14,
-    background: "var(--panel)",
+    borderRadius: 16,
+    background: "#ffffff",
     padding: "10px 12px",
-    border: "1px solid rgba(22, 119, 255, 0.12)",
-    boxShadow: "0 6px 14px rgba(15, 23, 42, 0.06)",
+    border: "none",
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
   },
 
   rowBtn: {
@@ -7626,7 +7629,7 @@ const styles: Record<string, any> = {
     flex: "0 0 auto",
   },
   rowTitle: {
-    fontWeight: 500,
+    fontWeight: 700,
     fontSize: 15,
     color: "var(--text)",
     letterSpacing: -0.1,
@@ -7758,22 +7761,22 @@ const styles: Record<string, any> = {
     marginTop: 10,
   },
   exerciseInput: {
-    border: "1px solid rgba(22, 119, 255, 0.2)",
+    border: "none",
     borderRadius: 12,
     padding: "10px 12px",
     fontSize: 15,
-    background: "linear-gradient(180deg, #ffffff, #f6f9ff)",
+    background: "rgba(22, 119, 255, 0.08)",
     color: "var(--text)",
     flex: 1,
     minWidth: 0,
-    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
+    boxShadow: "none",
   },
   exerciseTrashBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    border: "1px solid rgba(239, 68, 68, 0.25)",
-    background: "rgba(239, 68, 68, 0.08)",
+    border: "none",
+    background: "rgba(239, 68, 68, 0.12)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
