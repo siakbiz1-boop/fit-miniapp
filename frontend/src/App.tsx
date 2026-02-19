@@ -282,6 +282,7 @@ export default function App() {
   const [historyByClient, setHistoryByClient] = useState<Record<string, SessionItem[]>>({});
   const processedSessionIdsRef = useRef<Set<string>>(new Set());
   const [pendingSession, setPendingSession] = useState<SessionItem | null>(null);
+  const [trainerSessionsLoaded, setTrainerSessionsLoaded] = useState(false);
   const trainerHistory = useMemo(() => {
     if (role !== "trainer") return [];
     return Object.values(sessionsByDate)
@@ -358,9 +359,13 @@ export default function App() {
         next[s.dateKey] = list;
       });
       const sig = buildSessionsSignature(next);
-      if (sig === trainerSessionsSigRef.current) return;
+      if (sig === trainerSessionsSigRef.current) {
+        if (!trainerSessionsLoaded) setTrainerSessionsLoaded(true);
+        return;
+      }
       trainerSessionsSigRef.current = sig;
       setSessionsByDate(next);
+      setTrainerSessionsLoaded(true);
     } catch {
       // ignore
     }
@@ -556,6 +561,7 @@ export default function App() {
 
   useEffect(() => {
     if (!token || role !== "trainer") return;
+    if (!trainerSessionsLoaded) return;
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
       const allSessions = Object.values(sessionsByDate)
@@ -589,6 +595,12 @@ export default function App() {
       controller.abort();
     };
   }, [sessionsByDate, invites, token, role, apiBase]);
+
+  useEffect(() => {
+    if (!token || role !== "trainer") {
+      setTrainerSessionsLoaded(false);
+    }
+  }, [token, role]);
 
   useEffect(() => {
     fetchClients();
