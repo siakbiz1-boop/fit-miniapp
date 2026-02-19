@@ -2854,7 +2854,7 @@ function ClientSchedule(props: {
                                 aria-label="delete exercise"
                                 title={tr("Удалить", "Delete")}
                               >
-                                <span style={styles.trashEmoji}>🗑</span>
+                                <IconTrash />
                               </button>
                             </div>
                           </div>
@@ -3902,9 +3902,9 @@ function TrainerSchedule(props: {
                                   style={styles.exerciseTrashBtn}
                                   aria-label="delete exercise"
                                   title={tr("Удалить", "Delete")}
-                                >
-                                  <span style={styles.trashEmoji}>🗑</span>
-                                </button>
+                                  >
+                                    <IconTrash />
+                                  </button>
                               </div>
                             </div>
                           </div>
@@ -5139,7 +5139,7 @@ function ClientDetailScreen(props: {
                                 aria-label="delete exercise"
                                 title={tr("Удалить", "Delete")}
                               >
-                                <span style={styles.trashEmoji}>🗑</span>
+                                <IconTrash />
                               </button>
                             </div>
                           </div>
@@ -6256,7 +6256,7 @@ function PersonalDataScreen(props: {
                               aria-label="delete exercise"
                               title={tr("Удалить", "Delete")}
                             >
-                              <span style={styles.trashEmoji}>🗑</span>
+                              <IconTrash />
                             </button>
                           </div>
                         </div>
@@ -7580,7 +7580,7 @@ const styles: Record<string, any> = {
     borderRadius: 18,
     background: "linear-gradient(180deg, rgba(22, 119, 255, 0.12), rgba(22, 119, 255, 0.04))",
     padding: "10px 12px",
-    boxShadow: "0 14px 28px rgba(15, 23, 42, 0.1)",
+    boxShadow: "none",
   },
 
   rowWrap: {
@@ -7593,10 +7593,10 @@ const styles: Record<string, any> = {
     alignItems: "center",
     gap: 10,
     borderRadius: 16,
-    background: "#ffffff",
+    background: "transparent",
     padding: "10px 12px",
     border: "none",
-    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
+    boxShadow: "none",
   },
 
   rowBtn: {
@@ -7771,27 +7771,28 @@ const styles: Record<string, any> = {
     marginTop: 10,
   },
   exerciseInput: {
-    border: "none",
+    border: "1px solid var(--border-2)",
     borderRadius: 12,
     padding: "10px 12px",
     fontSize: 15,
-    background: "rgba(22, 119, 255, 0.08)",
+    background: "transparent",
     color: "var(--text)",
     flex: 1,
     minWidth: 0,
     boxShadow: "none",
   },
   exerciseTrashBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    border: "none",
-    background: "rgba(239, 68, 68, 0.12)",
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    border: "1px solid var(--border-2)",
+    background: "transparent",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
     flex: "0 0 auto",
+    color: "var(--text)",
   },
   selectInline: {
     border: "none",
@@ -9151,10 +9152,6 @@ const styles: Record<string, any> = {
     justifyContent: "center",
     flex: "0 0 auto",
     boxShadow: "0 8px 16px rgba(22, 119, 255, 0.25)",
-  },
-  trashEmoji: {
-    fontSize: 20,
-    lineHeight: 1,
   },
   assignRow: {
     marginTop: 8,
