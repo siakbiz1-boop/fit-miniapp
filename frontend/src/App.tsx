@@ -1569,6 +1569,7 @@ export default function App() {
               apiBase={apiBase}
               sessionsByDate={clientSessionsByDate}
               onBooked={fetchClientSessions}
+              onSaveExercises={saveClientExercises}
             />
           )}
           {clientTab === "book" && (
@@ -2434,8 +2435,12 @@ function ClientSchedule(props: {
   apiBase: string;
   sessionsByDate: Record<string, SessionItem[]>;
   onBooked: () => void;
+  onSaveExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
 }) {
-  const { invites, t, token, apiBase, sessionsByDate, onBooked } = props;
+  const { invites, t, token, apiBase, sessionsByDate, onBooked, onSaveExercises } = props;
   const tr = useTr();
   const [today, setToday] = useState<Date>(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
@@ -2443,6 +2448,11 @@ function ClientSchedule(props: {
   const [scheduleScreen, setScheduleScreen] = useState<"list" | "session">("list");
   const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
   const [sessionTab, setSessionTab] = useState<"info" | "weights">("info");
+  const [showWeightsForm, setShowWeightsForm] = useState(false);
+  const [draftWeightName, setDraftWeightName] = useState("");
+  const [draftWeightValue, setDraftWeightValue] = useState("");
+  const [weightsError, setWeightsError] = useState("");
+  const [clientWeights, setClientWeights] = useState<{ id: string; name: string; weight: string }[]>([]);
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
@@ -2452,6 +2462,25 @@ function ClientSchedule(props: {
   const [slotError, setSlotError] = useState("");
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const slotsSigRef = useRef<string>("");
+  const weightsSigRef = useRef<string>("");
+
+  const activeTrainer = useMemo(() => {
+    if (!activeSession?.trainerTgUserId) return null;
+    return invites.find((t) => t.trainerTgUserId === activeSession.trainerTgUserId) || null;
+  }, [activeSession?.trainerTgUserId, invites]);
+  const clientExercises = activeTrainer?.exercises || [];
+
+  useEffect(() => {
+    if (!activeTrainer) return;
+    const sig = stableStringify(clientExercises || []);
+    if (sig === weightsSigRef.current) return;
+    weightsSigRef.current = sig;
+    setClientWeights(clientExercises.map((ex) => ({ ...ex })));
+    setShowWeightsForm(false);
+    setDraftWeightName("");
+    setDraftWeightValue("");
+    setWeightsError("");
+  }, [activeTrainer, clientExercises]);
 
   const applySlots = useCallback((next: TrainingSlot[]) => {
     const sig = buildSlotsSignature(next);
@@ -2566,11 +2595,7 @@ function ClientSchedule(props: {
   }, [section, selectedTrainerId, selected, trainers, apiBase, token, tr, applySlots]);
 
   if (scheduleScreen === "session" && activeSession) {
-    const activeTrainer = activeSession.trainerTgUserId
-      ? invites.find((t) => t.trainerTgUserId === activeSession.trainerTgUserId)
-      : null;
     const canClientDelete = activeTrainer?.bookingMode === "both";
-    const clientExercises = activeTrainer?.exercises || [];
 
     return (
       <div style={styles.pageContainer}>
@@ -2711,10 +2736,79 @@ function ClientSchedule(props: {
             </div>
           ) : (
             <div>
-              {clientExercises.length > 0 ? (
+              <button
+                type="button"
+                style={styles.addWindowBtn}
+                onClick={() => {
+                  setShowWeightsForm((v) => !v);
+                  setWeightsError("");
+                }}
+              >
+                {tr("Добавить упражнение", "Add exercise")}
+              </button>
+              {showWeightsForm ? (
+                <div style={{ marginTop: 12 }}>
+                  <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
+                  <input
+                    value={draftWeightName}
+                    onChange={(e) => {
+                      setDraftWeightName(e.target.value);
+                      if (weightsError) setWeightsError("");
+                    }}
+                    placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
+                    style={styles.input}
+                  />
+                  <div style={{ marginTop: 12 }}>
+                    <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
+                    <input
+                      value={draftWeightValue}
+                      onChange={(e) => {
+                        setDraftWeightValue(e.target.value);
+                        if (weightsError) setWeightsError("");
+                      }}
+                      placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
+                      style={styles.input}
+                    />
+                  </div>
+                  {weightsError ? <div style={styles.errorText}>{weightsError}</div> : null}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!activeTrainer || !onSaveExercises) {
+                        setWeightsError(tr("Нет доступного тренера.", "No available coach."));
+                        return;
+                      }
+                      const nameValue = draftWeightName.trim();
+                      const weightValue = draftWeightValue.trim();
+                      if (!nameValue || !weightValue) {
+                        setWeightsError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
+                        return;
+                      }
+                      const next = [
+                        ...clientWeights,
+                        { id: localExerciseId(), name: nameValue, weight: weightValue },
+                      ];
+                      setClientWeights(next);
+                      const updated = await onSaveExercises(activeTrainer.id, next);
+                      if (updated?.exercises) {
+                        setClientWeights(updated.exercises.map((ex) => ({ ...ex })));
+                      }
+                      setDraftWeightName("");
+                      setDraftWeightValue("");
+                      setShowWeightsForm(false);
+                      setWeightsError("");
+                    }}
+                    style={styles.saveBtn}
+                  >
+                    {tr("Сохранить", "Save")}
+                  </button>
+                </div>
+              ) : null}
+
+              {clientWeights.length > 0 ? (
                 <div style={styles.exerciseListBlock}>
-                  {clientExercises.map((ex, idx) => {
-                    const isLast = idx === clientExercises.length - 1;
+                  {clientWeights.map((ex, idx) => {
+                    const isLast = idx === clientWeights.length - 1;
                     return (
                       <div
                         key={ex.id}
@@ -2727,8 +2821,39 @@ function ClientSchedule(props: {
                         <div style={styles.exerciseRow}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
-                            <div style={styles.readOnlyValue}>
-                              {ex.weight && ex.weight.trim() ? ex.weight : tr("Вес не указан", "Weight not set")}
+                            <div style={styles.exerciseWeightRow}>
+                              <input
+                                value={ex.weight || ""}
+                                onChange={(e) => {
+                                  const isLocal = ex.id.startsWith("local_");
+                                  const value = e.target.value;
+                                  const next = clientWeights.map((item) =>
+                                    item.id === ex.id ? { ...item, weight: value } : item
+                                  );
+                                  setClientWeights(next);
+                                  if (!isLocal && activeTrainer && onSaveExercises) {
+                                    onSaveExercises(activeTrainer.id, next);
+                                  }
+                                }}
+                                placeholder={tr("Вес не указан", "Weight not set")}
+                                style={styles.exerciseInput}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const isLocal = ex.id.startsWith("local_");
+                                  const next = clientWeights.filter((item) => item.id !== ex.id);
+                                  setClientWeights(next);
+                                  if (!isLocal && activeTrainer && onSaveExercises) {
+                                    onSaveExercises(activeTrainer.id, next);
+                                  }
+                                }}
+                                style={styles.exerciseTrashBtn}
+                                aria-label="delete exercise"
+                                title={tr("Удалить", "Delete")}
+                              >
+                                <span style={styles.trashEmoji}>🗑</span>
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -7438,11 +7563,11 @@ const styles: Record<string, any> = {
     borderBottom: "1px solid var(--border-2)",
   },
   exerciseListBlock: {
-    border: "1px solid var(--border-2)",
-    borderRadius: 16,
-    background: "var(--panel)",
-    padding: "6px 14px",
-    boxShadow: "0 10px 20px rgba(15, 23, 42, 0.04)",
+    border: "1px solid rgba(22, 119, 255, 0.18)",
+    borderRadius: 18,
+    background: "linear-gradient(180deg, rgba(22, 119, 255, 0.08), rgba(22, 119, 255, 0.02))",
+    padding: "8px 14px",
+    boxShadow: "0 14px 30px rgba(15, 23, 42, 0.08)",
   },
 
   rowWrap: {
@@ -7454,6 +7579,11 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     gap: 10,
+    borderRadius: 14,
+    background: "var(--panel)",
+    padding: "10px 12px",
+    border: "1px solid rgba(22, 119, 255, 0.12)",
+    boxShadow: "0 6px 14px rgba(15, 23, 42, 0.06)",
   },
 
   rowBtn: {
@@ -7625,25 +7755,25 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     gap: 12,
-    marginTop: 8,
+    marginTop: 10,
   },
   exerciseInput: {
-    border: "1px solid var(--border-2)",
+    border: "1px solid rgba(22, 119, 255, 0.2)",
     borderRadius: 12,
-    padding: "9px 12px",
+    padding: "10px 12px",
     fontSize: 15,
-    background: "var(--panel)",
+    background: "linear-gradient(180deg, #ffffff, #f6f9ff)",
     color: "var(--text)",
     flex: 1,
     minWidth: 0,
-    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.7)",
   },
   exerciseTrashBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    border: "1px solid var(--border-2)",
-    background: "var(--panel)",
+    border: "1px solid rgba(239, 68, 68, 0.25)",
+    background: "rgba(239, 68, 68, 0.08)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
