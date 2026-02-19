@@ -3811,7 +3811,7 @@ function TrainerSchedule(props: {
                   {sessionExerciseError ? <div style={styles.errorText}>{sessionExerciseError}</div> : null}
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!sessionClient) return;
                       const name = draftSessionExerciseName.trim();
                       const weight = draftSessionExerciseWeight.trim();
@@ -3826,7 +3826,12 @@ function TrainerSchedule(props: {
                       setClients((prev) =>
                         prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                       );
-                      onSaveExercises?.(sessionClient.id, nextList);
+                      const updated = await onSaveExercises?.(sessionClient.id, nextList);
+                      if (updated?.exercises) {
+                        setClients((prev) =>
+                          prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: updated.exercises } : c))
+                        );
+                      }
                       setDraftSessionExerciseName("");
                       setDraftSessionExerciseWeight("");
                       setShowSessionExerciseForm(false);
@@ -3880,7 +3885,7 @@ function TrainerSchedule(props: {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (!sessionClient) return;
                                     const isLocal = ex.id.startsWith("local_");
                                     const nextList = (sessionClient.exercises || []).filter((item) => item.id !== ex.id);
@@ -3888,7 +3893,14 @@ function TrainerSchedule(props: {
                                       prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                                     );
                                     if (!isLocal) {
-                                      onSaveExercises?.(sessionClient.id, nextList);
+                                      const updated = await onSaveExercises?.(sessionClient.id, nextList);
+                                      if (updated?.exercises) {
+                                        setClients((prev) =>
+                                          prev.map((c) =>
+                                            c.id === sessionClient.id ? { ...c, exercises: updated.exercises } : c
+                                          )
+                                        );
+                                      }
                                     }
                                   }}
                                   style={styles.exerciseTrashBtn}
@@ -5053,7 +5065,7 @@ function ClientDetailScreen(props: {
               {exerciseError ? <div style={styles.errorText}>{exerciseError}</div> : null}
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (!client) return;
                   const name = draftExerciseName.trim();
                   const weight = draftExerciseWeight.trim();
@@ -5064,7 +5076,10 @@ function ClientDetailScreen(props: {
                   const list = client.exercises ? [...client.exercises] : [];
                   const next = [...list, { id: localExerciseId(), name, weight }];
                   onUpdateClient(client.id, { exercises: next });
-                  onSaveExercises?.(client.id, next);
+                  const updated = await onSaveExercises?.(client.id, next);
+                  if (updated?.exercises) {
+                    onUpdateClient(client.id, { exercises: updated.exercises });
+                  }
                   setDraftExerciseName("");
                   setDraftExerciseWeight("");
                   setShowExerciseForm(false);
@@ -5115,13 +5130,16 @@ function ClientDetailScreen(props: {
                               />
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
                                   if (!client) return;
                                   const isLocal = ex.id.startsWith("local_");
                                   const next = client.exercises!.filter((x) => x.id !== ex.id);
                                   onUpdateClient(client.id, { exercises: next });
                                   if (!isLocal) {
-                                    onSaveExercises?.(client.id, next);
+                                    const updated = await onSaveExercises?.(client.id, next);
+                                    if (updated?.exercises) {
+                                      onUpdateClient(client.id, { exercises: updated.exercises });
+                                    }
                                   }
                                 }}
                                 style={styles.exerciseTrashBtn}
