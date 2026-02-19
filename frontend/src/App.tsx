@@ -3084,6 +3084,49 @@ function ClientSchedule(props: {
               ))}
             </div>
           );
+        })() : section === "history" ? (() => {
+          const list = Object.values(sessionsByDate)
+            .flat()
+            .filter((s) => isSessionEnded(s, new Date()))
+            .sort((a, b) => sessionEndTime(b).getTime() - sessionEndTime(a).getTime());
+          if (list.length === 0) {
+            return (
+              <div style={styles.schedulePanelBody}>
+                {tr("Пока нет завершённых тренировок.", "No completed sessions yet.")}
+              </div>
+            );
+          }
+          return (
+            <div style={styles.sessionList}>
+              {list.map((s) => (
+                <div
+                  key={s.id}
+                  style={styles.sessionBanner}
+                  onClick={() => {
+                    setActiveSession(s);
+                    setScheduleScreen("session");
+                  }}
+                >
+                  <div style={styles.sessionBannerLeft}>
+                    <div style={styles.sessionBannerTitle}>
+                      {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
+                    </div>
+                    <div style={styles.sessionBannerTime}>
+                      {s.start} — {s.end}
+                    </div>
+                    <div
+                      style={{
+                        ...styles.sessionBannerStatus,
+                        color: sessionStatusColor(s),
+                      }}
+                    >
+                      {sessionStatusLabel(s)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
         })() : (
           <div style={styles.schedulePanelBody}>{tr("Пока заглушка.", "Placeholder for now.")}</div>
         )}
@@ -3962,9 +4005,10 @@ function TrainerSchedule(props: {
             </div>
           ) : sessionTab === "history" ? (
             <div>
-              {(historyByClient[activeSession.clientUsername] || []).length ? (
+              {(historyByClient[activeSession.clientUsername] || []).some((s) => isSessionEnded(s, new Date())) ? (
                 <div style={styles.listBlock}>
                   {(historyByClient[activeSession.clientUsername] || [])
+                    .filter((s) => isSessionEnded(s, new Date()))
                     .slice()
                     .sort((a, b) => {
                       const aEnd = sessionEndTime(a).getTime();
