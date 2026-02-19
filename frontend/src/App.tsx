@@ -2841,10 +2841,9 @@ function ClientSchedule(props: {
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  const isLocal = ex.id.startsWith("local_");
                                   const next = clientWeights.filter((item) => item.id !== ex.id);
                                   setClientWeights(next);
-                                  if (!isLocal && activeTrainer && onSaveExercises) {
+                                  if (activeTrainer && onSaveExercises) {
                                     const updated = await onSaveExercises(activeTrainer.id, next);
                                     if (updated?.exercises) {
                                       setClientWeights(updated.exercises.map((item) => ({ ...item })));
@@ -3887,20 +3886,17 @@ function TrainerSchedule(props: {
                                   type="button"
                                   onClick={async () => {
                                     if (!sessionClient) return;
-                                    const isLocal = ex.id.startsWith("local_");
                                     const nextList = (sessionClient.exercises || []).filter((item) => item.id !== ex.id);
                                     setClients((prev) =>
                                       prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
                                     );
-                                    if (!isLocal) {
-                                      const updated = await onSaveExercises?.(sessionClient.id, nextList);
-                                      if (updated?.exercises) {
-                                        setClients((prev) =>
-                                          prev.map((c) =>
-                                            c.id === sessionClient.id ? { ...c, exercises: updated.exercises } : c
-                                          )
-                                        );
-                                      }
+                                    const updated = await onSaveExercises?.(sessionClient.id, nextList);
+                                    if (updated?.exercises) {
+                                      setClients((prev) =>
+                                        prev.map((c) =>
+                                          c.id === sessionClient.id ? { ...c, exercises: updated.exercises } : c
+                                        )
+                                      );
                                     }
                                   }}
                                   style={styles.exerciseTrashBtn}
@@ -5132,14 +5128,11 @@ function ClientDetailScreen(props: {
                                 type="button"
                                 onClick={async () => {
                                   if (!client) return;
-                                  const isLocal = ex.id.startsWith("local_");
                                   const next = client.exercises!.filter((x) => x.id !== ex.id);
                                   onUpdateClient(client.id, { exercises: next });
-                                  if (!isLocal) {
-                                    const updated = await onSaveExercises?.(client.id, next);
-                                    if (updated?.exercises) {
-                                      onUpdateClient(client.id, { exercises: updated.exercises });
-                                    }
+                                  const updated = await onSaveExercises?.(client.id, next);
+                                  if (updated?.exercises) {
+                                    onUpdateClient(client.id, { exercises: updated.exercises });
                                   }
                                 }}
                                 style={styles.exerciseTrashBtn}
@@ -6253,10 +6246,9 @@ function PersonalDataScreen(props: {
                             <button
                               type="button"
                               onClick={() => {
-                                const isLocal = ex.id.startsWith("local_");
                                 const next = clientWeights.filter((item) => item.id !== ex.id);
                                 setClientWeights(next);
-                                if (!isLocal && activeTrainer && onSaveClientExercises) {
+                                if (activeTrainer && onSaveClientExercises) {
                                   onSaveClientExercises(activeTrainer.id, next);
                                 }
                               }}
