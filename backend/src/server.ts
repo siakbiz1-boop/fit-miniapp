@@ -655,7 +655,12 @@ app.post("/clients/:id/exercises", async (req, reply) => {
   const client = await prismaAny.trainerClient.findUnique({
     where: { id },
   });
-  if (!client || client.trainerTgUserId !== dbUser.tgUserId) {
+  if (!client) {
+    return reply.code(404).send({ message: "Client not found" });
+  }
+  const isTrainerOwner = client.trainerTgUserId === dbUser.tgUserId;
+  const isClientOwner = client.clientTgUserId === dbUser.tgUserId;
+  if (!isTrainerOwner && !isClientOwner) {
     return reply.code(404).send({ message: "Client not found" });
   }
 
