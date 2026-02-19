@@ -2454,6 +2454,7 @@ function ClientSchedule(props: {
   const [weightsError, setWeightsError] = useState("");
   const [clientWeights, setClientWeights] = useState<{ id: string; name: string; weight: string }[]>([]);
   const weightsDraftRef = useRef<{ id: string; name: string; weight: string }[]>([]);
+  const [nowTs, setNowTs] = useState(() => Date.now());
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
@@ -2474,6 +2475,11 @@ function ClientSchedule(props: {
   useEffect(() => {
     weightsDraftRef.current = clientWeights;
   }, [clientWeights]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!activeTrainer) return;
@@ -2601,7 +2607,7 @@ function ClientSchedule(props: {
 
   if (scheduleScreen === "session" && activeSession) {
     const canClientDelete = activeTrainer?.bookingMode === "both";
-    const canDeleteByTime = sessionStartTime(activeSession).getTime() > Date.now();
+    const canDeleteByTime = sessionStartTime(activeSession).getTime() > nowTs;
 
     return (
       <div style={styles.pageContainer}>
@@ -3343,6 +3349,7 @@ function TrainerSchedule(props: {
   const [draftSessionExerciseWeight, setDraftSessionExerciseWeight] = useState("");
   const sessionWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
   const [sessionWeightDrafts, setSessionWeightDrafts] = useState<Record<string, string>>({});
+  const [nowTs, setNowTs] = useState(() => Date.now());
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3351,6 +3358,11 @@ function TrainerSchedule(props: {
     setSessionTab("info");
     onConsumePendingSession?.();
   }, [pendingSession, onConsumePendingSession]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     setSessionWeightDrafts({});
@@ -3564,7 +3576,7 @@ function TrainerSchedule(props: {
 
   if (scheduleScreen === "session" && activeSession) {
     const sessionClient = clients.find((c) => c.username === activeSession.clientUsername) || null;
-    const canDeleteByTime = sessionStartTime(activeSession).getTime() > Date.now();
+    const canDeleteByTime = sessionStartTime(activeSession).getTime() > nowTs;
     return (
       <div style={styles.pageContainer}>
       <div style={styles.topBar}>
