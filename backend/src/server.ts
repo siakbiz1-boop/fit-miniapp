@@ -595,8 +595,20 @@ app.patch("/clients/:id", async (req, reply) => {
   const client = await prismaAny.trainerClient.findUnique({
     where: { id },
   });
-  if (!client || client.trainerTgUserId !== dbUser.tgUserId) {
+  if (!client) {
     return reply.code(404).send({ message: "Client not found" });
+  }
+  if (dbUser.role === "trainer") {
+    if (client.trainerTgUserId !== dbUser.tgUserId) {
+      return reply.code(404).send({ message: "Client not found" });
+    }
+  } else if (dbUser.role === "client") {
+    const username = (dbUser.username || "").replace(/^@/, "");
+    if (!username || client.clientUsername !== username) {
+      return reply.code(404).send({ message: "Client not found" });
+    }
+  } else {
+    return reply.code(403).send({ message: "Forbidden" });
   }
 
   const updated = await prismaAny.trainerClient.update({

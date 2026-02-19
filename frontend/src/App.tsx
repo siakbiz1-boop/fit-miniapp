@@ -416,7 +416,7 @@ export default function App() {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) {
-    if (!token || role !== "trainer") return;
+    if (!token) return;
     try {
       const res = await fetch(`${apiBase}/clients/${clientId}/exercises`, {
         method: "POST",
@@ -426,9 +426,12 @@ export default function App() {
       if (!res.ok) return;
       const data = (await res.json()) as { ok: boolean; client?: any };
       if (data?.client) {
-        setInvites((prev) =>
-          prev.map((c) => (c.id === data.client.id ? mapClientFromApi(data.client) : c))
-        );
+        const mapped = mapClientFromApi(data.client);
+        if (role === "trainer") {
+          setInvites((prev) => prev.map((c) => (c.id === data.client.id ? mapped : c)));
+        } else if (role === "client") {
+          setClientTrainers((prev) => prev.map((c) => (c.id === data.client.id ? mapped : c)));
+        }
       }
     } catch {
       // ignore
@@ -1413,6 +1416,7 @@ export default function App() {
                   apiBase={apiBase}
                   onLoadHistory={loadClientHistory}
                   onRefreshClients={fetchClients}
+                  onSaveClientExercises={saveClientExercises}
                 />
               )}
               {activeTab === "settings" && (
@@ -1588,6 +1592,7 @@ export default function App() {
               trainerProfile={trainerProfile}
               onSaveTrainerProfile={saveTrainerProfile}
               onSaveClientProfile={saveClientProfile}
+              onSaveClientExercises={saveClientExercises}
               invites={clientTrainers}
               setInvites={setClientTrainers}
               setClientConnected={setClientConnected}
@@ -3100,12 +3105,22 @@ function ClientSettings(props: {
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
+  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
   invites: TrainerClientInvite[];
   setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   setClientConnected: (v: boolean) => void;
   onDeleteProfile: () => void;
 }) {
-  const { screen, setScreen, invites, setInvites, setClientConnected, onDeleteProfile, ...rest } = props;
+  const {
+    screen,
+    setScreen,
+    invites,
+    setInvites,
+    setClientConnected,
+    onDeleteProfile,
+    onSaveClientExercises,
+    ...rest
+  } = props;
   const tr = useTr();
   const clientProfile = useMemo(() => {
     const active = invites.find((c) => c.status === "active") || null;
@@ -3136,6 +3151,7 @@ function ClientSettings(props: {
       subscriptionTabLabel={tr("Мой абонемент", "My subscription")}
       subscriptionItems={invites}
       clientProfile={clientProfile}
+      onSaveClientExercises={onSaveClientExercises}
       onDeleteProfile={onDeleteProfile}
     />
   );
@@ -4118,6 +4134,7 @@ function TrainerClients(props: {
   apiBase: string;
   onLoadHistory?: (client: TrainerClientInvite) => void;
   onRefreshClients?: () => void;
+  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
 }) {
   const {
     screen,
@@ -4129,6 +4146,7 @@ function TrainerClients(props: {
     apiBase,
     onLoadHistory,
     onRefreshClients,
+    onSaveClientExercises,
   } = props;
   const tr = useTr();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -4261,10 +4279,7 @@ function TrainerClients(props: {
           setScreen("list");
           setClientsTab(nextArchived ? "archive" : "my");
         }}
-        onSaveExercises={(clientId, exercises) => {
-          if (!client) return;
-          updateClient(clientId, { exercises });
-        }}
+        onSaveExercises={onSaveClientExercises}
         history={historyByClient[client?.username ?? ""] ?? []}
       />
     );
@@ -4993,6 +5008,7 @@ function TrainerSettings(props: {
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   clientProfile?: ClientProfile | null;
   onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
+  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
   personalShowSubscription?: boolean;
   personalShowExtendedAbout?: boolean;
   personalShowClientBasics?: boolean;
@@ -5022,6 +5038,7 @@ function TrainerSettings(props: {
     onSaveTrainerProfile,
     clientProfile,
     onSaveClientProfile,
+    onSaveClientExercises,
     personalShowSubscription = true,
     personalShowExtendedAbout = true,
     personalShowClientBasics = false,
@@ -5077,6 +5094,7 @@ function TrainerSettings(props: {
         trainerHistory={trainerHistory}
         clientProfile={clientProfile}
         onSaveClientProfile={onSaveClientProfile}
+        onSaveClientExercises={onSaveClientExercises}
       />
     );
   }
@@ -5415,6 +5433,7 @@ function PersonalDataScreen(props: {
   trainerHistory?: SessionItem[];
   clientProfile?: ClientProfile | null;
   onSaveClientProfile?: (patch: Partial<ClientProfile>) => void;
+  onSaveClientExercises?: (clientId: string, exercises: { id: string; name: string; weight: string }[]) => void;
 }) {
   const {
     name,
@@ -5432,6 +5451,7 @@ function PersonalDataScreen(props: {
     trainerHistory,
     clientProfile,
     onSaveClientProfile,
+    onSaveClientExercises,
   } = props;
   const tr = useTr();
   const resolvedSubscriptionTabLabel = subscriptionTabLabel ?? tr("Моя подписка", "My subscription");
@@ -5466,14 +5486,11 @@ function PersonalDataScreen(props: {
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
 
   const subscriptionTrainers = (subscriptionItems || []).filter((c) => !c.archived && c.status === "active");
-  const trainerWeights = (subscriptionItems || []).flatMap((trainer) =>
-    (trainer.exercises || []).map((ex) => ({
-      ...ex,
-      trainerId: trainer.id,
-      trainerLabel: getTrainerLabel(trainer, tr),
-    }))
-  );
   const isClientProfile = !!onSaveClientProfile;
+  const activeTrainer =
+    subscriptionTrainers.find((t) => t.id === selectedTrainerId) || subscriptionTrainers[0] || null;
+  const activeTrainerExercises = activeTrainer?.exercises || [];
+  const weightsSigRef = useRef<string>("");
 
   useEffect(() => {
     if (!trainerProfile) return;
@@ -5497,6 +5514,14 @@ function PersonalDataScreen(props: {
     if (clientProfile.goal !== undefined) setAbout(clientProfile.goal || "");
     if (clientProfile.comment !== undefined) setExtraInfo(clientProfile.comment || "");
   }, [clientProfile]);
+
+  useEffect(() => {
+    if (!isClientProfile) return;
+    const sig = stableStringify(activeTrainerExercises || []);
+    if (sig === weightsSigRef.current) return;
+    weightsSigRef.current = sig;
+    setClientWeights(activeTrainerExercises.map((ex) => ({ ...ex })));
+  }, [activeTrainerExercises, isClientProfile]);
 
   const saveTrainerField = (field: keyof TrainerProfile, value: string) => {
     if (!onSaveTrainerProfile) return;
@@ -5973,16 +5998,22 @@ function PersonalDataScreen(props: {
               <button
                 type="button"
                 onClick={() => {
+                  if (!activeTrainer || !onSaveClientExercises) {
+                    setWeightsError(tr("Нет доступного тренера.", "No available coach."));
+                    return;
+                  }
                   const nameValue = draftWeightName.trim();
                   const weightValue = draftWeightValue.trim();
                   if (!nameValue || !weightValue) {
                     setWeightsError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
                     return;
                   }
-                  setClientWeights((prev) => [
-                    ...prev,
+                  const next = [
+                    ...clientWeights,
                     { id: cryptoId(), name: nameValue, weight: weightValue },
-                  ]);
+                  ];
+                  setClientWeights(next);
+                  onSaveClientExercises(activeTrainer.id, next);
                   setDraftWeightName("");
                   setDraftWeightValue("");
                   setShowWeightsForm(false);
@@ -5995,7 +6026,7 @@ function PersonalDataScreen(props: {
             </div>
           ) : null}
 
-          {trainerWeights.length === 0 && clientWeights.length === 0 ? (
+          {clientWeights.length === 0 ? (
             <div style={{ marginTop: 12, opacity: 0.7, fontSize: 14 }}>
               {tr("Пока нет рабочих весов.", "No working weights yet.")}
             </div>
@@ -6003,59 +6034,57 @@ function PersonalDataScreen(props: {
             <div style={{ marginTop: 16 }}>
               <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
               <div style={styles.listBlock}>
-                {[...trainerWeights, ...clientWeights.map((ex) => ({ ...ex, trainerLabel: tr("Вы", "You") }))].map(
-                  (ex, idx, arr) => {
-                    const isLast = idx === arr.length - 1;
-                    const canEdit = ex.trainerLabel === tr("Вы", "You");
-                    return (
-                      <div
-                        key={ex.id}
-                        style={{
-                          ...styles.rowWrap,
-                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                          padding: "12px 0",
-                        }}
-                      >
-                        <div style={styles.exerciseRow}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
-                            <div style={styles.rowSubtitle}>{ex.trainerLabel}</div>
-                            <div style={styles.exerciseWeightRow}>
-                              <input
-                                value={ex.weight || ""}
-                                onChange={(e) => {
-                                  if (!canEdit) return;
-                                  const value = e.target.value;
-                                  setClientWeights((prev) =>
-                                    prev.map((item) =>
-                                      item.id === ex.id ? { ...item, weight: value } : item
-                                    )
-                                  );
-                                }}
-                                placeholder={tr("Вес не указан", "Weight not set")}
-                                readOnly={!canEdit}
-                                style={styles.exerciseInput}
-                              />
-                              {canEdit ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setClientWeights((prev) => prev.filter((item) => item.id !== ex.id));
-                                  }}
-                                  style={styles.exerciseTrashBtn}
-                                  aria-label="delete exercise"
-                                  title={tr("Удалить", "Delete")}
-                                >
-                                  <span style={styles.trashEmoji}>🗑</span>
-                                </button>
-                              ) : null}
-                            </div>
+                {clientWeights.map((ex, idx, arr) => {
+                  const isLast = idx === arr.length - 1;
+                  return (
+                    <div
+                      key={ex.id}
+                      style={{
+                        ...styles.rowWrap,
+                        borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+                        padding: "12px 0",
+                      }}
+                    >
+                      <div style={styles.exerciseRow}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
+                          <div style={styles.exerciseWeightRow}>
+                            <input
+                              value={ex.weight || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const next = clientWeights.map((item) =>
+                                  item.id === ex.id ? { ...item, weight: value } : item
+                                );
+                                setClientWeights(next);
+                                if (activeTrainer && onSaveClientExercises) {
+                                  onSaveClientExercises(activeTrainer.id, next);
+                                }
+                              }}
+                              placeholder={tr("Вес не указан", "Weight not set")}
+                              style={styles.exerciseInput}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = clientWeights.filter((item) => item.id !== ex.id);
+                                setClientWeights(next);
+                                if (activeTrainer && onSaveClientExercises) {
+                                  onSaveClientExercises(activeTrainer.id, next);
+                                }
+                              }}
+                              style={styles.exerciseTrashBtn}
+                              aria-label="delete exercise"
+                              title={tr("Удалить", "Delete")}
+                            >
+                              <span style={styles.trashEmoji}>🗑</span>
+                            </button>
                           </div>
                         </div>
                       </div>
-                    );
-                  }
-                )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
