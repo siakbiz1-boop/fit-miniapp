@@ -2601,6 +2601,7 @@ function ClientSchedule(props: {
 
   if (scheduleScreen === "session" && activeSession) {
     const canClientDelete = activeTrainer?.bookingMode === "both";
+    const canDeleteByTime = sessionStartTime(activeSession).getTime() > Date.now();
 
     return (
       <div style={styles.pageContainer}>
@@ -2689,7 +2690,7 @@ function ClientSchedule(props: {
                     : "—"}
                 </div>
               </div>
-              {canClientDelete ? (
+              {canClientDelete && canDeleteByTime ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -3563,6 +3564,7 @@ function TrainerSchedule(props: {
 
   if (scheduleScreen === "session" && activeSession) {
     const sessionClient = clients.find((c) => c.username === activeSession.clientUsername) || null;
+    const canDeleteByTime = sessionStartTime(activeSession).getTime() > Date.now();
     return (
       <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -3712,6 +3714,7 @@ function TrainerSchedule(props: {
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
                 />
               </div>
+              {canDeleteByTime ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -3778,11 +3781,12 @@ function TrainerSchedule(props: {
                     setActiveSession(null);
                   };
                   void doDelete();
-                }}
-                style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
-              >
-                {tr("Удалить тренировку", "Delete session")}
-              </button>
+                  }}
+                  style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
+                >
+                  {tr("Удалить тренировку", "Delete session")}
+                </button>
+              ) : null}
             </div>
           ) : sessionTab === "weights" ? (
             <div>
