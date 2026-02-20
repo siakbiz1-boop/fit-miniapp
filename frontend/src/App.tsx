@@ -1559,6 +1559,7 @@ export default function App() {
               photoUrl={tgPhotoUrl}
               onOpenSettings={() => setClientTab("settings")}
               sessionsByDate={clientSessionsByDate}
+              trainers={clientTrainers}
             />
           )}
           {clientTab === "schedule" && (
@@ -2362,8 +2363,9 @@ function ClientHome(props: {
   photoUrl: string;
   onOpenSettings: () => void;
   sessionsByDate: Record<string, SessionItem[]>;
+  trainers: TrainerClientInvite[];
 }) {
-  const { name, photoUrl, onOpenSettings, sessionsByDate } = props;
+  const { name, photoUrl, onOpenSettings, sessionsByDate, trainers } = props;
   const tr = useTr();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -2376,6 +2378,11 @@ function ClientHome(props: {
     .filter((s) => sessionEndTime(s).getTime() > now.getTime())
     .sort((a, b) => sessionStartTime(a).getTime() - sessionStartTime(b).getTime());
   const nearest = upcoming[0] || null;
+  const trainerForNearest =
+    nearest?.trainerTgUserId
+      ? trainers.find((t) => t.trainerTgUserId === nearest.trainerTgUserId) || null
+      : null;
+  const trainerHandle = trainerForNearest?.trainerUsername?.trim() || "";
   const todaySessions = sessionsByDate[todayKey] || [];
   const todayCount = todaySessions.length;
   const todayRemaining = todaySessions.filter((s) => sessionEndTime(s).getTime() > now.getTime()).length;
@@ -2406,15 +2413,40 @@ function ClientHome(props: {
         <div style={styles.homeNextBlock}>
           <div style={styles.homeNextTitle}>{tr("Ближайшее занятие", "Next session")}</div>
           {nearest ? (
-            <div style={styles.homeNextCard}>
-              <div style={styles.homeNextRow}>
-                <div style={styles.homeNextTime}>{`${nearest.start}—${nearest.end}`}</div>
-                <div style={{ ...styles.homeNextStatus, color: sessionStatusColor(nearest, new Date()) }}>
-                  {sessionStatusLabel(nearest, new Date())}
+            <>
+              <div style={styles.homeNextCard}>
+                <div style={styles.homeNextRow}>
+                  <div style={styles.homeNextTime}>{`${nearest.start}—${nearest.end}`}</div>
+                  <div style={{ ...styles.homeNextStatus, color: sessionStatusColor(nearest, new Date()) }}>
+                    {sessionStatusLabel(nearest, new Date())}
+                  </div>
                 </div>
+                <div style={styles.homeNextMeta}>{tr("Тренировка", "Session")}</div>
               </div>
-              <div style={styles.homeNextMeta}>{tr("Тренировка", "Session")}</div>
-            </div>
+              {trainerHandle ? (
+                <div style={styles.homeNextContactRow}>
+                  <div style={styles.homeNextContactLabel}>
+                    {tr("Связаться с тренером:", "Contact the trainer:")}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const handle = trainerHandle.replace(/^@/, "");
+                      if (!handle) return;
+                      const link = `https://t.me/${handle}`;
+                      if (typeof WebApp?.openTelegramLink === "function") {
+                        WebApp.openTelegramLink(link);
+                      } else {
+                        window.open(link, "_blank");
+                      }
+                    }}
+                    style={styles.homeNextContactLink}
+                  >
+                    @{trainerHandle.replace(/^@/, "")}
+                  </button>
+                </div>
+              ) : null}
+            </>
           ) : (
             <div style={styles.homeNextEmpty}>
               {tr("У вас пока нет запланированных занятий", "You don't have any scheduled sessions yet")}
