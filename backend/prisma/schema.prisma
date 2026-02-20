@@ -54,6 +54,8 @@ model TrainingSession {
   startTime        String
   endTime          String
   type             String?
+  price            String?
+  comment          String?
   source           SessionSource @default(trainer)
   remindAt         DateTime
   remindedAt       DateTime?
