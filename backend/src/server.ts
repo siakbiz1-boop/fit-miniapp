@@ -1154,6 +1154,52 @@ app.delete("/sessions/:id", async (req, reply) => {
   return reply.code(404).send({ message: "session not found" });
 });
 
+// Update trainer session info (type/price/comment)
+app.patch("/sessions/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const body = req.body as any;
+  const data: any = {};
+  if (body?.type !== undefined) data.type = body.type;
+  if (body?.price !== undefined) data.price = body.price;
+  if (body?.comment !== undefined) data.comment = body.comment;
+
+  if (Object.keys(data).length === 0) {
+    return reply.code(400).send({ message: "Nothing to update" });
+  }
+
+  const tryUpdate = async (sessionId: string) => {
+    const session = await prismaAny.trainingSession.findUnique({ where: { id: sessionId } });
+    if (!session || session.trainerTgUserId !== dbUser.tgUserId) return null;
+    const updated = await prismaAny.trainingSession.update({
+      where: { id: sessionId },
+      data,
+    });
+    return updated;
+  };
+
+  const updated = await tryUpdate(id);
+  if (updated) return { ok: true, session: serializeSession(updated) };
+
+  const prefix = `${dbUser.tgUserId.toString()}_`;
+  if (id.startsWith(prefix)) {
+    const suffix = id.split(prefix).filter(Boolean).pop();
+    if (suffix) {
+      const normalized = `${prefix}${suffix}`;
+      if (normalized !== id) {
+        const updatedNormalized = await tryUpdate(normalized);
+        if (updatedNormalized) return { ok: true, session: serializeSession(updatedNormalized) };
+      }
+    }
+  }
+
+  return reply.code(404).send({ message: "session not found" });
+});
+
 // Client sessions
 app.get("/client/sessions", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);

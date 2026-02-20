@@ -3393,6 +3393,9 @@ function TrainerSchedule(props: {
   const sessionWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
   const [sessionWeightDrafts, setSessionWeightDrafts] = useState<Record<string, string>>({});
   const [nowTs, setNowTs] = useState(() => Date.now());
+  const [draftSessionType, setDraftSessionType] = useState("");
+  const [draftSessionPrice, setDraftSessionPrice] = useState("");
+  const [draftSessionComment, setDraftSessionComment] = useState("");
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3403,6 +3406,13 @@ function TrainerSchedule(props: {
   }, [pendingSession, onConsumePendingSession]);
 
   useEffect(() => {
+    if (!activeSession) return;
+    setDraftSessionType(activeSession.type ?? "");
+    setDraftSessionPrice(activeSession.price ?? "");
+    setDraftSessionComment(activeSession.comment ?? "");
+  }, [activeSession?.id, activeSession?.type, activeSession?.price, activeSession?.comment]);
+
+  useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 30000);
     return () => window.clearInterval(id);
   }, []);
@@ -3410,6 +3420,42 @@ function TrainerSchedule(props: {
   useEffect(() => {
     setSessionWeightDrafts({});
   }, [activeSession?.clientUsername]);
+
+  const saveSessionPatch = async (sessionId: string, patch: { type?: string; price?: string; comment?: string }) => {
+    if (!token) return;
+    try {
+      let res = await fetch(`${apiBase}/sessions/${encodeURIComponent(sessionId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(patch),
+      });
+      if (res.status === 404) {
+        const derivedId = sessionId.startsWith(`${trainerTgUserId}_`)
+          ? sessionId
+          : `${trainerTgUserId}_${sessionId}`;
+        if (derivedId !== sessionId) {
+          res = await fetch(`${apiBase}/sessions/${encodeURIComponent(derivedId)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(patch),
+          });
+        }
+      }
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; session?: any };
+      if (!data?.session || !activeSession) return;
+      const mapped = mapSessionFromApi(data.session);
+      setActiveSession((prev) => (prev && prev.id === mapped.id ? { ...prev, ...mapped } : prev));
+      setSessionsByDate((prev) => {
+        const dateKey = mapped.dateKey;
+        const list = prev[dateKey] ? [...prev[dateKey]] : [];
+        const nextList = list.map((item) => (item.id === mapped.id ? { ...item, ...mapped } : item));
+        return { ...prev, [dateKey]: nextList };
+      });
+    } catch {
+      // ignore
+    }
+  };
 
   const syncTrainerSessionsOnce = async () => {
     if (!token) return;
@@ -3508,7 +3554,7 @@ function TrainerSchedule(props: {
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
-  }, [activeSession?.comment, sessionTab, scheduleScreen]);
+  }, [draftSessionComment, sessionTab, scheduleScreen]);
 
   const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
 
@@ -3696,9 +3742,13 @@ function TrainerSchedule(props: {
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
                 <input
-                  value={activeSession.type ?? ""}
+                  value={draftSessionType}
                   onChange={(e) => {
-                    const value = e.target.value;
+                    setDraftSessionType(e.target.value);
+                  }}
+                  onBlur={() => {
+                    if (!activeSession) return;
+                    const value = draftSessionType.trim();
                     setActiveSession((prev) => (prev ? { ...prev, type: value } : prev));
                     setSessionsByDate((prev) => {
                       const dateKey = activeSession.dateKey;
@@ -3708,6 +3758,7 @@ function TrainerSchedule(props: {
                       );
                       return { ...prev, [dateKey]: nextList };
                     });
+                    saveSessionPatch(activeSession.id, { type: value });
                   }}
                   placeholder={tr("Введите тип тренировки", "Enter session type")}
                   style={styles.input}
@@ -3719,9 +3770,14 @@ function TrainerSchedule(props: {
                   <input
                     inputMode="numeric"
                     pattern="[0-9]*"
-                    value={activeSession.price ?? ""}
+                    value={draftSessionPrice}
                     onChange={(e) => {
-                      const value = normalizePriceRUBWithDelete(e.target.value, activeSession.price ?? "");
+                      const value = normalizePriceRUBWithDelete(e.target.value, draftSessionPrice);
+                      setDraftSessionPrice(value);
+                    }}
+                    onBlur={() => {
+                      if (!activeSession) return;
+                      const value = draftSessionPrice.trim();
                       setActiveSession((prev) => (prev ? { ...prev, price: value } : prev));
                       setSessionsByDate((prev) => {
                         const dateKey = activeSession.dateKey;
@@ -3731,6 +3787,7 @@ function TrainerSchedule(props: {
                         );
                         return { ...prev, [dateKey]: nextList };
                       });
+                      saveSessionPatch(activeSession.id, { price: value });
                     }}
                     placeholder={tr("Введите стоимость", "Enter price")}
                     style={{ ...styles.input, flex: 1 }}
@@ -3751,9 +3808,13 @@ function TrainerSchedule(props: {
                 <div style={styles.fieldLabel}>{tr("Комментарий к тренировке", "Session notes")}</div>
                 <textarea
                   ref={sessionCommentRef}
-                  value={activeSession.comment ?? ""}
+                  value={draftSessionComment}
                   onChange={(e) => {
-                    const value = e.target.value;
+                    setDraftSessionComment(e.target.value);
+                  }}
+                  onBlur={() => {
+                    if (!activeSession) return;
+                    const value = draftSessionComment.trim();
                     setActiveSession((prev) => (prev ? { ...prev, comment: value } : prev));
                     setSessionsByDate((prev) => {
                       const dateKey = activeSession.dateKey;
@@ -3763,6 +3824,7 @@ function TrainerSchedule(props: {
                       );
                       return { ...prev, [dateKey]: nextList };
                     });
+                    saveSessionPatch(activeSession.id, { comment: value });
                   }}
                   placeholder={tr("Введите комментарий", "Enter notes")}
                   rows={3}
@@ -7048,6 +7110,7 @@ function mapSessionFromApi(s: any): SessionItem {
     trainerTgUserId: s.trainerTgUserId ? String(s.trainerTgUserId) : undefined,
     source: s.source === "client" ? "client" : "trainer",
     type: s.type ? String(s.type) : undefined,
+    price: s.price ? String(s.price) : undefined,
     comment: s.comment ? String(s.comment) : undefined,
   };
 }
