@@ -528,7 +528,8 @@ app.get("/clients", async (req, reply) => {
       const clientName = user
         ? [user.firstName, user.lastName].filter(Boolean).join(" ") || null
         : null;
-      return { ...base, clientName, clientProfile: buildProfilePayload(profile) };
+      const clientPhotoUrl = (user as any)?.photoUrl || null;
+      return { ...base, clientName, photoUrl: clientPhotoUrl, clientProfile: buildProfilePayload(profile) };
     }),
   };
 });
@@ -577,11 +578,15 @@ app.post("/clients", async (req, reply) => {
   });
 
   let clientName: string | null = null;
+  let clientPhotoUrl: string | null = null;
   if (created.clientTgUserId) {
     const user = await prisma.user.findUnique({ where: { tgUserId: created.clientTgUserId } });
-    if (user) clientName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
+    if (user) {
+      clientName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
+      clientPhotoUrl = (user as any)?.photoUrl || null;
+    }
   }
-  return { ok: true, client: { ...serializeClient(created), clientName, clientProfile: null } };
+  return { ok: true, client: { ...serializeClient(created), clientName, photoUrl: clientPhotoUrl, clientProfile: null } };
 });
 
 app.patch("/clients/:id", async (req, reply) => {
@@ -637,7 +642,8 @@ app.patch("/clients/:id", async (req, reply) => {
       const profile = await prismaAny.trainerProfile.findUnique({ where: { userId: user.id } });
       clientProfile = buildProfilePayload(profile);
       const clientName = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
-      return { ok: true, client: { ...serializeClient(updated), clientName, clientProfile } };
+      const clientPhotoUrl = (user as any)?.photoUrl || null;
+      return { ok: true, client: { ...serializeClient(updated), clientName, photoUrl: clientPhotoUrl, clientProfile } };
     }
   }
 

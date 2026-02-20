@@ -2365,7 +2365,11 @@ function ClientHome(props: {
 }) {
   const { name, photoUrl, onOpenSettings, sessionsByDate } = props;
   const tr = useTr();
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const upcoming = allSessions
@@ -2375,11 +2379,11 @@ function ClientHome(props: {
   const todaySessions = sessionsByDate[todayKey] || [];
   const todayCount = todaySessions.length;
   const todayRemaining = todaySessions.filter((s) => sessionEndTime(s).getTime() > now.getTime()).length;
-  const weekStart = startOfWeekMonday(now);
-  const weekEnd = endOfWeekMonday(now);
-  const completedThisWeek = allSessions.filter((s) => {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const completedThisMonth = allSessions.filter((s) => {
     const end = sessionEndTime(s);
-    return end.getTime() <= now.getTime() && end.getTime() >= weekStart.getTime() && end.getTime() <= weekEnd.getTime();
+    return end.getTime() <= now.getTime() && end.getTime() >= monthStart.getTime() && end.getTime() <= monthEnd.getTime();
   }).length;
 
   return (
@@ -2434,11 +2438,11 @@ function ClientHome(props: {
             </div>
           </div>
         ) : null}
-        {completedThisWeek > 0 ? (
+        {completedThisMonth > 0 ? (
           <div style={styles.homeWeekBlock}>
-            <div style={styles.homeNextTitle}>{tr("Тренировок за неделю", "Sessions this week")}</div>
+            <div style={styles.homeNextTitle}>{tr("Тренировок в этом месяце", "Sessions this month")}</div>
             <div style={styles.homeWeekCard}>
-              <div style={styles.homeWeekValue}>{completedThisWeek}</div>
+              <div style={styles.homeWeekValue}>{completedThisMonth}</div>
             </div>
           </div>
         ) : null}
@@ -4614,7 +4618,7 @@ function TrainerClients(props: {
             style={styles.iconBtn}
             aria-label="add client"
           >
-            <IconPlus />
+            ➕
           </button>
         ) : (
           <div style={{ width: 44, height: 44 }} />
@@ -7078,7 +7082,7 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     code: String(c.code || ""),
     createdAt: c.createdAt ? new Date(c.createdAt).getTime() : Date.now(),
     status: c.status === "active" ? "active" : "pending",
-    photoUrl: "",
+    photoUrl: c.photoUrl ? String(c.photoUrl) : "",
     clientName: c.clientName ? String(c.clientName) : undefined,
     trainerTgUserId: c.trainerTgUserId ? String(c.trainerTgUserId) : undefined,
     trainerUsername: c.trainerUsername ? String(c.trainerUsername) : undefined,
@@ -8101,6 +8105,7 @@ const styles: Record<string, any> = {
     borderRadius: 14,
     border: "1px solid rgba(77, 163, 255, 0.25)",
     background: "rgba(77, 163, 255, 0.03)",
+    overflow: "hidden",
   },
   homeNextTitle: {
     fontSize: 14,
@@ -8115,6 +8120,8 @@ const styles: Record<string, any> = {
     background: "linear-gradient(180deg, rgba(77, 163, 255, 0.12), rgba(77, 163, 255, 0.04))",
     boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
     width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
     textAlign: "left",
     cursor: "pointer",
     display: "block",
