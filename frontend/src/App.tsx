@@ -2510,20 +2510,15 @@ function ClientSchedule(props: {
   const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
 
   useEffect(() => {
-    if (!todayRef.current || !scrollerRef.current) return;
-    const el = todayRef.current;
-    const scroller = scrollerRef.current;
-    const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
-    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [days]);
-
-  useEffect(() => {
     if (!selectedRef.current || !scrollerRef.current) return;
     const el = selectedRef.current;
     const scroller = scrollerRef.current;
-    const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
-    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [selected, days]);
+    const id = window.requestAnimationFrame(() => {
+      const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
+      scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [selected, days, scheduleScreen]);
 
   useEffect(() => {
     if (!hasTgBack) return;
@@ -3559,20 +3554,15 @@ function TrainerSchedule(props: {
   const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
 
   useEffect(() => {
-    if (!todayRef.current || !scrollerRef.current) return;
-    const el = todayRef.current;
-    const scroller = scrollerRef.current;
-    const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
-    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [days]);
-
-  useEffect(() => {
     if (!selectedRef.current || !scrollerRef.current) return;
     const el = selectedRef.current;
     const scroller = scrollerRef.current;
-    const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
-    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [selected, days]);
+    const id = window.requestAnimationFrame(() => {
+      const left = el.offsetLeft - scroller.clientWidth / 2 + el.clientWidth / 2;
+      scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [selected, days, scheduleScreen]);
 
   useEffect(() => {
     if (!token || !trainerTgUserId) return;
