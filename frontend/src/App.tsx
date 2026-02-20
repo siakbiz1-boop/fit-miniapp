@@ -1713,7 +1713,11 @@ function TrainerHome({
   const [statsInfoOpen, setStatsInfoOpen] = useState(false);
   const [statsRangeOpen, setStatsRangeOpen] = useState(false);
   const [financeHistoryOpen, setFinanceHistoryOpen] = useState(false);
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const doneSessions = allSessions.filter((s) => sessionEndTime(s).getTime() <= now.getTime());
@@ -1746,6 +1750,13 @@ function TrainerHome({
   const subscriptionPlanName = tr("Тестовый", "Test");
   const subscriptionConnectedClients = clients.filter((c) => !c.archived).length;
   const subscriptionClientLimitLabel = "∞";
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const completedThisMonth = allSessions.filter((s) => {
+    const end = sessionEndTime(s);
+    return end.getTime() <= now.getTime() && end.getTime() >= monthStart.getTime() && end.getTime() <= monthEnd.getTime();
+  }).length;
+  const subscriptionMonthlyLimitLabel = "∞";
 
   const statsDateKey = formatDateKey(statsDate);
   const statsSessions = sessionsByDate[statsDateKey] || [];
@@ -2288,6 +2299,14 @@ function TrainerHome({
               <div style={styles.homeSubscriptionRow}>
                 <div style={styles.homeSubscriptionLabel}>{tr("Дата следующего списания", "Next charge date")}</div>
                 <div style={styles.homeSubscriptionValue}>{subscriptionNextBilling}</div>
+              </div>
+              <div style={styles.homeSubscriptionRow}>
+                <div style={styles.homeSubscriptionLabel}>
+                  {tr("Тренировок в этом месяце", "Sessions this month")}
+                </div>
+                <div style={styles.homeSubscriptionValue}>
+                  {completedThisMonth} {tr("из", "of")} {subscriptionMonthlyLimitLabel}
+                </div>
               </div>
               <div style={styles.homeSubscriptionRow}>
               <div style={styles.homeSubscriptionLabel}>{tr("Подключено клиентов", "Connected clients")}</div>
