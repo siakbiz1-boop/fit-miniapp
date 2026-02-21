@@ -248,6 +248,39 @@ async function sendTelegramReminder(params: {
   }
 }
 
+async function sendTelegramReminderToClient(params: {
+  chatId: string;
+  startTime: string;
+  endTime: string;
+  trainerName: string;
+}) {
+  const { chatId, startTime, endTime, trainerName } = params;
+  const text = [
+    "Напоминание о тренировке ⚠️",
+    "",
+    `У вас запланирована тренировка на ${startTime}-${endTime}`,
+    `Тренер: ${trainerName}`,
+    "Информацию о тренировке в приложении",
+  ].join("\n");
+
+  const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      reply_markup: {
+        inline_keyboard: [[{ text: "Открыть приложение", web_app: { url: WEBAPP_URL } }]],
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Telegram sendMessage failed: ${res.status} ${errText}`);
+  }
+}
+
 async function tickReminders() {
   const now = new Date();
   const due = await prismaAny.trainingSession.findMany({
@@ -280,6 +313,35 @@ async function tickReminders() {
         endTime: session.endTime,
         clientName,
       });
+
+      try {
+        const clientLink = await prismaAny.trainerClient.findFirst({
+          where: {
+            trainerTgUserId: session.trainerTgUserId,
+            clientUsername: session.clientUsername,
+            status: "active",
+            clientTgUserId: { not: null },
+          },
+        });
+        if (clientLink?.clientTgUserId) {
+          const trainerUser = await prisma.user.findUnique({
+            where: { tgUserId: session.trainerTgUserId },
+          });
+          const trainerLabel =
+            (trainerUser?.username
+              ? `@${String(trainerUser.username).replace(/^@/, "")}`
+              : `${trainerUser?.firstName ?? ""} ${trainerUser?.lastName ?? ""}`.trim()) ||
+            "Тренер";
+          await sendTelegramReminderToClient({
+            chatId: clientLink.clientTgUserId.toString(),
+            startTime: session.startTime,
+            endTime: session.endTime,
+            trainerName: trainerLabel,
+          });
+        }
+      } catch (err) {
+        app.log.error({ err, sessionId: session.id }, "Failed to send client reminder");
+      }
     } catch (err) {
       try {
         await prismaAny.trainingSession.updateMany({
