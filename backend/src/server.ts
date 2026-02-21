@@ -11,7 +11,10 @@ import { validate } from "@tma.js/init-data-node";
 const PORT = Number(process.env.PORT ?? 3001);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
-const WEBAPP_URL = process.env.WEBAPP_URL ?? "https://app.fitminiapp.tech/";
+const WEBAPP_URL = (process.env.WEBAPP_URL ?? "https://app.fitminiapp.tech/")
+  .replace(/^WEBAPP_URL\s*=\s*/i, "")
+  .replace(/^["']|["']$/g, "")
+  .trim();
 
 if (!TELEGRAM_BOT_TOKEN) {
   throw new Error("Missing TELEGRAM_BOT_TOKEN in backend/.env");
