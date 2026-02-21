@@ -23,6 +23,7 @@ if (!JWT_SECRET) {
 // ✅ Fix TS: from here they are guaranteed strings
 const BOT_TOKEN: string = TELEGRAM_BOT_TOKEN;
 const SECRET: string = JWT_SECRET;
+const FAR_FUTURE = new Date(8640000000000000);
 
 // --------------------
 // Prisma + Fastify
@@ -127,6 +128,11 @@ function parseDateKey(value: string) {
   const [y, m, d] = parts;
   if (!y || !m || !d) return null;
   return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+function computeRemindAt(startAt: Date, hours: number | null | undefined) {
+  if (!hours || hours <= 0) return FAR_FUTURE;
+  return new Date(startAt.getTime() - hours * 60 * 60 * 1000);
 }
 
 function serializeClient(client: any) {
@@ -382,6 +388,7 @@ app.get("/profile", async (req, reply) => {
       role: dbUser.role, // null | "trainer" | "client"
       theme: dbUser.theme,
       language: dbUser.language,
+      reminderHours: (dbUser as any).reminderHours ?? 1,
     },
   };
 });
@@ -394,10 +401,15 @@ app.patch("/profile/preferences", async (req, reply) => {
   const body = req.body as any;
   const theme = body?.theme;
   const language = body?.language;
+  const reminderHours = body?.reminderHours;
 
   const data: Record<string, any> = {};
   if (theme === "light" || theme === "dark") data.theme = theme;
   if (language === "ru" || language === "en") data.language = language;
+  if (typeof reminderHours === "number") {
+    const allowed = new Set([0, 1, 2, 3, 4, 5, 6, 9, 12]);
+    if (allowed.has(reminderHours)) data.reminderHours = reminderHours;
+  }
 
   if (Object.keys(data).length === 0) {
     return reply.code(400).send({ message: "Nothing to update" });
@@ -408,7 +420,40 @@ app.patch("/profile/preferences", async (req, reply) => {
     data,
   });
 
-  return { ok: true, theme: updated.theme, language: updated.language };
+  if (data.reminderHours !== undefined && dbUser.role === "trainer") {
+    const hours = data.reminderHours;
+    const now = new Date();
+    const farFuture = new Date(8640000000000000);
+    const futureSessions = await prismaAny.trainingSession.findMany({
+      where: {
+        trainerTgUserId: dbUser.tgUserId,
+        startAt: { gt: now },
+        remindedAt: null,
+      },
+      select: { id: true, startAt: true },
+    });
+    const updates = futureSessions.map((s: any) => ({
+      id: s.id,
+      remindAt: hours > 0 ? new Date(s.startAt.getTime() - hours * 60 * 60 * 1000) : farFuture,
+    }));
+    if (updates.length) {
+      await prisma.$transaction(
+        updates.map((u: { id: string; remindAt: Date }) =>
+          prismaAny.trainingSession.update({
+            where: { id: u.id },
+            data: { remindAt: u.remindAt },
+          })
+        )
+      );
+    }
+  }
+
+  return {
+    ok: true,
+    theme: updated.theme,
+    language: updated.language,
+    reminderHours: (updated as any).reminderHours ?? 1,
+  };
 });
 
 // Delete profile (trainer/client) and related data
@@ -1097,7 +1142,8 @@ app.post("/book", async (req, reply) => {
   if (Date.now() >= startAt.getTime()) {
     return reply.code(403).send({ message: "slot already started" });
   }
-  const remindAt = new Date(startAt.getTime() - 60 * 60 * 1000);
+  const reminderHours = (trainer as any)?.reminderHours ?? 1;
+  const remindAt = computeRemindAt(startAt, reminderHours);
   const id = `${trainerTgUserId.toString()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const session = await prismaAny.trainingSession.create({
@@ -1238,7 +1284,8 @@ app.post("/sessions/sync", async (req, reply) => {
       if (!s?.id || !s?.clientUsername || Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
         return null;
       }
-      const remindAt = new Date(startAt.getTime() - 60 * 60 * 1000);
+      const reminderHours = (dbUser as any)?.reminderHours ?? 1;
+      const remindAt = computeRemindAt(startAt, reminderHours);
       const rawId = String(s.id);
       const prefix = `${dbUser.tgUserId.toString()}_`;
       const id = rawId.startsWith(prefix) ? rawId : `${prefix}${rawId}`;

@@ -10,6 +10,17 @@ function getRoleStorageKey(base: string, role: Role | null) {
 
 type Role = "trainer" | "client" | null;
 
+function formatReminderLabel(hours: number, language: "ru" | "en", t: UiText) {
+  if (!hours || hours <= 0) return t.remindersOff;
+  if (language === "en") return `In ${hours} hour${hours === 1 ? "" : "s"}`;
+  const mod10 = hours % 10;
+  const mod100 = hours % 100;
+  let suffix = "часов";
+  if (mod10 === 1 && mod100 !== 11) suffix = "час";
+  else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) suffix = "часа";
+  return `За ${hours} ${suffix}`;
+}
+
 type ProfileResponse = {
   ok: true;
   user: {
@@ -20,6 +31,7 @@ type ProfileResponse = {
     role: Role;
     theme?: "light" | "dark" | null;
     language?: "ru" | "en" | null;
+    reminderHours?: number | null;
   };
 };
 
@@ -224,6 +236,16 @@ export default function App() {
         : "light";
     } catch {
       return "light";
+    }
+  });
+  const [reminderHours, setReminderHours] = useState<number>(() => {
+    try {
+      const storedRole = localStorage.getItem("role");
+      const raw = localStorage.getItem(getRoleStorageKey("reminderHours", storedRole as Role | null));
+      const parsed = raw ? Number(raw) : NaN;
+      return Number.isFinite(parsed) ? parsed : 1;
+    } catch {
+      return 1;
     }
   });
 
@@ -495,7 +517,11 @@ export default function App() {
     }
   }
 
-  function schedulePrefsSync(nextTheme: "light" | "dark", nextLanguage: "ru" | "en") {
+  function schedulePrefsSync(patch: {
+    theme?: "light" | "dark";
+    language?: "ru" | "en";
+    reminderHours?: number;
+  }) {
     if (!token) return;
     if (prefsSyncRef.current) window.clearTimeout(prefsSyncRef.current);
     prefsSyncRef.current = window.setTimeout(async () => {
@@ -503,7 +529,7 @@ export default function App() {
         await fetch(`${apiBase}/profile/preferences`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ theme: nextTheme, language: nextLanguage }),
+          body: JSON.stringify(patch),
         });
       } catch {
         // ignore
@@ -564,7 +590,7 @@ export default function App() {
       // ignore
     }
     if (role && token) {
-      schedulePrefsSync(theme, language);
+      schedulePrefsSync({ theme, language });
     }
   }, [language, role]);
 
@@ -740,6 +766,9 @@ export default function App() {
     }
     if (data.user.language === "ru" || data.user.language === "en") {
       setLanguage(data.user.language);
+    }
+    if (typeof data.user.reminderHours === "number") {
+      setReminderHours(data.user.reminderHours);
     }
 
     const tgUser = WebApp.initDataUnsafe?.user;
@@ -1197,9 +1226,21 @@ export default function App() {
       // ignore
     }
     if (role && token) {
-      schedulePrefsSync(theme, language);
+      schedulePrefsSync({ theme, language });
     }
   }, [theme, role]);
+
+  useEffect(() => {
+    if (!role) return;
+    try {
+      localStorage.setItem(getRoleStorageKey("reminderHours", role), String(reminderHours));
+    } catch {
+      // ignore
+    }
+    if (role && token) {
+      schedulePrefsSync({ reminderHours });
+    }
+  }, [reminderHours, role, token]);
 
   useEffect(() => {
     if (!role) return;
@@ -1212,6 +1253,9 @@ export default function App() {
       if (storedTheme === "dark" || storedTheme === "light") {
         setTheme(storedTheme);
       }
+      const storedReminders = localStorage.getItem(getRoleStorageKey("reminderHours", role));
+      const parsed = storedReminders ? Number(storedReminders) : NaN;
+      if (Number.isFinite(parsed)) setReminderHours(parsed);
     } catch {
       // ignore
     }
@@ -1438,6 +1482,8 @@ export default function App() {
                 setTheme={setTheme}
                 language={language}
                 setLanguage={setLanguage}
+                reminderHours={reminderHours}
+                setReminderHours={setReminderHours}
                 t={t}
                 trainerProfile={trainerProfile}
                 onSaveTrainerProfile={saveTrainerProfile}
@@ -1596,6 +1642,8 @@ export default function App() {
               setTheme={setTheme}
               language={language}
               setLanguage={setLanguage}
+              reminderHours={reminderHours}
+              setReminderHours={setReminderHours}
               t={t}
               trainerProfile={trainerProfile}
               onSaveTrainerProfile={saveTrainerProfile}
@@ -3341,6 +3389,8 @@ function ClientSettings(props: {
   setTheme: (t: "light" | "dark") => void;
   language: "ru" | "en";
   setLanguage: (v: "ru" | "en") => void;
+  reminderHours: number;
+  setReminderHours: (v: number) => void;
   t: UiText;
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
@@ -5380,6 +5430,8 @@ function TrainerSettings(props: {
   setTheme: (t: "light" | "dark") => void;
   language: "ru" | "en";
   setLanguage: (v: "ru" | "en") => void;
+  reminderHours: number;
+  setReminderHours: (v: number) => void;
   t: UiText;
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
@@ -5414,6 +5466,8 @@ function TrainerSettings(props: {
     language,
     setLanguage,
     t,
+    reminderHours,
+    setReminderHours,
     trainerProfile,
     onSaveTrainerProfile,
     clientProfile,
@@ -5437,7 +5491,6 @@ function TrainerSettings(props: {
     tr("Здесь находится информация о вас, которая будет видна всем вашим клиентам!", "This is your info that will be visible to all your clients.");
   const resolvedSubscriptionTabLabel = subscriptionTabLabel ?? tr("Моя подписка", "My subscription");
   const [bookingMode, setBookingMode] = useState<"trainer" | "both">("trainer");
-  const [remindersEnabled, setRemindersEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     if (trainerProfile?.bookingMode === "both" || trainerProfile?.bookingMode === "trainer") {
@@ -5497,8 +5550,9 @@ function TrainerSettings(props: {
     return (
       <RemindersScreen
         onBack={() => setScreen("main")}
-        enabled={remindersEnabled}
-        setEnabled={setRemindersEnabled}
+        value={reminderHours}
+        onChange={setReminderHours}
+        language={language}
         t={t}
       />
     );
@@ -5544,7 +5598,7 @@ function TrainerSettings(props: {
         <SettingsRow
           icon={<IconBell />}
           title={t.settingsReminders}
-          right={remindersEnabled ? t.remindersOn : t.remindersOff}
+          right={formatReminderLabel(reminderHours, language, t)}
           onClick={() => setScreen("reminders")}
         />
         <SettingsRow
@@ -5699,11 +5753,13 @@ function BookingModeScreen(props: {
 
 function RemindersScreen(props: {
   onBack: () => void;
-  enabled: boolean;
-  setEnabled: (v: boolean) => void;
+  value: number;
+  onChange: (v: number) => void;
+  language: "ru" | "en";
   t: UiText;
 }) {
-  const { onBack, enabled, setEnabled, t } = props;
+  const { onBack, value, onChange, language, t } = props;
+  const options = [0, 1, 2, 3, 4, 5, 6, 9, 12];
   return (
     <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -5720,28 +5776,20 @@ function RemindersScreen(props: {
       <div style={styles.topBarDivider} />
 
       <div style={styles.themeTabs}>
-        <button
-          type="button"
-          onClick={() => setEnabled(true)}
-          style={{
-            ...styles.scheduleTab,
-            ...(enabled ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
-          }}
-        >
-          {t.remindersOn}
-        </button>
-        <button
-          type="button"
-          onClick={() => setEnabled(false)}
-          style={{
-            ...styles.scheduleTab,
-            ...(!enabled ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
-          }}
-        >
-          {t.remindersOff}
-        </button>
+        {options.map((hours) => (
+          <button
+            key={hours}
+            type="button"
+            onClick={() => onChange(hours)}
+            style={{
+              ...styles.scheduleTab,
+              ...(value === hours ? styles.scheduleTabActive : null),
+              alignSelf: "flex-start",
+            }}
+          >
+            {formatReminderLabel(hours, language, t)}
+          </button>
+        ))}
       </div>
     </div>
   );
