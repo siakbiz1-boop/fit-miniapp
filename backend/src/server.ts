@@ -142,6 +142,12 @@ function escapeMarkdownV2(value: string) {
   return String(value || "").replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
 }
 
+function formatTimeRangeMarkdown(startTime: string, endTime: string) {
+  const safeStart = escapeMarkdownV2(startTime);
+  const safeEnd = escapeMarkdownV2(endTime);
+  return `${safeStart}\\-${safeEnd}`;
+}
+
 function serializeClient(client: any) {
   if (!client) return client;
   return {
@@ -228,12 +234,11 @@ async function sendTelegramReminder(params: {
 }) {
   const { chatId, startTime, endTime, clientName } = params;
   const safeClient = escapeMarkdownV2(clientName);
-  const safeStart = escapeMarkdownV2(startTime);
-  const safeEnd = escapeMarkdownV2(endTime);
+  const timeRange = formatTimeRangeMarkdown(startTime, endTime);
   const text = [
     "*Напоминание о тренировке ⚠️*",
     "",
-    `У Вас запланирована тренировка на ${safeStart}-${safeEnd}`,
+    `У Вас запланирована тренировка на ${timeRange}`,
     `Клиент: ${safeClient}`,
     "_Не забудьте заполнить информацию о тренировке_",
   ].join("\n");
@@ -265,12 +270,11 @@ async function sendTelegramReminderToClient(params: {
 }) {
   const { chatId, startTime, endTime, trainerName } = params;
   const safeTrainer = escapeMarkdownV2(trainerName);
-  const safeStart = escapeMarkdownV2(startTime);
-  const safeEnd = escapeMarkdownV2(endTime);
+  const timeRange = formatTimeRangeMarkdown(startTime, endTime);
   const text = [
     "*Напоминание о тренировке ⚠️*",
     "",
-    `У вас запланирована тренировка на ${safeStart}-${safeEnd}`,
+    `У вас запланирована тренировка на ${timeRange}`,
     `Тренер: ${safeTrainer}`,
     "_Информация о тренировке в приложении_",
   ].join("\n");
