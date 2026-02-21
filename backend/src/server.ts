@@ -138,6 +138,10 @@ function computeRemindAt(startAt: Date, hours: number | null | undefined) {
   return new Date(startAt.getTime() - hours * 60 * 60 * 1000);
 }
 
+function escapeMarkdownV2(value: string) {
+  return String(value || "").replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
+}
+
 function serializeClient(client: any) {
   if (!client) return client;
   return {
@@ -223,11 +227,14 @@ async function sendTelegramReminder(params: {
   clientName: string;
 }) {
   const { chatId, startTime, endTime, clientName } = params;
+  const safeClient = escapeMarkdownV2(clientName);
+  const safeStart = escapeMarkdownV2(startTime);
+  const safeEnd = escapeMarkdownV2(endTime);
   const text = [
     "*Напоминание о тренировке ⚠️*",
     "",
-    `У Вас запланирована тренировка на ${startTime}-${endTime}`,
-    `Клиент: ${clientName}`,
+    `У Вас запланирована тренировка на ${safeStart}-${safeEnd}`,
+    `Клиент: ${safeClient}`,
     "_Не забудьте заполнить информацию о тренировке_",
   ].join("\n");
 
@@ -237,7 +244,7 @@ async function sendTelegramReminder(params: {
     body: JSON.stringify({
       chat_id: chatId,
       text,
-      parse_mode: "Markdown",
+      parse_mode: "MarkdownV2",
       reply_markup: {
         inline_keyboard: [[{ text: "Открыть приложение", web_app: { url: WEBAPP_URL } }]],
       },
@@ -257,11 +264,14 @@ async function sendTelegramReminderToClient(params: {
   trainerName: string;
 }) {
   const { chatId, startTime, endTime, trainerName } = params;
+  const safeTrainer = escapeMarkdownV2(trainerName);
+  const safeStart = escapeMarkdownV2(startTime);
+  const safeEnd = escapeMarkdownV2(endTime);
   const text = [
     "*Напоминание о тренировке ⚠️*",
     "",
-    `У вас запланирована тренировка на ${startTime}-${endTime}`,
-    `Тренер: ${trainerName}`,
+    `У вас запланирована тренировка на ${safeStart}-${safeEnd}`,
+    `Тренер: ${safeTrainer}`,
     "_Информация о тренировке в приложении_",
   ].join("\n");
 
@@ -271,7 +281,7 @@ async function sendTelegramReminderToClient(params: {
     body: JSON.stringify({
       chat_id: chatId,
       text,
-      parse_mode: "Markdown",
+      parse_mode: "MarkdownV2",
       reply_markup: {
         inline_keyboard: [[{ text: "Открыть приложение", web_app: { url: WEBAPP_URL } }]],
       },
