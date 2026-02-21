@@ -224,10 +224,11 @@ async function sendTelegramReminder(params: {
 }) {
   const { chatId, startTime, endTime, clientName } = params;
   const text = [
-    "Напоминание о тренировке",
+    "*Напоминание о тренировке ⚠️*",
+    "",
     `У Вас запланирована тренировка на ${startTime}-${endTime}`,
     `Клиент: ${clientName}`,
-    "Подробности о тренировке смотри в приложении",
+    "_Не забудьте заполнить информацию о тренировке_",
   ].join("\n");
 
   const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -236,6 +237,7 @@ async function sendTelegramReminder(params: {
     body: JSON.stringify({
       chat_id: chatId,
       text,
+      parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [[{ text: "Открыть приложение", web_app: { url: WEBAPP_URL } }]],
       },
@@ -256,11 +258,11 @@ async function sendTelegramReminderToClient(params: {
 }) {
   const { chatId, startTime, endTime, trainerName } = params;
   const text = [
-    "Напоминание о тренировке ⚠️",
+    "*Напоминание о тренировке ⚠️*",
     "",
     `У вас запланирована тренировка на ${startTime}-${endTime}`,
     `Тренер: ${trainerName}`,
-    "Информацию о тренировке в приложении",
+    "_Информация о тренировке в приложении_",
   ].join("\n");
 
   const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -269,6 +271,7 @@ async function sendTelegramReminderToClient(params: {
     body: JSON.stringify({
       chat_id: chatId,
       text,
+      parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [[{ text: "Открыть приложение", web_app: { url: WEBAPP_URL } }]],
       },
