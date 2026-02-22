@@ -428,7 +428,17 @@ export default function App() {
       const data = (await res.json()) as { ok: boolean; sessions?: any[] };
       if (!data?.sessions) return;
       const mapped = data.sessions.map((s) => mapSessionFromApi(s));
-      setHistoryByClient((prev) => ({ ...prev, [client.username]: mapped }));
+      setHistoryByClient((prev) => {
+        const next = { ...prev, [client.username]: mapped };
+        try {
+          if (tgUserId) {
+            localStorage.setItem(`historyByClient:${tgUserId}`, JSON.stringify(next));
+          }
+        } catch {
+          // ignore
+        }
+        return next;
+      });
     } catch {
       // ignore
     }
@@ -1260,6 +1270,21 @@ export default function App() {
       // ignore
     }
   }, [role]);
+
+  useEffect(() => {
+    if (role !== "trainer" || !tgUserId) return;
+    try {
+      const cached = localStorage.getItem(`historyByClient:${tgUserId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached) as Record<string, SessionItem[]>;
+        if (parsed && typeof parsed === "object") {
+          setHistoryByClient(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [role, tgUserId]);
 
   useEffect(() => {
     if (activeTab !== "settings") setSettingsScreen("main");
