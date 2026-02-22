@@ -5177,7 +5177,7 @@ function ClientDetailScreen(props: {
 }) {
   const { client, onBack, onUpdateClient, onToggleArchive, history, onSaveExercises } = props;
   const tr = useTr();
-  const [tab, setTab] = useState<"info" | "contacts" | "weights" | "history">("info");
+  const [tab, setTab] = useState<"info" | "contacts" | "subscription" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
   const [draftFullName, setDraftFullName] = useState("");
@@ -5185,6 +5185,11 @@ function ClientDetailScreen(props: {
   const [draftWeight, setDraftWeight] = useState("");
   const [draftGoal, setDraftGoal] = useState("");
   const [draftComment, setDraftComment] = useState("");
+  const [draftSubStart, setDraftSubStart] = useState("");
+  const [draftSubEnd, setDraftSubEnd] = useState("");
+  const [draftSubPrice, setDraftSubPrice] = useState("");
+  const [draftSubTotal, setDraftSubTotal] = useState("");
+  const [draftSubLeft, setDraftSubLeft] = useState("");
   const [draftContactTelegram, setDraftContactTelegram] = useState("");
   const [draftContactPhone, setDraftContactPhone] = useState("");
   const [draftContactInstagram, setDraftContactInstagram] = useState("");
@@ -5205,6 +5210,11 @@ function ClientDetailScreen(props: {
     setDraftWeight(client?.weight ?? "");
     setDraftGoal(client?.goal ?? "");
     setDraftComment(client?.comment ?? "");
+    setDraftSubStart(client?.subscriptionStart ?? "");
+    setDraftSubEnd(client?.subscriptionEnd ?? "");
+    setDraftSubPrice(client?.subscriptionPrice ?? "");
+    setDraftSubTotal(client?.subscriptionTotal ?? "");
+    setDraftSubLeft(client?.subscriptionLeft ?? "");
     setDraftContactTelegram(client?.contactTelegram ?? "");
     setDraftContactPhone(client?.contactPhone ?? "");
     setDraftContactInstagram(client?.contactInstagram ?? "");
@@ -5222,6 +5232,11 @@ function ClientDetailScreen(props: {
     client?.height,
     client?.weight,
     client?.fullName,
+    client?.subscriptionStart,
+    client?.subscriptionEnd,
+    client?.subscriptionPrice,
+    client?.subscriptionTotal,
+    client?.subscriptionLeft,
     client?.contactTelegram,
     client?.contactPhone,
     client?.contactInstagram,
@@ -5261,6 +5276,32 @@ function ClientDetailScreen(props: {
       | "contactPhone"
       | "contactInstagram"
       | "contactOtherSocial",
+    value: string
+  ) => {
+    if (!client) return;
+    const current = (client as any)?.[field] ?? "";
+    if (String(current || "").trim() === String(value || "").trim()) return;
+    onUpdateClient(client.id, { [field]: value } as Partial<TrainerClientInvite>);
+  };
+
+  const toISODate = (dmy: string) => {
+    const parsed = parseDateDMY(dmy);
+    if (!parsed) return "";
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const d = String(parsed.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
+  const fromISODate = (iso: string) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    if (!y || !m || !d) return "";
+    return `${d}.${m}.${y}`;
+  };
+
+  const saveSubscriptionField = (
+    field: "subscriptionStart" | "subscriptionEnd" | "subscriptionPrice" | "subscriptionTotal" | "subscriptionLeft",
     value: string
   ) => {
     if (!client) return;
@@ -5322,6 +5363,16 @@ function ClientDetailScreen(props: {
                 }}
               >
                 {tr("Контакты клиента", "Client contacts")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("subscription")}
+                style={{
+                  ...styles.clientTab,
+                  ...(visibleTab === "subscription" ? styles.clientTabActive : null),
+                }}
+              >
+                {tr("Информация об абонементе", "Subscription info")}
               </button>
               <button
                 type="button"
@@ -5570,6 +5621,88 @@ function ClientDetailScreen(props: {
               {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
             </>
           )}
+        </div>
+      ) : visibleTab === "subscription" ? (
+        <div style={styles.clientPanelPlain}>
+          <div style={styles.metricsRow}>
+            <div style={{ flex: 1 }}>
+              <div style={styles.fieldLabel}>{tr("Дата начала", "Start date")}</div>
+              <input
+                type="date"
+                value={toISODate(draftSubStart)}
+                onChange={(e) => setDraftSubStart(fromISODate(e.target.value))}
+                onBlur={() => saveSubscriptionField("subscriptionStart", draftSubStart)}
+                style={styles.input}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={styles.fieldLabel}>{tr("Дата завершения", "End date")}</div>
+              <input
+                type="date"
+                value={toISODate(draftSubEnd)}
+                onChange={(e) => setDraftSubEnd(fromISODate(e.target.value))}
+                onBlur={() => saveSubscriptionField("subscriptionEnd", draftSubEnd)}
+                style={styles.input}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+            <div style={styles.inputRow}>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={draftSubPrice}
+                onChange={(e) => {
+                  const value = normalizePriceRUBWithDelete(e.target.value, draftSubPrice);
+                  setDraftSubPrice(value);
+                }}
+                onBlur={() => {
+                  const value = normalizePriceRUB(draftSubPrice);
+                  if (value) setDraftSubPrice(value);
+                  saveSubscriptionField("subscriptionPrice", value);
+                }}
+                placeholder={tr("Введите стоимость", "Enter price")}
+                style={{ ...styles.input, flex: 1 }}
+              />
+              <button
+                type="button"
+                style={styles.inlineCheckBtn}
+                onClick={() => {
+                  (document.activeElement as HTMLElement | null)?.blur?.();
+                }}
+                aria-label="save"
+              >
+                ✓
+              </button>
+            </div>
+          </div>
+
+          <div style={{ ...styles.metricsRow, marginTop: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={styles.fieldLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
+              <input
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={draftSubTotal}
+                onChange={(e) => setDraftSubTotal(e.target.value.replace(/[^\d]/g, ""))}
+                onBlur={() => {
+                  const value = (draftSubTotal || "").trim();
+                  setDraftSubTotal(value);
+                  setDraftSubLeft(value);
+                  saveSubscriptionField("subscriptionTotal", value);
+                  saveSubscriptionField("subscriptionLeft", value);
+                }}
+                placeholder={tr("Занятий", "Sessions")}
+                style={styles.input}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={styles.fieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
+              <div style={styles.readOnlyValue}>{draftSubLeft || draftSubTotal || "—"}</div>
+            </div>
+          </div>
         </div>
       ) : visibleTab === "history" ? (
         <div style={styles.clientPanelPlain}>
