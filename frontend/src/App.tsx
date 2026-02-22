@@ -1758,6 +1758,7 @@ function TrainerHome({
   const [homeTab, setHomeTab] = useState<"work" | "income" | "subscription">("work");
   const [statsMode, setStatsMode] = useState<"money" | "count">("money");
   const [statsDate, setStatsDate] = useState<Date>(() => startOfDay(new Date()));
+  const [statsSelectedDate, setStatsSelectedDate] = useState<Date>(() => startOfDay(new Date()));
   const [statsRange, setStatsRange] = useState<7 | 14>(7);
   const [statsInfoOpen, setStatsInfoOpen] = useState(false);
   const [statsRangeOpen, setStatsRangeOpen] = useState(false);
@@ -1807,14 +1808,19 @@ function TrainerHome({
   }).length;
   const subscriptionMonthlyLimitLabel = "∞";
 
-  const statsDateKey = formatDateKey(statsDate);
+  const todayStart = startOfDay(now);
+  const statsAnchorStart = startOfDay(statsDate);
+  const statsSelectedStart = startOfDay(statsSelectedDate);
+  const statsMaxDate = addDays(todayStart, 1);
+  const statsAnchorEffective =
+    statsAnchorStart.getTime() > statsMaxDate.getTime() ? statsMaxDate : statsAnchorStart;
+  const statsSelectedEffective =
+    statsSelectedStart.getTime() > statsMaxDate.getTime() ? statsMaxDate : statsSelectedStart;
+  const statsDateKey = formatDateKey(statsSelectedEffective);
   const statsSessions = sessionsByDate[statsDateKey] || [];
   const statsPlannedCount = statsSessions.length;
-  const statsDateStart = startOfDay(statsDate);
-  const todayStart = startOfDay(now);
-  const statsMaxDate = addDays(todayStart, 1);
-  const statsDateEffective =
-    statsDateStart.getTime() > statsMaxDate.getTime() ? statsMaxDate : statsDateStart;
+  const statsDateStart = statsSelectedStart;
+  const statsDateEffective = statsSelectedEffective;
   const statsDoneCount =
     statsDateEffective.getTime() > todayStart.getTime()
       ? 0
@@ -1837,7 +1843,7 @@ function TrainerHome({
   const statsPrevPlannedValue = statsMode === "money" ? statsPrevPlannedMoney : statsPrevPlannedCount;
   const statsPrevDoneValue = statsMode === "money" ? statsPrevDoneMoney : statsPrevDoneCount;
   const statsSeriesDays = Array.from({ length: statsRange }, (_, idx) =>
-    addDays(statsDateEffective, idx - (statsRange - 1))
+    addDays(statsAnchorEffective, idx - (statsRange - 1))
   );
   const statsSeries = statsSeriesDays.map((d) => {
     const key = formatDateKey(d);
@@ -2129,7 +2135,10 @@ function TrainerHome({
                 <button
                   type="button"
                   style={styles.statsDateBtn}
-                  onClick={() => setStatsDate((prev) => addDays(prev, -1))}
+                  onClick={() => {
+                    setStatsDate((prev) => addDays(prev, -1));
+                    setStatsSelectedDate((prev) => addDays(prev, -1));
+                  }}
                 >
                   ‹
                 </button>
@@ -2142,12 +2151,16 @@ function TrainerHome({
                     cursor: statsDateStart.getTime() >= statsMaxDate.getTime() ? "not-allowed" : "pointer",
                   }}
                   disabled={statsDateStart.getTime() >= statsMaxDate.getTime()}
-                  onClick={() =>
+                  onClick={() => {
                     setStatsDate((prev) => {
                       const next = addDays(prev, 1);
                       return next.getTime() > statsMaxDate.getTime() ? statsMaxDate : next;
-                    })
-                  }
+                    });
+                    setStatsSelectedDate((prev) => {
+                      const next = addDays(prev, 1);
+                      return next.getTime() > statsMaxDate.getTime() ? statsMaxDate : next;
+                    });
+                  }}
                 >
                   ›
                 </button>
@@ -2207,7 +2220,7 @@ function TrainerHome({
                       <button
                         key={item.label + item.date.getMonth()}
                         type="button"
-                        onClick={() => setStatsDate(item.date)}
+                        onClick={() => setStatsSelectedDate(item.date)}
                         style={styles.statsBarColButton}
                         aria-label={tr(`Выбрать дату ${item.label}`, `Select date ${item.label}`)}
                       >
