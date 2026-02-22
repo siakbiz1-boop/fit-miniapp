@@ -2042,31 +2042,27 @@ function TrainerHome({
                 </div>
               )}
             </div>
-            {todayCount > 0 ? (
-              <div style={styles.homeTodayBlock}>
-                <div style={styles.homeNextTitle}>{tr("Тренировки сегодня", "Today's sessions")}</div>
-                <div style={styles.homeTodayCard}>
-                  <div style={styles.homeTodayGrid}>
-                    <div style={styles.homeTodayRow}>
-                      <span>{tr("Запланировано", "Planned")}</span>
-                      <span>{tr("Осталось", "Remaining")}</span>
-                    </div>
-                    <div style={styles.homeTodayRowValues}>
-                      <span>{todayCount}</span>
-                      <span>{todayRemaining}</span>
-                    </div>
+            <div style={styles.homeTodayBlock}>
+              <div style={styles.homeNextTitle}>{tr("Тренировки сегодня", "Today's sessions")}</div>
+              <div style={styles.homeTodayCard}>
+                <div style={styles.homeTodayGrid}>
+                  <div style={styles.homeTodayRow}>
+                    <span>{tr("Запланировано", "Planned")}</span>
+                    <span>{tr("Осталось", "Remaining")}</span>
+                  </div>
+                  <div style={styles.homeTodayRowValues}>
+                    <span>{todayCount}</span>
+                    <span>{todayRemaining}</span>
                   </div>
                 </div>
               </div>
-            ) : null}
-            {completedThisWeek > 0 ? (
-              <div style={styles.homeWeekBlock}>
-                <div style={styles.homeNextTitle}>{tr("Тренировок за неделю", "Sessions this week")}</div>
-                <div style={styles.homeWeekCard}>
-                  <div style={styles.homeWeekValue}>{completedThisWeek}</div>
-                </div>
+            </div>
+            <div style={styles.homeWeekBlock}>
+              <div style={styles.homeNextTitle}>{tr("Тренировок за неделю", "Sessions this week")}</div>
+              <div style={styles.homeWeekCard}>
+                <div style={styles.homeWeekValue}>{completedThisWeek}</div>
               </div>
-            ) : null}
+            </div>
           </>
         ) : null}
         {homeTab === "income" ? (
@@ -2501,31 +2497,27 @@ function ClientHome(props: {
             </div>
           )}
         </div>
-        {todayCount > 0 ? (
-          <div style={styles.homeTodayBlock}>
-            <div style={styles.homeNextTitle}>{tr("Тренировки сегодня", "Today's sessions")}</div>
-            <div style={styles.homeTodayCard}>
-              <div style={styles.homeTodayGrid}>
-                <div style={styles.homeTodayRow}>
-                  <span>{tr("Запланировано", "Planned")}</span>
-                  <span>{tr("Осталось", "Remaining")}</span>
-                </div>
-                <div style={styles.homeTodayRowValues}>
-                  <span>{todayCount}</span>
-                  <span>{todayRemaining}</span>
-                </div>
+        <div style={styles.homeTodayBlock}>
+          <div style={styles.homeNextTitle}>{tr("Тренировки сегодня", "Today's sessions")}</div>
+          <div style={styles.homeTodayCard}>
+            <div style={styles.homeTodayGrid}>
+              <div style={styles.homeTodayRow}>
+                <span>{tr("Запланировано", "Planned")}</span>
+                <span>{tr("Осталось", "Remaining")}</span>
+              </div>
+              <div style={styles.homeTodayRowValues}>
+                <span>{todayCount}</span>
+                <span>{todayRemaining}</span>
               </div>
             </div>
           </div>
-        ) : null}
-        {completedThisMonth > 0 ? (
-          <div style={styles.homeWeekBlock}>
-            <div style={styles.homeNextTitle}>{tr("Тренировок в этом месяце", "Sessions this month")}</div>
-            <div style={styles.homeWeekCard}>
-              <div style={styles.homeWeekValue}>{completedThisMonth}</div>
-            </div>
+        </div>
+        <div style={styles.homeWeekBlock}>
+          <div style={styles.homeNextTitle}>{tr("Тренировок в этом месяце", "Sessions this month")}</div>
+          <div style={styles.homeWeekCard}>
+            <div style={styles.homeWeekValue}>{completedThisMonth}</div>
           </div>
-        ) : null}
+        </div>
       </div>
     </div>
   );
