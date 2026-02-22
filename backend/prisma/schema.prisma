@@ -103,6 +103,10 @@ model TrainerClient {
   weight             String?
   goal               String?
   comment            String?
+  contactTelegram    String?
+  contactPhone       String?
+  contactInstagram   String?
+  contactOtherSocial String?
 
   subscriptionStart  String?
   subscriptionEnd    String?

@@ -100,6 +100,10 @@ type TrainerClientInvite = {
   weight?: string;
   goal?: string;
   comment?: string;
+  contactTelegram?: string;
+  contactPhone?: string;
+  contactInstagram?: string;
+  contactOtherSocial?: string;
   exercises?: { id: string; name: string; weight: string }[];
   subscriptionStart?: string;
   subscriptionEnd?: string;
@@ -5179,8 +5183,14 @@ function ClientDetailScreen(props: {
   const [tab, setTab] = useState<"info" | "contacts" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
+  const [draftHeight, setDraftHeight] = useState("");
+  const [draftWeight, setDraftWeight] = useState("");
   const [draftGoal, setDraftGoal] = useState("");
   const [draftComment, setDraftComment] = useState("");
+  const [draftContactTelegram, setDraftContactTelegram] = useState("");
+  const [draftContactPhone, setDraftContactPhone] = useState("");
+  const [draftContactInstagram, setDraftContactInstagram] = useState("");
+  const [draftContactOtherSocial, setDraftContactOtherSocial] = useState("");
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [draftExerciseName, setDraftExerciseName] = useState("");
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
@@ -5192,8 +5202,14 @@ function ClientDetailScreen(props: {
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
+    setDraftHeight(client?.height ?? "");
+    setDraftWeight(client?.weight ?? "");
     setDraftGoal(client?.goal ?? "");
     setDraftComment(client?.comment ?? "");
+    setDraftContactTelegram(client?.contactTelegram ?? "");
+    setDraftContactPhone(client?.contactPhone ?? "");
+    setDraftContactInstagram(client?.contactInstagram ?? "");
+    setDraftContactOtherSocial(client?.contactOtherSocial ?? "");
     setDraftExerciseName("");
     setDraftExerciseWeight("");
     setShowExerciseForm(false);
@@ -5204,6 +5220,12 @@ function ClientDetailScreen(props: {
     client?.id,
     client?.goal,
     client?.comment,
+    client?.height,
+    client?.weight,
+    client?.contactTelegram,
+    client?.contactPhone,
+    client?.contactInstagram,
+    client?.contactOtherSocial,
     client?.status,
   ]);
 
@@ -5227,6 +5249,24 @@ function ClientDetailScreen(props: {
       <div style={styles.readOnlyValue}>{value && String(value).trim() ? value : "—"}</div>
     </div>
   );
+
+  const saveLocalClientField = (
+    field:
+      | "height"
+      | "weight"
+      | "goal"
+      | "comment"
+      | "contactTelegram"
+      | "contactPhone"
+      | "contactInstagram"
+      | "contactOtherSocial",
+    value: string
+  ) => {
+    if (!client) return;
+    const current = (client as any)?.[field] ?? "";
+    if (String(current || "").trim() === String(value || "").trim()) return;
+    onUpdateClient(client.id, { [field]: value } as Partial<TrainerClientInvite>);
+  };
 
   return (
     <div style={styles.pageContainer}>
@@ -5352,16 +5392,69 @@ function ClientDetailScreen(props: {
           <div style={styles.metricsRow}>
             <div style={{ flex: 1 }}>
               <div style={styles.fieldLabel}>{tr("Рост", "Height")}</div>
-              <div style={styles.readOnlyValue}>{client?.height && String(client.height).trim() ? client.height : "—"}</div>
+              {isLocalClient ? (
+                <input
+                  value={draftHeight}
+                  onChange={(e) => setDraftHeight(e.target.value)}
+                  onBlur={() => saveLocalClientField("height", draftHeight)}
+                  placeholder={tr("см", "cm")}
+                  style={styles.input}
+                />
+              ) : (
+                <div style={styles.readOnlyValue}>
+                  {client?.height && String(client.height).trim() ? client.height : "—"}
+                </div>
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
-              <div style={styles.readOnlyValue}>{client?.weight && String(client.weight).trim() ? client.weight : "—"}</div>
+              {isLocalClient ? (
+                <input
+                  value={draftWeight}
+                  onChange={(e) => setDraftWeight(e.target.value)}
+                  onBlur={() => saveLocalClientField("weight", draftWeight)}
+                  placeholder={tr("кг", "kg")}
+                  style={styles.input}
+                />
+              ) : (
+                <div style={styles.readOnlyValue}>
+                  {client?.weight && String(client.weight).trim() ? client.weight : "—"}
+                </div>
+              )}
             </div>
           </div>
 
-          {renderReadOnly(tr("Цель", "Goal"), client?.goal)}
-          {renderReadOnly(tr("Комментарии", "Comments"), client?.comment)}
+          {isLocalClient ? (
+            <>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Цель", "Goal")}</div>
+                <textarea
+                  ref={goalRef}
+                  value={draftGoal}
+                  onChange={(e) => setDraftGoal(e.target.value)}
+                  onBlur={() => saveLocalClientField("goal", draftGoal)}
+                  placeholder={tr("Цель", "Goal")}
+                  style={styles.textarea}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Комментарии", "Comments")}</div>
+                <textarea
+                  ref={commentRef}
+                  value={draftComment}
+                  onChange={(e) => setDraftComment(e.target.value)}
+                  onBlur={() => saveLocalClientField("comment", draftComment)}
+                  placeholder={tr("Комментарий", "Comment")}
+                  style={styles.textarea}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {renderReadOnly(tr("Цель", "Goal"), client?.goal)}
+              {renderReadOnly(tr("Комментарии", "Comments"), client?.comment)}
+            </>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -5388,10 +5481,57 @@ function ClientDetailScreen(props: {
         </div>
       ) : visibleTab === "contacts" ? (
         <div style={styles.clientPanelPlain}>
-          {renderReadOnly("Telegram", client?.username ? `@${client.username}` : "")}
-          {renderReadOnly(tr("Номер телефона", "Phone number"), client?.clientProfile?.phone)}
-          {renderReadOnly("Instagram", client?.clientProfile?.instagram)}
-          {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
+          {isLocalClient ? (
+            <>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>Telegram</div>
+                <input
+                  value={draftContactTelegram}
+                  onChange={(e) => setDraftContactTelegram(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactTelegram", draftContactTelegram)}
+                  placeholder={tr("@username или ссылка", "@username or link")}
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Номер телефона", "Phone number")}</div>
+                <input
+                  value={draftContactPhone}
+                  onChange={(e) => setDraftContactPhone(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactPhone", draftContactPhone)}
+                  placeholder={tr("Телефон", "Phone")}
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>Instagram</div>
+                <input
+                  value={draftContactInstagram}
+                  onChange={(e) => setDraftContactInstagram(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactInstagram", draftContactInstagram)}
+                  placeholder="Instagram"
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
+                <input
+                  value={draftContactOtherSocial}
+                  onChange={(e) => setDraftContactOtherSocial(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactOtherSocial", draftContactOtherSocial)}
+                  placeholder={tr("Ссылка или ник", "Link or handle")}
+                  style={styles.input}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {renderReadOnly("Telegram", client?.username ? `@${client.username}` : "")}
+              {renderReadOnly(tr("Номер телефона", "Phone number"), client?.clientProfile?.phone)}
+              {renderReadOnly("Instagram", client?.clientProfile?.instagram)}
+              {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
+            </>
+          )}
         </div>
       ) : visibleTab === "history" ? (
         <div style={styles.clientPanelPlain}>
@@ -7340,6 +7480,10 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     weight: c.weight ?? "",
     goal: c.goal ?? "",
     comment: c.comment ?? "",
+    contactTelegram: c.contactTelegram ?? "",
+    contactPhone: c.contactPhone ?? "",
+    contactInstagram: c.contactInstagram ?? "",
+    contactOtherSocial: c.contactOtherSocial ?? "",
     exercises: Array.isArray(c.exercises)
       ? c.exercises.map((ex: any) => ({
           id: String(ex.id),
