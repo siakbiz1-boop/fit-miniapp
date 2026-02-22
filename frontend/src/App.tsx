@@ -7554,15 +7554,6 @@ function IconArrowLeft() {
   );
 }
 
-function IconPlus() {
-  return (
-    <SvgIcon size={20} strokeWidth={2.2}>
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </SvgIcon>
-  );
-}
-
 function IconCopy() {
   return (
     <SvgIcon size={18} strokeWidth={2}>
