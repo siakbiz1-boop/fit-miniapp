@@ -2935,7 +2935,7 @@ function ClientSchedule(props: {
                       >
                         <div style={styles.exerciseRow}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
+                            <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                             <div style={styles.exerciseWeightRow}>
                               <input
                                 value={ex.weight || ""}
@@ -2971,7 +2971,7 @@ function ClientSchedule(props: {
                                 aria-label="delete exercise"
                                 title={tr("Удалить", "Delete")}
                               >
-                                <IconTrash />
+                                <span aria-hidden="true">➖</span>
                               </button>
                             </div>
                           </div>
@@ -4094,7 +4094,7 @@ function TrainerSchedule(props: {
                       >
                           <div style={styles.exerciseRow}>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
+                              <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                               <div style={styles.exerciseWeightRow}>
                               <input
                                 value={sessionWeightDrafts[`${sessionClient.id}:${ex.id}`] ?? ex.weight ?? ""}
@@ -4148,9 +4148,9 @@ function TrainerSchedule(props: {
                                   style={styles.exerciseTrashBtn}
                                   aria-label="delete exercise"
                                   title={tr("Удалить", "Delete")}
-                                  >
-                                    <IconTrash />
-                                  </button>
+                                >
+                                  <span aria-hidden="true">➖</span>
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -5355,7 +5355,7 @@ function ClientDetailScreen(props: {
                     >
                         <div style={styles.exerciseRow}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
+                            <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                             <div style={styles.exerciseWeightRow}>
                               <input
                                 value={clientWeightDrafts[`${client.id}:${ex.id}`] ?? ex.weight ?? ""}
@@ -5402,7 +5402,7 @@ function ClientDetailScreen(props: {
                                 aria-label="delete exercise"
                                 title={tr("Удалить", "Delete")}
                               >
-                                <IconTrash />
+                                <span aria-hidden="true">➖</span>
                               </button>
                             </div>
                           </div>
@@ -6491,7 +6491,7 @@ function PersonalDataScreen(props: {
                     >
                       <div style={styles.exerciseRow}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={styles.rowTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
+                          <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                           <div style={styles.exerciseWeightRow}>
                             <input
                               value={ex.weight || ""}
@@ -6524,7 +6524,7 @@ function PersonalDataScreen(props: {
                               aria-label="delete exercise"
                               title={tr("Удалить", "Delete")}
                             >
-                              <IconTrash />
+                              <span aria-hidden="true">➖</span>
                             </button>
                           </div>
                         </div>
@@ -7908,6 +7908,14 @@ const styles: Record<string, any> = {
     letterSpacing: -0.1,
     lineHeight: 1.25,
   },
+  exerciseTitle: {
+    fontWeight: 700,
+    fontSize: 15,
+    color: "var(--text)",
+    letterSpacing: -0.1,
+    lineHeight: 1.25,
+    paddingLeft: 6,
+  },
   rowSubtitle: {
     marginTop: 2,
     fontSize: 13,
@@ -8056,6 +8064,8 @@ const styles: Record<string, any> = {
     cursor: "pointer",
     flex: "0 0 auto",
     color: "var(--text)",
+    fontSize: 18,
+    fontWeight: 700,
   },
   selectInline: {
     border: "none",
