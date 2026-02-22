@@ -87,6 +87,7 @@ type TrainerClientInvite = {
   code: string;
   createdAt: number;
   status: "pending" | "active";
+  isLocal?: boolean;
   photoUrl?: string;
   clientName?: string;
   trainerTgUserId?: string;
@@ -2045,27 +2046,29 @@ function TrainerHome({
                     </div>
                     <div style={styles.homeNextMeta}>{getClientLabel(clients, nearest.clientUsername)}</div>
                   </button>
-                  <div style={styles.homeNextContactRow}>
-                    <div style={styles.homeNextContactLabel}>
-                      {tr("Связаться с клиентом:", "Contact the client:")}
+                  {!isLocalClientUsername(nearest.clientUsername || "") ? (
+                    <div style={styles.homeNextContactRow}>
+                      <div style={styles.homeNextContactLabel}>
+                        {tr("Связаться с клиентом:", "Contact the client:")}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const handle = nearest.clientUsername?.trim();
+                          if (!handle) return;
+                          const link = `https://t.me/${handle.replace(/^@/, "")}`;
+                          if (typeof WebApp?.openTelegramLink === "function") {
+                            WebApp.openTelegramLink(link);
+                          } else {
+                            window.open(link, "_blank");
+                          }
+                        }}
+                        style={styles.homeNextContactLink}
+                      >
+                        @{nearest.clientUsername}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const handle = nearest.clientUsername?.trim();
-                        if (!handle) return;
-                        const link = `https://t.me/${handle.replace(/^@/, "")}`;
-                        if (typeof WebApp?.openTelegramLink === "function") {
-                          WebApp.openTelegramLink(link);
-                        } else {
-                          window.open(link, "_blank");
-                        }
-                      }}
-                      style={styles.homeNextContactLink}
-                    >
-                      @{nearest.clientUsername}
-                    </button>
-                  </div>
+                  ) : null}
                 </>
               ) : (
                 <div style={styles.homeNextEmpty}>
@@ -4647,6 +4650,24 @@ function TrainerClients(props: {
     }
   }
 
+  async function createLocalClient(fullName: string) {
+    if (!token) return null;
+    try {
+      const res = await fetch(`${apiBase}/clients/local`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fullName }),
+      });
+      const data = (await res.json()) as { ok: boolean; client?: any };
+      if (!res.ok || !data?.client) return null;
+      const mapped = mapClientFromApi(data.client);
+      setInvites((prev) => [mapped, ...prev]);
+      return mapped;
+    } catch {
+      return null;
+    }
+  }
+
   async function deleteClient(inv: TrainerClientInvite) {
     setInvites((prev) => prev.filter((x) => x.id !== inv.id));
     if (!token) {
@@ -4692,6 +4713,7 @@ function TrainerClients(props: {
         onBack={() => setScreen("list")}
         existingInvites={invites}
         onCreate={createClient}
+        onCreateLocal={createLocalClient}
       />
     );
   }
@@ -4806,6 +4828,14 @@ function TrainerClients(props: {
             <div style={styles.listBlock}>
               {filtered.map((inv, idx) => {
                 const isLast = idx === filtered.length - 1;
+                const isLocal = inv.isLocal || inv.username.startsWith("local_");
+                const displayName = inv.fullName?.trim()
+                  ? inv.fullName
+                  : inv.clientName?.trim()
+                    ? inv.clientName
+                    : isLocal
+                      ? tr("Клиент", "Client")
+                      : `@${inv.username}`;
                 return (
                   <div
                     key={inv.id}
@@ -4825,17 +4855,13 @@ function TrainerClients(props: {
                     >
                       <div style={styles.rowLeft}>
                         <AvatarCircle
-                          name={inv.fullName?.trim() || inv.clientName?.trim() || inv.username}
+                          name={displayName}
                           photoUrl={inv.photoUrl || ""}
                           size={40}
                         />
                         <div style={{ textAlign: "left" }}>
                           <div style={styles.rowTitle}>
-                            {inv.fullName?.trim()
-                              ? inv.fullName
-                              : inv.clientName?.trim()
-                                ? inv.clientName
-                                : `@${inv.username}`}
+                            {displayName}
                           </div>
                           <div style={styles.rowSubtitle}>
                             {clientsTab === "pending" ? (
@@ -4878,14 +4904,17 @@ function TrainerClients(props: {
 function AddClientScreen(props: {
   onBack: () => void;
   onCreate: (username: string) => Promise<{ client: TrainerClientInvite; existing?: boolean } | null>;
+  onCreateLocal: (fullName: string) => Promise<TrainerClientInvite | null>;
   existingInvites: TrainerClientInvite[];
 }) {
-  const { onBack, onCreate, existingInvites } = props;
+  const { onBack, onCreate, onCreateLocal, existingInvites } = props;
   const tr = useTr();
 
   const [input, setInput] = useState<string>("@");
   const [error, setError] = useState<string>("");
   const [created, setCreated] = useState<TrainerClientInvite | null>(null);
+  const [mode, setMode] = useState<"telegram" | "local">("telegram");
+  const [localName, setLocalName] = useState<string>("");
   const activeClientsCount = existingInvites.filter((c) => !c.archived).length;
   const limitReached = activeClientsCount >= SUBSCRIPTION_CLIENT_LIMIT;
 
@@ -4938,6 +4967,26 @@ function AddClientScreen(props: {
     setCreated(result.client);
   }
 
+  async function createLocalClient() {
+    setError("");
+    if (limitReached) {
+      setError(tr("Достигнут лимит активных клиентов по тарифу.", "Active client limit reached for your plan."));
+      showLimitWarning();
+      return;
+    }
+    const name = localName.trim();
+    if (!name) {
+      setError(tr("Введи ФИО клиента.", "Enter the client's full name."));
+      return;
+    }
+    const result = await onCreateLocal(name);
+    if (!result) {
+      setError(tr("Не удалось создать клиента. Попробуй позже.", "Failed to create client. Try again."));
+      return;
+    }
+    setCreated(result);
+  }
+
   function copyCode() {
     if (!created) return;
     copyText(created.code);
@@ -4964,78 +5013,150 @@ function AddClientScreen(props: {
 
       {!created ? (
         <>
+          <div style={styles.scheduleTabs}>
+            <button
+              type="button"
+              onClick={() => setMode("telegram")}
+              style={{
+                ...styles.scheduleTab,
+                ...(mode === "telegram" ? styles.scheduleTabActive : null),
+              }}
+            >
+              {tr("Telegram", "Telegram")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("local")}
+              style={{
+                ...styles.scheduleTab,
+                ...(mode === "local" ? styles.scheduleTabActive : null),
+              }}
+            >
+              {tr("Локальный", "Local")}
+            </button>
+          </div>
+
           <div style={{ opacity: 0.72, fontSize: 14, lineHeight: 1.35, marginTop: 6 }}>
-            {tr(
-              "Введи Telegram username клиента (например ",
-              "Enter the client's Telegram username (e.g., "
-            )}
-            <b>@username</b>
-            {tr("). После этого появится уникальный код, который ты отправишь клиенту.", "). After that you will get a unique code to send to the client.")}
+            {mode === "telegram"
+              ? tr(
+                  "Введи Telegram username клиента (например ",
+                  "Enter the client's Telegram username (e.g., "
+                )
+              : tr(
+                  "Введи ФИО клиента. Этот клиент будет доступен только тебе.",
+                  "Enter the client's full name. This client will be visible only to you."
+                )}
+            {mode === "telegram" ? <b>@username</b> : null}
+            {mode === "telegram"
+              ? tr(
+                  "). После этого появится уникальный код, который ты отправишь клиенту.",
+                  "). After that you will get a unique code to send to the client."
+                )
+              : null}
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>Username</div>
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="@username"
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-            />
+            {mode === "telegram" ? (
+              <>
+                <div style={styles.fieldLabel}>Username</div>
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="@username"
+                  style={styles.input}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+              </>
+            ) : (
+              <>
+                <div style={styles.fieldLabel}>{tr("ФИО", "Full name")}</div>
+                <input
+                  value={localName}
+                  onChange={(e) => setLocalName(e.target.value)}
+                  placeholder={tr("Введите ФИО", "Enter full name")}
+                  style={styles.input}
+                />
+              </>
+            )}
           </div>
 
           {error ? <div style={styles.errorText}>{error}</div> : null}
 
-          <button onClick={createInvite} style={styles.saveBtn}>
+          <button onClick={mode === "telegram" ? createInvite : createLocalClient} style={styles.saveBtn}>
             {tr("Добавить", "Add")}
           </button>
 
           <div style={{ marginTop: 12, opacity: 0.6, fontSize: 12, lineHeight: 1.35 }}>
-            {tr(
-              "По твоей логике username нужен, чтобы в будущем при вводе кода приложение проверяло, что код предназначен именно этому клиенту.",
-              "The username is needed so in the future the app can verify the code belongs to that client."
-            )}
+            {mode === "telegram"
+              ? tr(
+                  "По твоей логике username нужен, чтобы в будущем при вводе кода приложение проверяло, что код предназначен именно этому клиенту.",
+                  "The username is needed so in the future the app can verify the code belongs to that client."
+                )
+              : tr(
+                  "Локальные клиенты не требуют Telegram и не имеют интерфейса клиента.",
+                  "Local clients don't require Telegram and don't have a client interface."
+                )}
           </div>
         </>
       ) : (
         <>
-          <div style={{ marginTop: 10, opacity: 0.8, fontSize: 14 }}>
-            {tr("Клиент", "Client")}: <b>@{created.username}</b>
-          </div>
+          {created.isLocal || created.username.startsWith("local_") ? (
+            <>
+              <div style={{ marginTop: 10, opacity: 0.8, fontSize: 14 }}>
+                {tr("Клиент", "Client")}: <b>{created.fullName || tr("Клиент", "Client")}</b>
+              </div>
+              <div style={styles.codeBox}>
+                <div style={{ fontWeight: 800, fontSize: 14, opacity: 0.8 }}>
+                  {tr("Клиент добавлен", "Client added")}
+                </div>
+                <button onClick={onBack} style={{ ...styles.primaryBtn, width: "100%", marginTop: 12 }}>
+                  {tr("Готово", "Done")}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ marginTop: 10, opacity: 0.8, fontSize: 14 }}>
+                {tr("Клиент", "Client")}: <b>@{created.username}</b>
+              </div>
 
-          <div style={styles.codeBox}>
-            <div style={{ fontWeight: 800, fontSize: 14, opacity: 0.8 }}>{tr("Код для клиента", "Client code")}</div>
-            <div style={styles.codeValue}>{created.code}</div>
+              <div style={styles.codeBox}>
+                <div style={{ fontWeight: 800, fontSize: 14, opacity: 0.8 }}>
+                  {tr("Код для клиента", "Client code")}
+                </div>
+                <div style={styles.codeValue}>{created.code}</div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <button
-                onClick={copyCode}
-                style={{
-                  ...styles.primaryBtn,
-                  flex: 1,
-                  display: "flex",
-                  gap: 8,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                >
-                  <IconCopy />
-                {tr("Скопировать", "Copy")}
-              </button>
-              <button onClick={onBack} style={{ ...styles.primaryBtn, flex: 1 }}>
-                {tr("Готово", "Done")}
-              </button>
-            </div>
-          </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                  <button
+                    onClick={copyCode}
+                    style={{
+                      ...styles.primaryBtn,
+                      flex: 1,
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <IconCopy />
+                    {tr("Скопировать", "Copy")}
+                  </button>
+                  <button onClick={onBack} style={{ ...styles.primaryBtn, flex: 1 }}>
+                    {tr("Готово", "Done")}
+                  </button>
+                </div>
+              </div>
 
-          <div style={{ marginTop: 12, opacity: 0.6, fontSize: 12, lineHeight: 1.35 }}>
-            {tr(
-              "Следующий шаг: на стороне клиента экран “Ввести код тренера”, проверка username и активация связи.",
-              "Next step: on the client side there is an “Enter coach code” screen, username check, and activation."
-            )}
-          </div>
+              <div style={{ marginTop: 12, opacity: 0.6, fontSize: 12, lineHeight: 1.35 }}>
+                {tr(
+                  "Следующий шаг: на стороне клиента экран “Ввести код тренера”, проверка username и активация связи.",
+                  "Next step: on the client side there is an “Enter coach code” screen, username check, and activation."
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
@@ -5063,6 +5184,7 @@ function ClientDetailScreen(props: {
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [draftExerciseName, setDraftExerciseName] = useState("");
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
+  const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
   const [exerciseError, setExerciseError] = useState("");
   const clientWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
   const [clientWeightDrafts, setClientWeightDrafts] = useState<Record<string, string>>({});
@@ -5192,30 +5314,39 @@ function ClientDetailScreen(props: {
           {renderReadOnly(tr("ФИО клиента", "Client full name"), client?.fullName)}
           <div style={{ marginTop: 16 }}>
             <div style={styles.fieldLabel}>Username</div>
-            <div style={styles.readOnlyValue}>{client?.username ? `@${client.username}` : "—"}</div>
+            <div style={styles.readOnlyValue}>
+              {isLocalClient ? "—" : client?.username ? `@${client.username}` : "—"}
+            </div>
           </div>
           <div style={{ marginTop: 16 }}>
             <div style={styles.fieldLabel}>{tr("Инвайт‑код", "Invite code")}</div>
-            <div style={styles.copyRow}>
-              <div style={styles.readOnlyValue}>{client?.code || "—"}</div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!client?.code) return;
-                  copyText(client.code);
-                  WebApp?.showPopup?.({
-                    title: tr("Код скопирован", "Code copied"),
-                    message: tr(`Код для @${client.username}: ${client.code}`, `Code for @${client.username}: ${client.code}`),
-                    buttons: [{ type: "ok" }],
-                  });
-                }}
-                style={styles.copyBtn}
-                aria-label="copy invite code"
-              >
-                <IconCopy />
-                <span style={{ fontSize: 13 }}>{tr("Копировать", "Copy")}</span>
-              </button>
-            </div>
+            {isLocalClient ? (
+              <div style={styles.readOnlyValue}>—</div>
+            ) : (
+              <div style={styles.copyRow}>
+                <div style={styles.readOnlyValue}>{client?.code || "—"}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!client?.code) return;
+                    copyText(client.code);
+                    WebApp?.showPopup?.({
+                      title: tr("Код скопирован", "Code copied"),
+                      message: tr(
+                        `Код для @${client.username}: ${client.code}`,
+                        `Code for @${client.username}: ${client.code}`
+                      ),
+                      buttons: [{ type: "ok" }],
+                    });
+                  }}
+                  style={styles.copyBtn}
+                  aria-label="copy invite code"
+                >
+                  <IconCopy />
+                  <span style={{ fontSize: 13 }}>{tr("Копировать", "Copy")}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={styles.metricsRow}>
@@ -7186,12 +7317,15 @@ function buildSlotsSignature(list: TrainingSlot[]) {
 }
 
 function mapClientFromApi(c: any): TrainerClientInvite {
+  const username = String(c.clientUsername || "");
+  const isLocal = Boolean(c.isLocal) || username.startsWith("local_");
   return {
     id: String(c.id),
-    username: String(c.clientUsername || ""),
+    username,
     code: String(c.code || ""),
     createdAt: c.createdAt ? new Date(c.createdAt).getTime() : Date.now(),
     status: c.status === "active" ? "active" : "pending",
+    isLocal,
     photoUrl: c.photoUrl ? String(c.photoUrl) : "",
     clientName: c.clientName ? String(c.clientName) : undefined,
     trainerTgUserId: c.trainerTgUserId ? String(c.trainerTgUserId) : undefined,
@@ -7242,7 +7376,12 @@ function getClientLabel(clients: TrainerClientInvite[], username: string) {
   const c = clients.find((x) => x.username === username);
   if (c?.fullName && c.fullName.trim()) return c.fullName;
   if (c?.clientName && c.clientName.trim()) return c.clientName;
+  if (c?.isLocal || isLocalClientUsername(username)) return "Клиент";
   return `@${username}`;
+}
+
+function isLocalClientUsername(username: string) {
+  return username.startsWith("local_");
 }
 
 function getTrainerLabel(trainer: TrainerClientInvite, tr: (ru: string, en: string) => string) {

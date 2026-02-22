@@ -729,6 +729,51 @@ app.post("/clients", async (req, reply) => {
   return { ok: true, client: { ...serializeClient(created), clientName, photoUrl: clientPhotoUrl, clientProfile: null } };
 });
 
+app.post("/clients/local", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const fullName = String(body?.fullName || "").trim();
+  if (!fullName) {
+    return reply.code(400).send({ message: "fullName required" });
+  }
+
+  const generateLocalUsername = async () => {
+    for (let i = 0; i < 5; i += 1) {
+      const candidate = `local_${generateInviteCode(10).toLowerCase()}`;
+      const existing = await prismaAny.trainerClient.findUnique({
+        where: { trainerTgUserId_clientUsername: { trainerTgUserId: dbUser.tgUserId, clientUsername: candidate } },
+      });
+      if (!existing) return candidate;
+    }
+    return `local_${Date.now().toString(36)}`;
+  };
+
+  const username = await generateLocalUsername();
+  let code = generateInviteCode(8);
+  for (let i = 0; i < 5; i++) {
+    const collision = await prismaAny.trainerClient.findUnique({
+      where: { trainerTgUserId_code: { trainerTgUserId: dbUser.tgUserId, code } },
+    });
+    if (!collision) break;
+    code = generateInviteCode(8);
+  }
+
+  const created = await prismaAny.trainerClient.create({
+    data: {
+      trainerTgUserId: dbUser.tgUserId,
+      clientUsername: username,
+      code,
+      status: "active",
+      fullName,
+    },
+    include: { exercises: true },
+  });
+
+  return { ok: true, client: { ...serializeClient(created), clientName: null, photoUrl: null, clientProfile: null } };
+});
+
 app.patch("/clients/:id", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
