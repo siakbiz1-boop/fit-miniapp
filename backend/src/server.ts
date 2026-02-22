@@ -309,8 +309,19 @@ async function tickReminders() {
     take: 50,
   });
 
+  const sentKeys = new Set<string>();
+
   for (const session of due) {
     try {
+      const key = `${session.trainerTgUserId}_${session.clientUsername}_${session.startAt.getTime()}_${session.endAt.getTime()}`;
+      if (sentKeys.has(key)) {
+        await prismaAny.trainingSession.updateMany({
+          where: { id: session.id, remindedAt: null },
+          data: { remindedAt: now },
+        });
+        continue;
+      }
+
       const claimed = await prismaAny.trainingSession.updateMany({
         where: {
           id: session.id,
@@ -321,6 +332,8 @@ async function tickReminders() {
         data: { remindedAt: now },
       });
       if (claimed.count === 0) continue;
+
+      sentKeys.add(key);
 
       const chatId = session.trainerTgUserId.toString();
       const clientName = session.clientName?.trim() || `@${session.clientUsername}`;
