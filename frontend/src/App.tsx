@@ -5092,17 +5092,14 @@ function AddClientScreen(props: {
             {tr("Добавить", "Add")}
           </button>
 
-          <div style={{ marginTop: 12, opacity: 0.6, fontSize: 12, lineHeight: 1.35 }}>
-            {mode === "telegram"
-              ? tr(
-                  "По твоей логике username нужен, чтобы в будущем при вводе кода приложение проверяло, что код предназначен именно этому клиенту.",
-                  "The username is needed so in the future the app can verify the code belongs to that client."
-                )
-              : tr(
-                  "Локальные клиенты не требуют Telegram и не имеют интерфейса клиента.",
-                  "Local clients don't require Telegram and don't have a client interface."
-                )}
-          </div>
+          {mode === "local" ? (
+            <div style={{ marginTop: 12, opacity: 0.6, fontSize: 12, lineHeight: 1.35 }}>
+              {tr(
+                "Локальные клиенты не требуют Telegram и не имеют интерфейса клиента.",
+                "Local clients don't require Telegram and don't have a client interface."
+              )}
+            </div>
+          ) : null}
         </>
       ) : (
         <>
@@ -5183,6 +5180,7 @@ function ClientDetailScreen(props: {
   const [tab, setTab] = useState<"info" | "contacts" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
+  const [draftFullName, setDraftFullName] = useState("");
   const [draftHeight, setDraftHeight] = useState("");
   const [draftWeight, setDraftWeight] = useState("");
   const [draftGoal, setDraftGoal] = useState("");
@@ -5202,6 +5200,7 @@ function ClientDetailScreen(props: {
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
+    setDraftFullName(client?.fullName ?? "");
     setDraftHeight(client?.height ?? "");
     setDraftWeight(client?.weight ?? "");
     setDraftGoal(client?.goal ?? "");
@@ -5222,6 +5221,7 @@ function ClientDetailScreen(props: {
     client?.comment,
     client?.height,
     client?.weight,
+    client?.fullName,
     client?.contactTelegram,
     client?.contactPhone,
     client?.contactInstagram,
@@ -5252,6 +5252,7 @@ function ClientDetailScreen(props: {
 
   const saveLocalClientField = (
     field:
+      | "fullName"
       | "height"
       | "weight"
       | "goal"
@@ -5351,7 +5352,20 @@ function ClientDetailScreen(props: {
 
       {visibleTab === "info" ? (
         <div style={styles.clientPanelPlain}>
-          {renderReadOnly(tr("ФИО клиента", "Client full name"), client?.fullName)}
+          {isLocalClient ? (
+            <div style={{ marginTop: 16 }}>
+              <div style={styles.fieldLabel}>{tr("ФИО клиента", "Client full name")}</div>
+              <input
+                value={draftFullName}
+                onChange={(e) => setDraftFullName(e.target.value)}
+                onBlur={() => saveLocalClientField("fullName", draftFullName)}
+                placeholder={tr("Введите ФИО", "Enter full name")}
+                style={styles.input}
+              />
+            </div>
+          ) : (
+            renderReadOnly(tr("ФИО клиента", "Client full name"), client?.fullName)
+          )}
           <div style={{ marginTop: 16 }}>
             <div style={styles.fieldLabel}>Username</div>
             <div style={styles.readOnlyValue}>
@@ -5394,9 +5408,15 @@ function ClientDetailScreen(props: {
               <div style={styles.fieldLabel}>{tr("Рост", "Height")}</div>
               {isLocalClient ? (
                 <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={draftHeight}
-                  onChange={(e) => setDraftHeight(e.target.value)}
-                  onBlur={() => saveLocalClientField("height", draftHeight)}
+                  onChange={(e) => setDraftHeight(e.target.value.replace(/[^\d]/g, ""))}
+                  onBlur={() => {
+                    const v = normalizeNumberWithUnit(draftHeight, "см");
+                    if (v) setDraftHeight(v);
+                    saveLocalClientField("height", v);
+                  }}
                   placeholder={tr("см", "cm")}
                   style={styles.input}
                 />
@@ -5410,9 +5430,15 @@ function ClientDetailScreen(props: {
               <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
               {isLocalClient ? (
                 <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={draftWeight}
-                  onChange={(e) => setDraftWeight(e.target.value)}
-                  onBlur={() => saveLocalClientField("weight", draftWeight)}
+                  onChange={(e) => setDraftWeight(e.target.value.replace(/[^\d]/g, ""))}
+                  onBlur={() => {
+                    const v = normalizeNumberWithUnit(draftWeight, "кг");
+                    if (v) setDraftWeight(v);
+                    saveLocalClientField("weight", v);
+                  }}
                   placeholder={tr("кг", "kg")}
                   style={styles.input}
                 />
@@ -5432,9 +5458,15 @@ function ClientDetailScreen(props: {
                   ref={goalRef}
                   value={draftGoal}
                   onChange={(e) => setDraftGoal(e.target.value)}
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = `${el.scrollHeight}px`;
+                  }}
                   onBlur={() => saveLocalClientField("goal", draftGoal)}
                   placeholder={tr("Цель", "Goal")}
-                  style={styles.textarea}
+                  rows={1}
+                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
@@ -5443,9 +5475,15 @@ function ClientDetailScreen(props: {
                   ref={commentRef}
                   value={draftComment}
                   onChange={(e) => setDraftComment(e.target.value)}
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = `${el.scrollHeight}px`;
+                  }}
                   onBlur={() => saveLocalClientField("comment", draftComment)}
                   placeholder={tr("Комментарий", "Comment")}
-                  style={styles.textarea}
+                  rows={1}
+                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
                 />
               </div>
             </>
