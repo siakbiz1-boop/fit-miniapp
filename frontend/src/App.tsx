@@ -4322,14 +4322,36 @@ function TrainerSchedule(props: {
             }
             return (
               <div style={styles.sessionList}>
-                {list.map((s) => {
+                {(() => {
+                  const nowTs = Date.now();
+                  const futureOrder = new Map<string, number>();
+                  const futureByClient = new Map<string, SessionItem[]>();
+                  list.forEach((s) => {
+                    if (sessionStartTime(s).getTime() > nowTs) {
+                      const key = s.clientUsername || "";
+                      const next = futureByClient.get(key) ? [...futureByClient.get(key)!] : [];
+                      next.push(s);
+                      futureByClient.set(key, next);
+                    }
+                  });
+                  futureByClient.forEach((items) => {
+                    items
+                      .slice()
+                      .sort((a, b) => sessionStartTime(a).getTime() - sessionStartTime(b).getTime())
+                      .forEach((s, idx) => {
+                        futureOrder.set(s.id, idx);
+                      });
+                  });
+                  return list.map((s) => {
                   const client = clients.find((c) => c.username === s.clientUsername);
                   const totalRaw = client?.subscriptionTotal?.trim();
                   const total = totalRaw ? parseInt(totalRaw.replace(/[^\d]/g, ""), 10) : NaN;
                   const leftRaw = client?.subscriptionLeft?.trim();
                   const left = leftRaw ? parseInt(leftRaw.replace(/[^\d]/g, ""), 10) : NaN;
-                  const leftAfter = Math.max(0, (Number.isFinite(left) ? left : total) - 1);
-                  const showLeftCount = Number.isFinite(total) && sessionStartTime(s).getTime() > Date.now();
+                  const baseLeft = Number.isFinite(left) ? left : total;
+                  const orderIdx = futureOrder.get(s.id);
+                  const leftAfter = Math.max(0, baseLeft - (orderIdx != null ? orderIdx + 1 : 1));
+                  const showLeftCount = Number.isFinite(total) && orderIdx != null;
                   return (
                     <div
                       key={s.id}
@@ -4350,7 +4372,7 @@ function TrainerSchedule(props: {
                           {getClientLabel(clients, s.clientUsername)}
                         </div>
                         {showLeftCount ? (
-                          <div style={styles.sessionBannerLeftCountRight}>{`${total}/${leftAfter}`}</div>
+                          <div style={styles.sessionBannerLeftCountRight}>{`${leftAfter}/${total}`}</div>
                         ) : null}
                         <div
                           style={{
@@ -4364,7 +4386,8 @@ function TrainerSchedule(props: {
                       <div style={styles.sessionBannerActions} />
                     </div>
                   );
-                })}
+                });
+                })()}
               </div>
             );
           })()}
