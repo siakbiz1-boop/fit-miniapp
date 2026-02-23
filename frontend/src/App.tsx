@@ -2818,9 +2818,13 @@ function ClientSchedule(props: {
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
                 <div style={styles.readOnlyValue}>
-                  {activeSession.price && String(activeSession.price).trim()
-                    ? activeSession.price
-                    : "—"}
+                  {(() => {
+                    const value =
+                      (activeSession.price && String(activeSession.price).trim()
+                        ? activeSession.price
+                        : activeTrainer?.subscriptionPrice) || "";
+                    return value ? value : "—";
+                  })()}
                 </div>
               </div>
               <div style={{ marginTop: 16 }}>
@@ -3545,9 +3549,11 @@ function TrainerSchedule(props: {
   useEffect(() => {
     if (!activeSession) return;
     setDraftSessionType(activeSession.type ?? "");
-    setDraftSessionPrice(activeSession.price ?? "");
+    const fallbackPrice =
+      clients.find((c) => c.username === activeSession.clientUsername)?.subscriptionPrice ?? "";
+    setDraftSessionPrice(activeSession.price ?? fallbackPrice ?? "");
     setDraftSessionComment(activeSession.comment ?? "");
-  }, [activeSession?.id, activeSession?.type, activeSession?.price, activeSession?.comment]);
+  }, [activeSession?.id, activeSession?.type, activeSession?.price, activeSession?.comment, clients]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 30000);
@@ -5630,8 +5636,30 @@ function ClientDetailScreen(props: {
               <input
                 type="date"
                 value={toISODate(draftSubStart)}
-                onChange={(e) => setDraftSubStart(fromISODate(e.target.value))}
-                onBlur={() => saveSubscriptionField("subscriptionStart", draftSubStart)}
+                onChange={(e) => {
+                  const next = fromISODate(e.target.value);
+                  setDraftSubStart(next);
+                }}
+                onBlur={() => {
+                  saveSubscriptionField("subscriptionStart", draftSubStart);
+                  const start = parseDateDMY(draftSubStart);
+                  const end = parseDateDMY(draftSubEnd);
+                  if (start && end && end.getTime() < start.getTime()) {
+                    const message = tr(
+                      "Дата завершения не может быть раньше даты начала.",
+                      "End date cannot be earlier than start date."
+                    );
+                    if (typeof WebApp?.showPopup === "function") {
+                      WebApp.showPopup({
+                        title: tr("Неверная дата", "Invalid date"),
+                        message,
+                        buttons: [{ type: "ok" }],
+                      });
+                    } else {
+                      window.alert(message);
+                    }
+                  }
+                }}
                 style={styles.input}
               />
             </div>
@@ -5640,8 +5668,31 @@ function ClientDetailScreen(props: {
               <input
                 type="date"
                 value={toISODate(draftSubEnd)}
-                onChange={(e) => setDraftSubEnd(fromISODate(e.target.value))}
-                onBlur={() => saveSubscriptionField("subscriptionEnd", draftSubEnd)}
+                onChange={(e) => {
+                  const next = fromISODate(e.target.value);
+                  setDraftSubEnd(next);
+                }}
+                onBlur={() => {
+                  const start = parseDateDMY(draftSubStart);
+                  const end = parseDateDMY(draftSubEnd);
+                  if (start && end && end.getTime() < start.getTime()) {
+                    const message = tr(
+                      "Дата завершения не может быть раньше даты начала.",
+                      "End date cannot be earlier than start date."
+                    );
+                    if (typeof WebApp?.showPopup === "function") {
+                      WebApp.showPopup({
+                        title: tr("Неверная дата", "Invalid date"),
+                        message,
+                        buttons: [{ type: "ok" }],
+                      });
+                    } else {
+                      window.alert(message);
+                    }
+                    return;
+                  }
+                  saveSubscriptionField("subscriptionEnd", draftSubEnd);
+                }}
                 style={styles.input}
               />
             </div>
