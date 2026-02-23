@@ -5757,11 +5757,12 @@ function ClientDetailScreen(props: {
         </div>
       ) : visibleTab === "history" ? (
         <div style={styles.clientPanelPlain}>
-          {history.length === 0 ? (
+          {history.filter((s) => isSessionEnded(s, new Date())).length === 0 ? (
             <div style={styles.clientPanelBody}>{tr("Пока нет завершённых тренировок.", "No completed sessions yet.")}</div>
           ) : (
             <div style={styles.listBlock}>
               {history
+                .filter((s) => isSessionEnded(s, new Date()))
                 .slice()
                 .sort((a, b) => {
                   const aEnd = sessionEndTime(a).getTime();
