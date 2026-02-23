@@ -173,6 +173,26 @@ function serializeSlot(slot: any) {
   };
 }
 
+async function adjustSubscriptionLeft(
+  trainerTgUserId: bigint,
+  clientUsername: string,
+  delta: number
+) {
+  if (!trainerTgUserId || !clientUsername || !delta) return;
+  const relation = await prismaAny.trainerClient.findFirst({
+    where: { trainerTgUserId, clientUsername },
+  });
+  if (!relation) return;
+  const left = parseInt(String(relation.subscriptionLeft || ""), 10);
+  if (Number.isNaN(left)) return;
+  const nextLeft = Math.max(0, left + delta);
+  if (nextLeft === left) return;
+  await prismaAny.trainerClient.update({
+    where: { id: relation.id },
+    data: { subscriptionLeft: String(nextLeft) },
+  });
+}
+
 function buildProfilePayload(profile: any) {
   if (!profile) return null;
   return {
@@ -1155,6 +1175,9 @@ app.delete("/client/sessions/:id", async (req, reply) => {
   }
 
   await prismaAny.trainingSession.delete({ where: { id } });
+  if (new Date(session.startAt).getTime() > Date.now()) {
+    await adjustSubscriptionLeft(session.trainerTgUserId, session.clientUsername, 1);
+  }
   return { ok: true };
 });
 
@@ -1251,6 +1274,10 @@ app.post("/book", async (req, reply) => {
     },
   });
   if (!relation) return reply.code(403).send({ message: "client not connected to trainer" });
+  const relationLeft = parseInt(String(relation.subscriptionLeft || ""), 10);
+  if (!Number.isNaN(relationLeft) && relationLeft <= 0) {
+    return reply.code(403).send({ message: "subscription limit reached" });
+  }
 
   const trainer = await prisma.user.findUnique({ where: { tgUserId: trainerTgUserId } });
   const profile = trainer
@@ -1301,6 +1328,7 @@ app.post("/book", async (req, reply) => {
   });
 
   await prismaAny.trainingSlot.delete({ where: { id: slot.id } });
+  await adjustSubscriptionLeft(trainerTgUserId, relation.clientUsername, -1);
 
   return { ok: true, session: serializeSession(session) };
 });
@@ -1327,18 +1355,36 @@ app.delete("/sessions/:id", async (req, reply) => {
 
   const tryDelete = async (sessionId: string) => {
     const session = await prismaAny.trainingSession.findUnique({ where: { id: sessionId } });
-    if (!session || session.trainerTgUserId !== dbUser.tgUserId) return false;
+    if (!session || session.trainerTgUserId !== dbUser.tgUserId) return null;
     await prismaAny.trainingSession.delete({ where: { id: sessionId } });
-    return true;
+    return session;
   };
 
   const prefix = `${dbUser.tgUserId.toString()}_`;
-  if (await tryDelete(id)) return { ok: true };
+  const deleted = await tryDelete(id);
+  if (deleted) {
+    if (new Date(deleted.startAt).getTime() > Date.now()) {
+      await adjustSubscriptionLeft(deleted.trainerTgUserId, deleted.clientUsername, 1);
+    }
+    return { ok: true };
+  }
   if (id.startsWith(prefix)) {
     const suffix = id.split(prefix).filter(Boolean).pop();
     if (suffix) {
       const normalized = `${prefix}${suffix}`;
-      if (normalized !== id && (await tryDelete(normalized))) return { ok: true };
+      if (normalized !== id) {
+        const deletedNormalized = await tryDelete(normalized);
+        if (deletedNormalized) {
+          if (new Date(deletedNormalized.startAt).getTime() > Date.now()) {
+            await adjustSubscriptionLeft(
+              deletedNormalized.trainerTgUserId,
+              deletedNormalized.clientUsername,
+              1
+            );
+          }
+          return { ok: true };
+        }
+      }
     }
   }
   return reply.code(404).send({ message: "session not found" });
@@ -1462,6 +1508,17 @@ app.post("/sessions/sync", async (req, reply) => {
     },
   })) as Array<any>;
   const existingById = new Map(existing.map((s: any) => [s.id, s]));
+  const nowTs = Date.now();
+  const createdSessions = normalized.filter(
+    (s) => !existingById.has(s.id) && s.startAt.getTime() > nowTs
+  );
+
+  const allExisting = (await prismaAny.trainingSession.findMany({
+    where: { trainerTgUserId: dbUser.tgUserId, source: "trainer" },
+  })) as Array<any>;
+  const removedSessions = allExisting.filter(
+    (s) => !ids.includes(s.id) && new Date(s.startAt).getTime() > nowTs
+  );
 
   const ops = normalized.map((s) =>
     prismaAny.trainingSession.upsert({
@@ -1497,6 +1554,16 @@ app.post("/sessions/sync", async (req, reply) => {
   );
 
   await prisma.$transaction(ops);
+  if (createdSessions.length > 0) {
+    for (const s of createdSessions) {
+      await adjustSubscriptionLeft(s.trainerTgUserId, s.clientUsername, -1);
+    }
+  }
+  if (removedSessions.length > 0) {
+    for (const s of removedSessions) {
+      await adjustSubscriptionLeft(s.trainerTgUserId, s.clientUsername, 1);
+    }
+  }
   return { ok: true, count: normalized.length };
 });
 

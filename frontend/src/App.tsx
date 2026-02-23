@@ -308,7 +308,6 @@ export default function App() {
   const [clientSessionsByDate, setClientSessionsByDate] = useState<Record<string, SessionItem[]>>({});
   const [historyByClient, setHistoryByClient] = useState<Record<string, SessionItem[]>>({});
   const processedSessionIdsRef = useRef<Set<string>>(new Set());
-  const processedSessionStartIdsRef = useRef<Set<string>>(new Set());
   const [pendingSession, setPendingSession] = useState<SessionItem | null>(null);
   const [trainerSessionsLoaded, setTrainerSessionsLoaded] = useState(false);
   const trainerHistory = useMemo(() => {
@@ -1139,23 +1138,9 @@ export default function App() {
   useEffect(() => {
     const run = () => {
       const now = new Date();
-      const startedCounts = new Map<string, number>();
 
       setSessionsByDate((prev) => {
         const allSessions = Object.values(prev).flat();
-        const started: SessionItem[] = allSessions.filter((s) => isSessionInProgress(s, now));
-        const uniqueStarted = started.filter(
-          (s, idx, arr) => arr.findIndex((x) => x.id === s.id) === idx
-        );
-        const newStarted = uniqueStarted.filter((s) => !processedSessionStartIdsRef.current.has(s.id));
-        if (newStarted.length > 0) {
-          newStarted.forEach((s) => {
-            processedSessionStartIdsRef.current.add(s.id);
-            const key = s.clientUsername || "";
-            startedCounts.set(key, (startedCounts.get(key) || 0) + 1);
-          });
-        }
-
         const moved: SessionItem[] = allSessions.filter((s) => isSessionEnded(s, now));
         const uniqueMoved = moved.filter((s, idx, arr) =>
           arr.findIndex((x) => x.id === s.id) === idx
@@ -1181,42 +1166,11 @@ export default function App() {
 
         return prev;
       });
-
-      if (startedCounts.size > 0) {
-        const updates: { id: string; subscriptionLeft: string }[] = [];
-        setInvites((prevInv) => {
-          const next = prevInv.map((c) => {
-            const countForClient = startedCounts.get(c.username);
-            if (!countForClient) return c;
-            const left = parseInt(c.subscriptionLeft || "", 10);
-            const total = parseInt(c.subscriptionTotal || "", 10);
-            const baseLeft = Number.isNaN(left) ? (Number.isNaN(total) ? NaN : total) : left;
-            if (Number.isNaN(baseLeft)) return c;
-            const nextLeft = Math.max(0, baseLeft - countForClient);
-            if (String(nextLeft) === String(c.subscriptionLeft || "")) return c;
-            updates.push({ id: c.id, subscriptionLeft: String(nextLeft) });
-            return { ...c, subscriptionLeft: String(nextLeft) };
-          });
-          return next;
-        });
-
-        if (token && updates.length > 0) {
-          updates.forEach((u) => {
-            fetch(`${apiBase}/clients/${u.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-              body: JSON.stringify({ subscriptionLeft: u.subscriptionLeft }),
-            }).catch(() => {
-              // ignore
-            });
-          });
-        }
-      }
     };
     run();
     const id = window.setInterval(run, 10 * 1000);
     return () => window.clearInterval(id);
-  }, [apiBase, token]);
+  }, []);
 
   useEffect(() => {
     const now = new Date();
@@ -1394,7 +1348,6 @@ export default function App() {
       setSessionsByDate({});
       setHistoryByClient({});
       processedSessionIdsRef.current = new Set();
-      processedSessionStartIdsRef.current = new Set();
       setPendingSession(null);
       setClientConnected(false);
       setClientTab("home");
@@ -4360,93 +4313,37 @@ function TrainerSchedule(props: {
             }
             return (
               <div style={styles.sessionList}>
-                {(() => {
-                  const now = new Date();
-                  const nowTs = now.getTime();
-                  const futureOrder = new Map<string, number>();
-                  const futureByClient = new Map<string, SessionItem[]>();
-                  const inProgressIds = new Set<string>();
-                  const inProgressCountByClient = new Map<string, number>();
-                  list.forEach((s) => {
-                    const startTs = sessionStartTime(s).getTime();
-                    const endTs = sessionEndTime(s).getTime();
-                    if (startTs <= nowTs && nowTs < endTs) {
-                      inProgressIds.add(s.id);
-                      const key = s.clientUsername || "";
-                      inProgressCountByClient.set(key, (inProgressCountByClient.get(key) || 0) + 1);
-                      return;
-                    }
-                    if (startTs > nowTs) {
-                      const key = s.clientUsername || "";
-                      const next = futureByClient.get(key) ? [...futureByClient.get(key)!] : [];
-                      next.push(s);
-                      futureByClient.set(key, next);
-                    }
-                  });
-                  futureByClient.forEach((items) => {
-                    items
-                      .slice()
-                      .sort((a, b) => sessionStartTime(a).getTime() - sessionStartTime(b).getTime())
-                      .forEach((s, idx) => {
-                        futureOrder.set(s.id, idx);
-                      });
-                  });
-                  return list.map((s) => {
-                    const client = clients.find((c) => c.username === s.clientUsername);
-                    const totalRaw = client?.subscriptionTotal?.trim();
-                    const total = totalRaw ? parseInt(totalRaw.replace(/[^\d]/g, ""), 10) : NaN;
-                    const leftRaw = client?.subscriptionLeft?.trim();
-                    const left = leftRaw ? parseInt(leftRaw.replace(/[^\d]/g, ""), 10) : NaN;
-                    const baseLeft = Number.isFinite(left) ? left : total;
-                    const inProgressCount = inProgressCountByClient.get(s.clientUsername || "") || 0;
-                    const baseLeftDisplay =
-                      Number.isFinite(baseLeft) &&
-                      Number.isFinite(total) &&
-                      baseLeft === total &&
-                      inProgressCount > 0
-                        ? Math.max(0, baseLeft - inProgressCount)
-                        : baseLeft;
-                    const orderIdx = futureOrder.get(s.id);
-                    const leftAfter = inProgressIds.has(s.id)
-                      ? Math.max(0, baseLeftDisplay)
-                      : Math.max(0, baseLeftDisplay - (orderIdx != null ? orderIdx + 1 : 1));
-                    const showLeftCount = Number.isFinite(total) && (orderIdx != null || inProgressIds.has(s.id));
-                  return (
-                    <div
-                      key={s.id}
-                      style={styles.sessionBanner}
-                      onClick={() => {
-                        setActiveSession(s);
-                        setScheduleScreen("session");
-                      }}
-                    >
-                      <div style={styles.sessionBannerLeft}>
-                        <div style={styles.sessionBannerTitle}>
-                          {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
-                        </div>
-                        <div style={styles.sessionBannerTime}>
-                          {s.start} — {s.end}
-                        </div>
-                        <div style={styles.sessionBannerClient}>
-                          {getClientLabel(clients, s.clientUsername)}
-                        </div>
-                        {showLeftCount ? (
-                          <div style={styles.sessionBannerLeftCountRight}>{`${leftAfter}/${total}`}</div>
-                        ) : null}
-                        <div
-                          style={{
-                            ...styles.sessionBannerStatus,
-                            color: sessionStatusColor(s),
-                          }}
-                        >
-                          {sessionStatusLabel(s)}
-                        </div>
+                {list.map((s) => (
+                  <div
+                    key={s.id}
+                    style={styles.sessionBanner}
+                    onClick={() => {
+                      setActiveSession(s);
+                      setScheduleScreen("session");
+                    }}
+                  >
+                    <div style={styles.sessionBannerLeft}>
+                      <div style={styles.sessionBannerTitle}>
+                        {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
                       </div>
-                      <div style={styles.sessionBannerActions} />
+                      <div style={styles.sessionBannerTime}>
+                        {s.start} — {s.end}
+                      </div>
+                      <div style={styles.sessionBannerClient}>
+                        {getClientLabel(clients, s.clientUsername)}
+                      </div>
+                      <div
+                        style={{
+                          ...styles.sessionBannerStatus,
+                          color: sessionStatusColor(s),
+                        }}
+                      >
+                        {sessionStatusLabel(s)}
+                      </div>
                     </div>
-                  );
-                });
-                })()}
+                    <div style={styles.sessionBannerActions} />
+                  </div>
+                ))}
               </div>
             );
           })()}
@@ -4838,6 +4735,11 @@ function TrainerClients(props: {
           updateClient(target.id, { archived: nextArchived });
           setScreen("list");
           setClientsTab(nextArchived ? "archive" : "my");
+        }}
+        onDeleteClient={(target) => {
+          deleteClient(target);
+          setScreen("list");
+          setClientsTab("my");
         }}
         onSaveExercises={onSaveClientExercises}
         history={historyByClient[client?.username ?? ""] ?? []}
@@ -5274,13 +5176,14 @@ function ClientDetailScreen(props: {
   onBack: () => void;
   onUpdateClient: (id: string, patch: Partial<TrainerClientInvite>) => void;
   onToggleArchive: (client: TrainerClientInvite, nextArchived: boolean) => void;
+  onDeleteClient: (client: TrainerClientInvite) => void;
   history: SessionItem[];
   onSaveExercises?: (
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
 }) {
-  const { client, onBack, onUpdateClient, onToggleArchive, history, onSaveExercises } = props;
+  const { client, onBack, onUpdateClient, onToggleArchive, onDeleteClient, history, onSaveExercises } = props;
   const tr = useTr();
   const [tab, setTab] = useState<"info" | "contacts" | "subscription" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
@@ -5668,10 +5571,39 @@ function ClientDetailScreen(props: {
               }
               if (window.confirm(message)) doToggle();
             }}
-            style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 18 }}
+            style={
+              client?.archived
+                ? { ...styles.saveBtn, ...styles.neutralBtn, marginTop: 18 }
+                : { ...styles.saveBtn, ...styles.dangerBtn, marginTop: 18 }
+            }
           >
             {client?.archived ? tr("Разархивировать", "Unarchive") : tr("Архивировать", "Archive")}
           </button>
+          {client?.archived ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!client) return;
+                const message = tr(
+                  "Удалить клиента? Он будет отвязан от вашего профиля.",
+                  "Delete client? They will be unlinked from your profile."
+                );
+                const doDelete = () => {
+                  onDeleteClient(client);
+                };
+                if (typeof WebApp?.showConfirm === "function") {
+                  WebApp.showConfirm(message, (yes) => {
+                    if (yes) doDelete();
+                  });
+                  return;
+                }
+                if (window.confirm(message)) doDelete();
+              }}
+              style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 10 }}
+            >
+              {tr("Удалить клиента", "Delete client")}
+            </button>
+          ) : null}
         </div>
       ) : visibleTab === "contacts" ? (
         <div style={styles.clientPanelPlain}>
@@ -7678,12 +7610,6 @@ function sessionEndTime(s: SessionItem) {
 
 function isSessionEnded(s: SessionItem, now: Date) {
   return sessionEndTime(s).getTime() <= now.getTime();
-}
-
-function isSessionInProgress(s: SessionItem, now: Date) {
-  const start = sessionStartTime(s).getTime();
-  const end = sessionEndTime(s).getTime();
-  return now.getTime() >= start && now.getTime() < end;
 }
 
 function sessionStartTime(s: SessionItem) {
@@ -9776,6 +9702,11 @@ const styles: Record<string, any> = {
     borderColor: "#e5484d",
     color: "#fff",
   },
+  neutralBtn: {
+    background: "#fff",
+    borderColor: "#d7dbe5",
+    color: "#111",
+  },
 
   errorText: {
     marginTop: 10,
@@ -9991,21 +9922,6 @@ const styles: Record<string, any> = {
     fontSize: 12,
     fontWeight: 700,
     color: "var(--accent)",
-  },
-  sessionBannerLeftCount: {
-    marginTop: 6,
-    fontSize: 12,
-    opacity: 0.8,
-    color: "var(--text)",
-  },
-  sessionBannerLeftCountRight: {
-    position: "absolute",
-    right: 12,
-    bottom: 12,
-    fontSize: 12,
-    fontWeight: 700,
-    color: "var(--text)",
-    opacity: 0.9,
   },
   freeForm: {
     marginTop: 12,
