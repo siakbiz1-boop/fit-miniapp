@@ -4494,7 +4494,7 @@ function TrainerSchedule(props: {
                       aria-label="delete free window"
                       title={tr("Удалить", "Delete")}
                     >
-                      <IconTrash />
+                      <IconTrash size={18} />
                     </button>
                   </div>
                 </div>
@@ -8143,10 +8143,9 @@ function IconCopy() {
   );
 }
 
-function IconTrash() {
-  // ✅ чуть крупнее + контрастнее
+function IconTrash({ size = 22, strokeWidth = 2.1 }: IconProps) {
   return (
-    <SvgIcon size={22} strokeWidth={2.1}>
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
       <path d="M4 7h16" />
       <path d="M10 11v6" />
       <path d="M14 11v6" />
@@ -9980,13 +9979,13 @@ const styles: Record<string, any> = {
     color: "var(--muted)",
   },
   freeBannerDelete: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
+    border: "1px solid #cbd5e1",
+    background: "#fff",
     cursor: "pointer",
-    color: "var(--text)",
+    color: "#0f172a",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -9999,18 +9998,18 @@ const styles: Record<string, any> = {
     flex: "0 0 auto",
   },
   freeBannerAdd: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
+    border: "1px solid #cbd5e1",
+    background: "#fff",
     cursor: "pointer",
-    color: "var(--accent)",
+    color: "#0f172a",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flex: "0 0 auto",
-    boxShadow: "0 8px 16px rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 6px 14px rgba(15, 23, 42, 0.08)",
   },
   assignRow: {
     marginTop: 8,
