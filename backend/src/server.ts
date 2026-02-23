@@ -589,12 +589,6 @@ app.delete("/profile", async (req, reply) => {
     },
   });
 
-  if (usernames.size > 0) {
-    await prismaAny.trainingSession.deleteMany({
-      where: { clientUsername: { in: Array.from(usernames) } },
-    });
-  }
-
   await prisma.user.delete({ where: { id: dbUser.id } });
   return { ok: true };
 });
