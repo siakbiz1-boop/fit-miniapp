@@ -1137,7 +1137,7 @@ export default function App() {
   }, [hasTgBack, clientTab, clientSettingsScreen]);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
+    const run = () => {
       const now = new Date();
       const startedCounts = new Map<string, number>();
 
@@ -1212,7 +1212,9 @@ export default function App() {
           });
         }
       }
-    }, 10 * 1000);
+    };
+    run();
+    const id = window.setInterval(run, 10 * 1000);
     return () => window.clearInterval(id);
   }, [apiBase, token]);
 
@@ -4364,11 +4366,14 @@ function TrainerSchedule(props: {
                   const futureOrder = new Map<string, number>();
                   const futureByClient = new Map<string, SessionItem[]>();
                   const inProgressIds = new Set<string>();
+                  const inProgressCountByClient = new Map<string, number>();
                   list.forEach((s) => {
                     const startTs = sessionStartTime(s).getTime();
                     const endTs = sessionEndTime(s).getTime();
                     if (startTs <= nowTs && nowTs < endTs) {
                       inProgressIds.add(s.id);
+                      const key = s.clientUsername || "";
+                      inProgressCountByClient.set(key, (inProgressCountByClient.get(key) || 0) + 1);
                       return;
                     }
                     if (startTs > nowTs) {
@@ -4393,10 +4398,18 @@ function TrainerSchedule(props: {
                     const leftRaw = client?.subscriptionLeft?.trim();
                     const left = leftRaw ? parseInt(leftRaw.replace(/[^\d]/g, ""), 10) : NaN;
                     const baseLeft = Number.isFinite(left) ? left : total;
+                    const inProgressCount = inProgressCountByClient.get(s.clientUsername || "") || 0;
+                    const baseLeftDisplay =
+                      Number.isFinite(baseLeft) &&
+                      Number.isFinite(total) &&
+                      baseLeft === total &&
+                      inProgressCount > 0
+                        ? Math.max(0, baseLeft - inProgressCount)
+                        : baseLeft;
                     const orderIdx = futureOrder.get(s.id);
                     const leftAfter = inProgressIds.has(s.id)
-                      ? Math.max(0, baseLeft)
-                      : Math.max(0, baseLeft - (orderIdx != null ? orderIdx + 1 : 1));
+                      ? Math.max(0, baseLeftDisplay)
+                      : Math.max(0, baseLeftDisplay - (orderIdx != null ? orderIdx + 1 : 1));
                     const showLeftCount = Number.isFinite(total) && (orderIdx != null || inProgressIds.has(s.id));
                   return (
                     <div
@@ -7856,6 +7869,8 @@ function canScheduleClientOnDate(
   const c = clients.find((x) => x.username === username);
   if (!c || c.archived) return false;
   if (c.status !== "active") return false;
+  const left = parseInt(c.subscriptionLeft || "", 10);
+  if (!Number.isNaN(left) && left <= 0) return false;
   return true;
 }
 
