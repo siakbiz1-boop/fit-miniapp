@@ -3160,7 +3160,7 @@ function ClientSchedule(props: {
                         }
                       }}
                     >
-                      <span aria-hidden="true">➕</span>
+                      <IconUser size={18} />
                     </button>
                   </div>
                 </div>
@@ -3418,6 +3418,7 @@ function ClientSettings(props: {
       screen={screen}
       setScreen={setScreen}
       personalShowSubscription={false}
+      personalShowMySubscription
       personalShowExtendedAbout={false}
       personalShowClientBasics
       personalShowClientWeights
@@ -4480,7 +4481,7 @@ function TrainerSchedule(props: {
                       title={tr("Записать клиента", "Assign client")}
                       disabled={clients.length === 0 || !canBookSlot(w.dateKey, w.start)}
                     >
-                      <span aria-hidden="true">➕</span>
+                      <IconUser size={18} />
                     </button>
                     <button
                       type="button"
@@ -4493,7 +4494,7 @@ function TrainerSchedule(props: {
                       aria-label="delete free window"
                       title={tr("Удалить", "Delete")}
                     >
-                      <span aria-hidden="true">➖</span>
+                      <IconTrash />
                     </button>
                   </div>
                 </div>
@@ -5959,6 +5960,7 @@ function TrainerSettings(props: {
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
   personalShowSubscription?: boolean;
+  personalShowMySubscription?: boolean;
   personalShowExtendedAbout?: boolean;
   personalShowClientBasics?: boolean;
   personalShowClientWeights?: boolean;
@@ -5991,6 +5993,7 @@ function TrainerSettings(props: {
     onSaveClientProfile,
     onSaveClientExercises,
     personalShowSubscription = true,
+    personalShowMySubscription = false,
     personalShowExtendedAbout = true,
     personalShowClientBasics = false,
     personalShowClientWeights = false,
@@ -6036,6 +6039,7 @@ function TrainerSettings(props: {
         trainerProfile={trainerProfile}
         onSaveTrainerProfile={onSaveTrainerProfile}
         showSubscriptionTab={personalShowSubscription}
+        showMySubscriptionTab={personalShowMySubscription}
         showExtendedAbout={personalShowExtendedAbout}
         showClientBasics={personalShowClientBasics}
         showClientWeights={personalShowClientWeights}
@@ -6370,6 +6374,7 @@ function PersonalDataScreen(props: {
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
   showSubscriptionTab?: boolean;
+  showMySubscriptionTab?: boolean;
   showExtendedAbout?: boolean;
   showClientBasics?: boolean;
   showClientWeights?: boolean;
@@ -6400,6 +6405,7 @@ function PersonalDataScreen(props: {
     clientProfile,
     onSaveClientProfile,
     onSaveClientExercises,
+    showMySubscriptionTab = false,
   } = props;
   const tr = useTr();
   const resolvedSubscriptionTabLabel = subscriptionTabLabel ?? tr("Моя подписка", "My subscription");
@@ -6431,7 +6437,9 @@ function PersonalDataScreen(props: {
   const phoneRef = useRef<HTMLTextAreaElement | null>(null);
   const instagramRef = useRef<HTMLTextAreaElement | null>(null);
   const otherSocialRef = useRef<HTMLTextAreaElement | null>(null);
-  const [personalTab, setPersonalTab] = useState<"about" | "contacts" | "weights" | "subscription">("about");
+  const [personalTab, setPersonalTab] = useState<"about" | "contacts" | "mySubscription" | "weights" | "subscription">(
+    "about"
+  );
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
 
   const subscriptionTrainers = (subscriptionItems || []).filter((c) => !c.archived && c.status === "active");
@@ -6503,6 +6511,12 @@ function PersonalDataScreen(props: {
       setPersonalTab("about");
     }
   }, [showSubscriptionTab, personalTab]);
+
+  useEffect(() => {
+    if (!showMySubscriptionTab && personalTab === "mySubscription") {
+      setPersonalTab("about");
+    }
+  }, [showMySubscriptionTab, personalTab]);
 
   useEffect(() => {
     if (!showClientWeights && personalTab === "weights") {
@@ -6607,6 +6621,18 @@ function PersonalDataScreen(props: {
           >
             {tr("Контакты", "Contacts")}
           </button>
+          {showMySubscriptionTab ? (
+            <button
+              type="button"
+              onClick={() => setPersonalTab("mySubscription")}
+              style={{
+                ...styles.scheduleTab,
+                ...(personalTab === "mySubscription" ? styles.scheduleTabActive : null),
+              }}
+            >
+              {tr("Мой абонемент", "My subscription")}
+            </button>
+          ) : null}
           {showClientWeights ? (
             <button
               type="button"
@@ -6909,6 +6935,34 @@ function PersonalDataScreen(props: {
             rows={1}
             style={{ ...styles.input, resize: "none", overflow: "hidden" }}
           />
+          </div>
+        </div>
+      ) : personalTab === "mySubscription" ? (
+        <div style={styles.clientPanelPlain}>
+          <div style={styles.subscriptionDetails}>
+            <div style={styles.subscriptionDetailsTitle}>{tr("Абонемент", "Subscription")}</div>
+            <div style={styles.subscriptionDetailsRow}>
+              <div style={styles.subscriptionDetailsLabel}>{tr("Дата начала", "Start date")}</div>
+              <div style={styles.subscriptionDetailsValue}>{activeTrainer?.subscriptionStart?.trim() || "—"}</div>
+            </div>
+            <div style={styles.subscriptionDetailsRow}>
+              <div style={styles.subscriptionDetailsLabel}>{tr("Дата завершения", "End date")}</div>
+              <div style={styles.subscriptionDetailsValue}>{activeTrainer?.subscriptionEnd?.trim() || "—"}</div>
+            </div>
+            <div style={styles.subscriptionDetailsRow}>
+              <div style={styles.subscriptionDetailsLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+              <div style={styles.subscriptionDetailsValue}>{activeTrainer?.subscriptionPrice?.trim() || "—"}</div>
+            </div>
+            <div style={styles.subscriptionDetailsRow}>
+              <div style={styles.subscriptionDetailsLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
+              <div style={styles.subscriptionDetailsValue}>{activeTrainer?.subscriptionTotal?.trim() || "—"}</div>
+            </div>
+            <div style={styles.subscriptionDetailsRow}>
+              <div style={styles.subscriptionDetailsLabel}>{tr("Занятий осталось", "Sessions left")}</div>
+              <div style={styles.subscriptionDetailsValue}>
+                {activeTrainer?.subscriptionLeft?.trim() || activeTrainer?.subscriptionTotal?.trim() || "—"}
+              </div>
+            </div>
           </div>
         </div>
       ) : personalTab === "weights" ? (
@@ -7991,9 +8045,9 @@ function IconSettings() {
   );
 }
 
-function IconUser() {
+function IconUser({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
-    <SvgIcon>
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
       <path d="M12 12.2a4.2 4.2 0 1 0-4.2-4.2A4.2 4.2 0 0 0 12 12.2Z" />
       <path d="M20 21c-1.2-4-4.2-6.1-8-6.1S5.2 17 4 21" />
     </SvgIcon>
@@ -9948,15 +10002,15 @@ const styles: Record<string, any> = {
     width: 40,
     height: 40,
     borderRadius: 12,
-    border: "1px solid rgba(22, 119, 255, 0.35)",
-    background: "var(--accent)",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
     cursor: "pointer",
-    color: "var(--accent-contrast)",
+    color: "var(--accent)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flex: "0 0 auto",
-    boxShadow: "0 8px 16px rgba(22, 119, 255, 0.25)",
+    boxShadow: "0 8px 16px rgba(15, 23, 42, 0.08)",
   },
   assignRow: {
     marginTop: 8,
