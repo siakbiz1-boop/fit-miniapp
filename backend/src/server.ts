@@ -838,6 +838,43 @@ app.patch("/clients/:id", async (req, reply) => {
     include: { exercises: true },
   });
 
+  if (body?.archived === true && !client.archived) {
+    const now = new Date();
+    const futureSessions = await prismaAny.trainingSession.findMany({
+      where: {
+        trainerTgUserId: updated.trainerTgUserId,
+        clientUsername: updated.clientUsername,
+        startAt: { gt: now },
+      },
+    });
+    for (const s of futureSessions) {
+      const startAt = new Date(s.startAt);
+      const dateKey = `${startAt.getFullYear()}-${String(startAt.getMonth() + 1).padStart(2, "0")}-${String(
+        startAt.getDate()
+      ).padStart(2, "0")}`;
+      const existingSlot = await prismaAny.trainingSlot.findFirst({
+        where: {
+          trainerTgUserId: s.trainerTgUserId,
+          dateKey,
+          start: s.startTime,
+          end: s.endTime,
+        },
+      });
+      if (!existingSlot) {
+        await prismaAny.trainingSlot.create({
+          data: {
+            trainerTgUserId: s.trainerTgUserId,
+            dateKey,
+            start: s.startTime,
+            end: s.endTime,
+          },
+        });
+      }
+      await prismaAny.trainingSession.delete({ where: { id: s.id } });
+      await adjustSubscriptionLeft(s.trainerTgUserId, s.clientUsername, 1);
+    }
+  }
+
   let clientProfile = null;
   if (updated.clientTgUserId) {
     const user = await prisma.user.findUnique({ where: { tgUserId: updated.clientTgUserId } });

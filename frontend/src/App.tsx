@@ -1173,61 +1173,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const now = new Date();
-    const updates: {
-      id: string;
-      subscriptionLeft: string;
-      subscriptionStart: string;
-      subscriptionEnd: string;
-      subscriptionPrice: string;
-      subscriptionTotal: string;
-      archived: boolean;
-    }[] = [];
-    setInvites((prev) => {
-      let changed = false;
-      const next = prev.map((c) => {
-        if (c.archived) return c;
-        let shouldArchive = false;
-
-        const left = parseInt(c.subscriptionLeft || "", 10);
-        if (!Number.isNaN(left) && left <= 0) shouldArchive = true;
-
-        if (c.subscriptionEnd) {
-          const end = parseDateDMY(c.subscriptionEnd);
-          if (end && endDateEnd(end).getTime() <= now.getTime()) {
-            shouldArchive = true;
-          }
-        }
-
-        if (shouldArchive) {
-          changed = true;
-          const patch = {
-            archived: true,
-            subscriptionLeft: "0",
-            subscriptionStart: "",
-            subscriptionEnd: "",
-            subscriptionPrice: "",
-            subscriptionTotal: "",
-          };
-          updates.push({ id: c.id, ...patch });
-          return { ...c, ...patch };
-        }
-        return c;
-      });
-      return changed ? next : prev;
-    });
-    if (token && updates.length > 0) {
-      updates.forEach((u) => {
-        fetch(`${apiBase}/clients/${u.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(u),
-        }).catch(() => {
-          // ignore
-        });
-      });
-    }
-  }, [invites, apiBase, token]);
+    // intentionally left: no auto-archive on subscription end
+  }, []);
 
   useEffect(() => {
     try {
@@ -4847,6 +4794,17 @@ function TrainerClients(props: {
                     : isLocal
                       ? tr("Клиент", "Client")
                       : `@${inv.username}`;
+                const hasSubData = Boolean(
+                  (inv.subscriptionStart && inv.subscriptionStart.trim()) ||
+                    (inv.subscriptionEnd && inv.subscriptionEnd.trim()) ||
+                    (inv.subscriptionPrice && inv.subscriptionPrice.trim()) ||
+                    (inv.subscriptionTotal && inv.subscriptionTotal.trim()) ||
+                    (inv.subscriptionLeft && inv.subscriptionLeft.trim())
+                );
+                const left = parseInt(inv.subscriptionLeft || "", 10);
+                const endDate = inv.subscriptionEnd ? parseDateDMY(inv.subscriptionEnd) : null;
+                const isExpiredByDate = endDate ? endDateEnd(endDate).getTime() <= Date.now() : false;
+                const shouldWarn = hasSubData && ((Number.isNaN(left) ? false : left <= 0) || isExpiredByDate);
                 return (
                   <div
                     key={inv.id}
@@ -4879,6 +4837,10 @@ function TrainerClients(props: {
                               <span>{tr("Ожидает активации", "Pending activation")}</span>
                             ) : clientsTab === "archive" ? (
                               <span style={{ opacity: 0.7 }}>{tr("Архивирован", "Archived")}</span>
+                            ) : shouldWarn ? (
+                              <span style={styles.subscriptionWarningText}>
+                                {tr("Необходимо продлить абонемент", "Subscription renewal required")}
+                              </span>
                             ) : null}
                           </div>
                         </div>
@@ -9701,6 +9663,10 @@ const styles: Record<string, any> = {
     background: "#e5484d",
     borderColor: "#e5484d",
     color: "#fff",
+  },
+  subscriptionWarningText: {
+    color: "#e5484d",
+    fontWeight: 600,
   },
   neutralBtn: {
     background: "#fff",
