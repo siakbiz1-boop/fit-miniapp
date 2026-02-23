@@ -3160,7 +3160,7 @@ function ClientSchedule(props: {
                         }
                       }}
                     >
-                      <IconUser size={18} />
+                      <span aria-hidden="true">➕</span>
                     </button>
                   </div>
                 </div>
@@ -4494,7 +4494,7 @@ function TrainerSchedule(props: {
                       aria-label="delete free window"
                       title={tr("Удалить", "Delete")}
                     >
-                      <IconTrash size={18} />
+                      <span aria-hidden="true">➖</span>
                     </button>
                   </div>
                 </div>
