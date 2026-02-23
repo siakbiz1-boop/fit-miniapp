@@ -3160,7 +3160,9 @@ function ClientSchedule(props: {
                         }
                       }}
                     >
-                      <span aria-hidden="true">➕</span>
+                      <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
+                        ➕
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -4481,7 +4483,9 @@ function TrainerSchedule(props: {
                       title={tr("Записать клиента", "Assign client")}
                       disabled={clients.length === 0 || !canBookSlot(w.dateKey, w.start)}
                     >
-                      <IconUser size={18} />
+                      <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
+                        ➕
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -4494,7 +4498,9 @@ function TrainerSchedule(props: {
                       aria-label="delete free window"
                       title={tr("Удалить", "Delete")}
                     >
-                      <span aria-hidden="true">➖</span>
+                      <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
+                        ➖
+                      </span>
                     </button>
                   </div>
                 </div>
