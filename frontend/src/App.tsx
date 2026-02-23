@@ -1169,12 +1169,18 @@ export default function App() {
           prevInv.map((c) => {
             const countForClient = newMoved.filter((s) => s.clientUsername === c.username).length;
             const left = parseInt(c.subscriptionLeft || "", 10);
+            const total = parseInt(c.subscriptionTotal || "", 10);
             const endDate = c.subscriptionEnd ? parseDateDMY(c.subscriptionEnd) : null;
             const endExpired = endDate ? endDateEnd(endDate).getTime() <= now.getTime() : false;
 
             let nextLeft = Number.isNaN(left) ? left : left;
+            if (Number.isNaN(left) && !Number.isNaN(total)) {
+              nextLeft = total;
+            }
             if (!Number.isNaN(left) && countForClient > 0) {
               nextLeft = Math.max(0, left - countForClient);
+            } else if (Number.isNaN(left) && !Number.isNaN(total) && countForClient > 0) {
+              nextLeft = Math.max(0, total - countForClient);
             }
 
             const shouldArchive =
@@ -1184,7 +1190,7 @@ export default function App() {
               nextLeft = 0;
             }
 
-            if (Number.isNaN(left)) {
+            if (Number.isNaN(left) && Number.isNaN(total)) {
               return shouldArchive ? { ...c, archived: true } : c;
             }
 
@@ -4316,38 +4322,49 @@ function TrainerSchedule(props: {
             }
             return (
               <div style={styles.sessionList}>
-                {list.map((s) => (
-                  <div
-                    key={s.id}
-                    style={styles.sessionBanner}
-                    onClick={() => {
-                      setActiveSession(s);
-                      setScheduleScreen("session");
-                    }}
-                  >
-                    <div style={styles.sessionBannerLeft}>
-                      <div style={styles.sessionBannerTitle}>
-                        {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
-                      </div>
-                      <div style={styles.sessionBannerTime}>
-                        {s.start} — {s.end}
-                      </div>
-                      <div style={styles.sessionBannerClient}>
-                        {getClientLabel(clients, s.clientUsername)}
-                      </div>
-                      {null}
+                {list.map((s) => {
+                  const client = clients.find((c) => c.username === s.clientUsername);
+                  const totalRaw = client?.subscriptionTotal?.trim();
+                  const total = totalRaw ? parseInt(totalRaw.replace(/[^\d]/g, ""), 10) : NaN;
+                  const leftRaw = client?.subscriptionLeft?.trim();
+                  const left = leftRaw ? parseInt(leftRaw.replace(/[^\d]/g, ""), 10) : NaN;
+                  const leftAfter = Math.max(0, (Number.isFinite(left) ? left : total) - 1);
+                  const showLeftCount = Number.isFinite(total) && sessionStartTime(s).getTime() > Date.now();
+                  return (
                     <div
-                      style={{
-                        ...styles.sessionBannerStatus,
-                        color: sessionStatusColor(s),
+                      key={s.id}
+                      style={styles.sessionBanner}
+                      onClick={() => {
+                        setActiveSession(s);
+                        setScheduleScreen("session");
                       }}
                     >
-                      {sessionStatusLabel(s)}
+                      <div style={styles.sessionBannerLeft}>
+                        <div style={styles.sessionBannerTitle}>
+                          {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
+                        </div>
+                        <div style={styles.sessionBannerTime}>
+                          {s.start} — {s.end}
+                        </div>
+                        <div style={styles.sessionBannerClient}>
+                          {getClientLabel(clients, s.clientUsername)}
+                        </div>
+                        {showLeftCount ? (
+                          <div style={styles.sessionBannerLeftCountRight}>{`${total}/${leftAfter}`}</div>
+                        ) : null}
+                        <div
+                          style={{
+                            ...styles.sessionBannerStatus,
+                            color: sessionStatusColor(s),
+                          }}
+                        >
+                          {sessionStatusLabel(s)}
+                        </div>
+                      </div>
+                      <div style={styles.sessionBannerActions} />
                     </div>
-                    </div>
-                    <div style={styles.sessionBannerActions} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })()}
@@ -9890,6 +9907,15 @@ const styles: Record<string, any> = {
     fontSize: 12,
     opacity: 0.8,
     color: "var(--text)",
+  },
+  sessionBannerLeftCountRight: {
+    position: "absolute",
+    right: 12,
+    bottom: 12,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--text)",
+    opacity: 0.9,
   },
   freeForm: {
     marginTop: 12,
