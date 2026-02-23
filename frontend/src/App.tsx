@@ -308,6 +308,7 @@ export default function App() {
   const [clientSessionsByDate, setClientSessionsByDate] = useState<Record<string, SessionItem[]>>({});
   const [historyByClient, setHistoryByClient] = useState<Record<string, SessionItem[]>>({});
   const processedSessionIdsRef = useRef<Set<string>>(new Set());
+  const processedSessionStartIdsRef = useRef<Set<string>>(new Set());
   const [pendingSession, setPendingSession] = useState<SessionItem | null>(null);
   const [trainerSessionsLoaded, setTrainerSessionsLoaded] = useState(false);
   const trainerHistory = useMemo(() => {
@@ -1138,11 +1139,24 @@ export default function App() {
   useEffect(() => {
     const id = window.setInterval(() => {
       const now = new Date();
-      setSessionsByDate((prev) => {
-        const moved: SessionItem[] = Object.values(prev)
-          .flat()
-          .filter((s) => isSessionEnded(s, now));
+      const startedCounts = new Map<string, number>();
 
+      setSessionsByDate((prev) => {
+        const allSessions = Object.values(prev).flat();
+        const started: SessionItem[] = allSessions.filter((s) => isSessionInProgress(s, now));
+        const uniqueStarted = started.filter(
+          (s, idx, arr) => arr.findIndex((x) => x.id === s.id) === idx
+        );
+        const newStarted = uniqueStarted.filter((s) => !processedSessionStartIdsRef.current.has(s.id));
+        if (newStarted.length > 0) {
+          newStarted.forEach((s) => {
+            processedSessionStartIdsRef.current.add(s.id);
+            const key = s.clientUsername || "";
+            startedCounts.set(key, (startedCounts.get(key) || 0) + 1);
+          });
+        }
+
+        const moved: SessionItem[] = allSessions.filter((s) => isSessionEnded(s, now));
         const uniqueMoved = moved.filter((s, idx, arr) =>
           arr.findIndex((x) => x.id === s.id) === idx
         );
@@ -1165,57 +1179,59 @@ export default function App() {
           });
         }
 
-        setInvites((prevInv) =>
-          prevInv.map((c) => {
-            const countForClient = newMoved.filter((s) => s.clientUsername === c.username).length;
-            const left = parseInt(c.subscriptionLeft || "", 10);
-            const total = parseInt(c.subscriptionTotal || "", 10);
-            const endDate = c.subscriptionEnd ? parseDateDMY(c.subscriptionEnd) : null;
-            const endExpired = endDate ? endDateEnd(endDate).getTime() <= now.getTime() : false;
-
-            let nextLeft = Number.isNaN(left) ? left : left;
-            if (Number.isNaN(left) && !Number.isNaN(total)) {
-              nextLeft = total;
-            }
-            if (!Number.isNaN(left) && countForClient > 0) {
-              nextLeft = Math.max(0, left - countForClient);
-            } else if (Number.isNaN(left) && !Number.isNaN(total) && countForClient > 0) {
-              nextLeft = Math.max(0, total - countForClient);
-            }
-
-            const shouldArchive =
-              endExpired || (Number.isNaN(nextLeft) ? false : nextLeft <= 0);
-
-            if (endExpired && !Number.isNaN(left)) {
-              nextLeft = 0;
-            }
-
-            if (Number.isNaN(left) && Number.isNaN(total)) {
-              return shouldArchive ? { ...c, archived: true } : c;
-            }
-
-            return {
-              ...c,
-              subscriptionLeft: String(nextLeft),
-              archived: shouldArchive ? true : c.archived,
-            };
-          })
-        );
-
         return prev;
       });
-    }, 60 * 1000);
+
+      if (startedCounts.size > 0) {
+        const updates: { id: string; subscriptionLeft: string }[] = [];
+        setInvites((prevInv) => {
+          const next = prevInv.map((c) => {
+            const countForClient = startedCounts.get(c.username);
+            if (!countForClient) return c;
+            const left = parseInt(c.subscriptionLeft || "", 10);
+            const total = parseInt(c.subscriptionTotal || "", 10);
+            const baseLeft = Number.isNaN(left) ? (Number.isNaN(total) ? NaN : total) : left;
+            if (Number.isNaN(baseLeft)) return c;
+            const nextLeft = Math.max(0, baseLeft - countForClient);
+            if (String(nextLeft) === String(c.subscriptionLeft || "")) return c;
+            updates.push({ id: c.id, subscriptionLeft: String(nextLeft) });
+            return { ...c, subscriptionLeft: String(nextLeft) };
+          });
+          return next;
+        });
+
+        if (token && updates.length > 0) {
+          updates.forEach((u) => {
+            fetch(`${apiBase}/clients/${u.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ subscriptionLeft: u.subscriptionLeft }),
+            }).catch(() => {
+              // ignore
+            });
+          });
+        }
+      }
+    }, 10 * 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [apiBase, token]);
 
   useEffect(() => {
     const now = new Date();
+    const updates: {
+      id: string;
+      subscriptionLeft: string;
+      subscriptionStart: string;
+      subscriptionEnd: string;
+      subscriptionPrice: string;
+      subscriptionTotal: string;
+      archived: boolean;
+    }[] = [];
     setInvites((prev) => {
       let changed = false;
       const next = prev.map((c) => {
         if (c.archived) return c;
         let shouldArchive = false;
-        let nextLeft = c.subscriptionLeft;
 
         const left = parseInt(c.subscriptionLeft || "", 10);
         if (!Number.isNaN(left) && left <= 0) shouldArchive = true;
@@ -1224,19 +1240,38 @@ export default function App() {
           const end = parseDateDMY(c.subscriptionEnd);
           if (end && endDateEnd(end).getTime() <= now.getTime()) {
             shouldArchive = true;
-            nextLeft = "0";
           }
         }
 
         if (shouldArchive) {
           changed = true;
-          return { ...c, archived: true, subscriptionLeft: nextLeft };
+          const patch = {
+            archived: true,
+            subscriptionLeft: "0",
+            subscriptionStart: "",
+            subscriptionEnd: "",
+            subscriptionPrice: "",
+            subscriptionTotal: "",
+          };
+          updates.push({ id: c.id, ...patch });
+          return { ...c, ...patch };
         }
         return c;
       });
       return changed ? next : prev;
     });
-  }, [invites]);
+    if (token && updates.length > 0) {
+      updates.forEach((u) => {
+        fetch(`${apiBase}/clients/${u.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(u),
+        }).catch(() => {
+          // ignore
+        });
+      });
+    }
+  }, [invites, apiBase, token]);
 
   useEffect(() => {
     try {
@@ -1357,6 +1392,7 @@ export default function App() {
       setSessionsByDate({});
       setHistoryByClient({});
       processedSessionIdsRef.current = new Set();
+      processedSessionStartIdsRef.current = new Set();
       setPendingSession(null);
       setClientConnected(false);
       setClientTab("home");
@@ -4323,11 +4359,19 @@ function TrainerSchedule(props: {
             return (
               <div style={styles.sessionList}>
                 {(() => {
-                  const nowTs = Date.now();
+                  const now = new Date();
+                  const nowTs = now.getTime();
                   const futureOrder = new Map<string, number>();
                   const futureByClient = new Map<string, SessionItem[]>();
+                  const inProgressIds = new Set<string>();
                   list.forEach((s) => {
-                    if (sessionStartTime(s).getTime() > nowTs) {
+                    const startTs = sessionStartTime(s).getTime();
+                    const endTs = sessionEndTime(s).getTime();
+                    if (startTs <= nowTs && nowTs < endTs) {
+                      inProgressIds.add(s.id);
+                      return;
+                    }
+                    if (startTs > nowTs) {
                       const key = s.clientUsername || "";
                       const next = futureByClient.get(key) ? [...futureByClient.get(key)!] : [];
                       next.push(s);
@@ -4343,15 +4387,17 @@ function TrainerSchedule(props: {
                       });
                   });
                   return list.map((s) => {
-                  const client = clients.find((c) => c.username === s.clientUsername);
-                  const totalRaw = client?.subscriptionTotal?.trim();
-                  const total = totalRaw ? parseInt(totalRaw.replace(/[^\d]/g, ""), 10) : NaN;
-                  const leftRaw = client?.subscriptionLeft?.trim();
-                  const left = leftRaw ? parseInt(leftRaw.replace(/[^\d]/g, ""), 10) : NaN;
-                  const baseLeft = Number.isFinite(left) ? left : total;
-                  const orderIdx = futureOrder.get(s.id);
-                  const leftAfter = Math.max(0, baseLeft - (orderIdx != null ? orderIdx + 1 : 1));
-                  const showLeftCount = Number.isFinite(total) && orderIdx != null;
+                    const client = clients.find((c) => c.username === s.clientUsername);
+                    const totalRaw = client?.subscriptionTotal?.trim();
+                    const total = totalRaw ? parseInt(totalRaw.replace(/[^\d]/g, ""), 10) : NaN;
+                    const leftRaw = client?.subscriptionLeft?.trim();
+                    const left = leftRaw ? parseInt(leftRaw.replace(/[^\d]/g, ""), 10) : NaN;
+                    const baseLeft = Number.isFinite(left) ? left : total;
+                    const orderIdx = futureOrder.get(s.id);
+                    const leftAfter = inProgressIds.has(s.id)
+                      ? Math.max(0, baseLeft)
+                      : Math.max(0, baseLeft - (orderIdx != null ? orderIdx + 1 : 1));
+                    const showLeftCount = Number.isFinite(total) && (orderIdx != null || inProgressIds.has(s.id));
                   return (
                     <div
                       key={s.id}
@@ -7619,6 +7665,12 @@ function sessionEndTime(s: SessionItem) {
 
 function isSessionEnded(s: SessionItem, now: Date) {
   return sessionEndTime(s).getTime() <= now.getTime();
+}
+
+function isSessionInProgress(s: SessionItem, now: Date) {
+  const start = sessionStartTime(s).getTime();
+  const end = sessionEndTime(s).getTime();
+  return now.getTime() >= start && now.getTime() < end;
 }
 
 function sessionStartTime(s: SessionItem) {
