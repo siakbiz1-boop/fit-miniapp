@@ -11,6 +11,7 @@ import { validate } from "@tma.js/init-data-node";
 const PORT = Number(process.env.PORT ?? 3001);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
+const ADMIN_STATS_TOKEN = (process.env.ADMIN_STATS_TOKEN ?? "").trim();
 const WEBAPP_URL = (process.env.WEBAPP_URL ?? "https://app.fitminiapp.tech/")
   .replace(/^WEBAPP_URL\s*=\s*/i, "")
   .replace(/^["']|["']$/g, "")
@@ -38,7 +39,7 @@ const app = Fastify({ logger: true });
 await app.register(cors, {
   origin: "*",
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Admin-Token"],
 });
 
 // --------------------
@@ -1036,6 +1037,47 @@ app.patch("/profile/trainer", async (req, reply) => {
 // --------------------
 // Client activation & booking
 // --------------------
+app.get("/admin/stats", async (req, reply) => {
+  const token = String(req.headers["x-admin-token"] || "");
+  if (!ADMIN_STATS_TOKEN || token !== ADMIN_STATS_TOKEN) {
+    return reply.code(403).send({ message: "Forbidden" });
+  }
+
+  const [
+    usersTotal,
+    trainersTotal,
+    clientUsersTotal,
+    trainerClientsTotal,
+    trainerClientsActive,
+    trainerClientsPending,
+    trainerClientsArchived,
+    localClientsTotal,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { role: "trainer" } }),
+    prisma.user.count({ where: { role: "client" } }),
+    prismaAny.trainerClient.count(),
+    prismaAny.trainerClient.count({ where: { status: "active" } }),
+    prismaAny.trainerClient.count({ where: { status: "pending" } }),
+    prismaAny.trainerClient.count({ where: { archived: true } }),
+    prismaAny.trainerClient.count({ where: { clientUsername: { startsWith: "local_" } } }),
+  ]);
+
+  return {
+    ok: true,
+    stats: {
+      usersTotal,
+      trainersTotal,
+      clientUsersTotal,
+      trainerClientsTotal,
+      trainerClientsActive,
+      trainerClientsPending,
+      trainerClientsArchived,
+      localClientsTotal,
+    },
+  };
+});
+
 app.post("/clients/activate", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
