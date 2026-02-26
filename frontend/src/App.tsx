@@ -5317,6 +5317,10 @@ function ClientDetailScreen(props: {
         </div>
       </div>
 
+      <button type="button" style={styles.clientPrimaryActionBtn}>
+        {tr("Записать клиента на тренировку", "Schedule client for a session")}
+      </button>
+
       <div style={styles.clientTabsScroll}>
         <div style={styles.clientTabs}>
           <button
@@ -9511,6 +9515,17 @@ const styles: Record<string, any> = {
     marginTop: 8,
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
+  },
+  clientPrimaryActionBtn: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 12,
+    border: "1px solid var(--accent)",
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
+    fontWeight: 700,
+    cursor: "pointer",
+    marginBottom: 4,
   },
   clientTabs: {
     display: "flex",
