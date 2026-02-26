@@ -6150,7 +6150,14 @@ function TrainerSettings(props: {
         <SettingsRow
           icon={<IconBox />}
           title={t.settingsHelp}
-          onClick={() => alert(tr("Позже добавим справку", "Help will be added later."))}
+          onClick={() => {
+            const helpUrl = "https://my-fitness-app.gitbook.io/my-fitness-app-docs/";
+            if (typeof WebApp?.openLink === "function") {
+              WebApp.openLink(helpUrl);
+            } else {
+              window.open(helpUrl, "_blank");
+            }
+          }}
         />
         <SettingsRow
           icon={<IconSupport />}
