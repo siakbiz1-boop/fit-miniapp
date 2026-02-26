@@ -5171,6 +5171,15 @@ function ClientDetailScreen(props: {
   const [draftContactPhone, setDraftContactPhone] = useState("");
   const [draftContactInstagram, setDraftContactInstagram] = useState("");
   const [draftContactOtherSocial, setDraftContactOtherSocial] = useState("");
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleToday, setScheduleToday] = useState<Date>(() => startOfDay(new Date()));
+  const [scheduleSelected, setScheduleSelected] = useState<Date>(() => startOfDay(new Date()));
+  const [scheduleStart, setScheduleStart] = useState("12:30");
+  const [scheduleEnd, setScheduleEnd] = useState("13:30");
+  const scheduleScrollerRef = useRef<HTMLDivElement | null>(null);
+  const scheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
+  const scheduleTodayRef = useRef<HTMLButtonElement | null>(null);
+  const scheduleDays = useMemo(() => buildCalendarStrip(scheduleToday, 14, 30), [scheduleToday]);
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [draftExerciseName, setDraftExerciseName] = useState("");
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
@@ -5234,6 +5243,21 @@ function ClientDetailScreen(props: {
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [draftComment, tab]);
+
+  useEffect(() => {
+    const tick = () => setScheduleToday(startOfDay(new Date()));
+    const id = window.setInterval(tick, 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (!scheduleOpen) return;
+    const scroller = scheduleScrollerRef.current;
+    const target = scheduleSelectedRef.current || scheduleTodayRef.current;
+    if (!scroller || !target) return;
+    const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [scheduleOpen, scheduleSelected, scheduleDays]);
 
   const renderReadOnly = (label: string, value?: string) => (
     <div style={{ marginTop: 16 }}>
@@ -5319,11 +5343,86 @@ function ClientDetailScreen(props: {
 
       <div style={styles.clientPrimaryActionWrap}>
         <div style={styles.clientPrimaryActionDivider} />
-        <button type="button" style={styles.clientPrimaryActionBtn}>
+        <button type="button" style={styles.clientPrimaryActionBtn} onClick={() => setScheduleOpen(true)}>
           {tr("Записать клиента на тренировку", "Schedule client for a session")}
         </button>
         <div style={styles.clientPrimaryActionDivider} />
       </div>
+
+      {scheduleOpen ? (
+        <div style={styles.clientScheduleOverlay}>
+          <button
+            type="button"
+            aria-label="close schedule"
+            style={styles.clientScheduleBackdrop}
+            onClick={() => setScheduleOpen(false)}
+          />
+          <div style={styles.clientScheduleSheet}>
+            <div style={styles.clientScheduleHandle} />
+            <div style={styles.clientScheduleTitleRow}>
+              <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
+              <button type="button" onClick={() => setScheduleOpen(false)} style={styles.clientScheduleCloseBtn}>
+                {tr("Закрыть", "Close")}
+              </button>
+            </div>
+
+            <div ref={scheduleScrollerRef} style={styles.calendarStrip}>
+              {scheduleDays.map((d) => {
+                const isToday = isSameDay(d.date, scheduleToday);
+                const isSelected = isSameDay(d.date, scheduleSelected);
+                const isPast = d.date.getTime() < scheduleToday.getTime();
+
+                return (
+                  <button
+                    key={d.key}
+                    ref={isSelected ? scheduleSelectedRef : isToday ? scheduleTodayRef : null}
+                    onClick={() => {
+                      if (isPast) return;
+                      setScheduleSelected(d.date);
+                    }}
+                    style={{
+                      ...styles.calendarDay,
+                      ...(isToday ? styles.calendarDayActive : {}),
+                      ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
+                      ...(isPast ? styles.calendarDayPast : {}),
+                    }}
+                    aria-current={isToday ? "date" : undefined}
+                    type="button"
+                  >
+                    <div style={styles.calendarDayDate}>{d.dateText}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={styles.clientScheduleFields}>
+              <div style={styles.freeField}>
+                <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
+                <input
+                  type="time"
+                  value={scheduleStart}
+                  onChange={(e) => setScheduleStart(e.target.value)}
+                  step={300}
+                  style={styles.input}
+                />
+              </div>
+              <div style={styles.freeField}>
+                <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+                <input
+                  type="time"
+                  value={scheduleEnd}
+                  onChange={(e) => setScheduleEnd(e.target.value)}
+                  step={300}
+                  style={styles.input}
+                />
+              </div>
+              <button type="button" style={styles.saveBtn}>
+                {tr("Добавить", "Add")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div style={styles.clientTabsScroll}>
         <div style={styles.clientTabs}>
@@ -9540,6 +9639,63 @@ const styles: Record<string, any> = {
     fontSize: 15,
     boxShadow: "0 10px 20px rgba(31, 107, 255, 0.18)",
     cursor: "pointer",
+  },
+  clientScheduleOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 40,
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  clientScheduleBackdrop: {
+    position: "absolute",
+    inset: 0,
+    border: "none",
+    background: "rgba(15, 23, 42, 0.35)",
+    cursor: "pointer",
+  },
+  clientScheduleSheet: {
+    position: "relative",
+    width: "100%",
+    maxWidth: 520,
+    height: "50vh",
+    background: "var(--bg)",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: "10px 18px 18px",
+    boxSizing: "border-box",
+    boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
+    overflowY: "auto",
+  },
+  clientScheduleHandle: {
+    width: 46,
+    height: 4,
+    borderRadius: 999,
+    background: "rgba(15, 23, 42, 0.12)",
+    margin: "4px auto 12px",
+  },
+  clientScheduleTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  clientScheduleTitle: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  clientScheduleCloseBtn: {
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontWeight: 700,
+    cursor: "pointer",
+    padding: 4,
+  },
+  clientScheduleFields: {
+    marginTop: 6,
   },
   clientTabs: {
     display: "flex",
