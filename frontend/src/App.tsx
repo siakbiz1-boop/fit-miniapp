@@ -5317,9 +5317,13 @@ function ClientDetailScreen(props: {
         </div>
       </div>
 
-      <button type="button" style={styles.clientPrimaryActionBtn}>
-        {tr("Записать клиента на тренировку", "Schedule client for a session")}
-      </button>
+      <div style={styles.clientPrimaryActionWrap}>
+        <div style={styles.clientPrimaryActionDivider} />
+        <button type="button" style={styles.clientPrimaryActionBtn}>
+          {tr("Записать клиента на тренировку", "Schedule client for a session")}
+        </button>
+        <div style={styles.clientPrimaryActionDivider} />
+      </div>
 
       <div style={styles.clientTabsScroll}>
         <div style={styles.clientTabs}>
@@ -9516,16 +9520,26 @@ const styles: Record<string, any> = {
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
   },
+  clientPrimaryActionWrap: {
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  clientPrimaryActionDivider: {
+    borderBottom: "1px solid var(--border-2)",
+  },
   clientPrimaryActionBtn: {
+    marginTop: 10,
+    marginBottom: 10,
     width: "100%",
-    padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid var(--accent)",
-    background: "var(--accent)",
+    padding: "13px 16px",
+    borderRadius: 14,
+    border: "1px solid rgba(0, 0, 0, 0.06)",
+    background: "linear-gradient(135deg, #1F6BFF 0%, #2F8CFF 100%)",
     color: "var(--accent-contrast)",
     fontWeight: 700,
+    fontSize: 15,
+    boxShadow: "0 10px 20px rgba(31, 107, 255, 0.18)",
     cursor: "pointer",
-    marginBottom: 4,
   },
   clientTabs: {
     display: "flex",
