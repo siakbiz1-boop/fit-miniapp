@@ -115,6 +115,7 @@ model TrainerClient {
   subscriptionLeft   String?
 
   exercises          ClientExercise[]
+  exerciseHistory    ClientExerciseHistory[]
 
   @@unique([trainerTgUserId, clientUsername])
   @@unique([trainerTgUserId, code])
