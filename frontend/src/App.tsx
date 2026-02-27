@@ -5323,7 +5323,7 @@ function ClientDetailScreen(props: {
     try {
       WebApp?.showPopup?.({
         title: tr("Тренировка запланирована", "Session scheduled"),
-        message: tr("Тренировка добавлена в расписание.", "The session has been added to the schedule."),
+        message: " ",
         buttons: [{ type: "ok" }],
       });
     } catch {
