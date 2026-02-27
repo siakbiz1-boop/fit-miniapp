@@ -157,6 +157,12 @@ type ClientProfile = {
   comment?: string;
 };
 
+type ExerciseHistoryItem = {
+  id: string;
+  value: string;
+  recordedAt: string;
+};
+
 type TrainingSlot = {
   id: string;
   trainerTgUserId: string;
@@ -5218,6 +5224,7 @@ function ClientDetailScreen(props: {
     null
   );
   const [weightsStatsToday, setWeightsStatsToday] = useState<Date>(() => startOfDay(new Date()));
+  const [exerciseHistoryMap, setExerciseHistoryMap] = useState<Record<string, ExerciseHistoryItem[]>>({});
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -5343,6 +5350,28 @@ function ClientDetailScreen(props: {
     }
   };
 
+  const parseWeightValue = (raw: string) => {
+    const cleaned = String(raw || "").replace(",", ".");
+    const parsed = Number.parseFloat(cleaned.replace(/[^\d.]/g, ""));
+    return Number.isFinite(parsed) ? parsed : NaN;
+  };
+
+  const ensureExerciseHistory = async (exerciseId: string) => {
+    if (!client || !token) return;
+    try {
+      const res = await fetch(
+        `${apiBase}/clients/${encodeURIComponent(client.id)}/exercises/${encodeURIComponent(exerciseId)}/history`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; history?: ExerciseHistoryItem[] };
+      if (!data?.history) return;
+      setExerciseHistoryMap((prev) => ({ ...prev, [exerciseId]: data.history || [] }));
+    } catch {
+      // ignore history fetch errors
+    }
+  };
+
   const renderReadOnly = (label: string, value?: string) => (
     <div style={{ marginTop: 16 }}>
       <div style={styles.fieldLabel}>{label}</div>
@@ -5352,21 +5381,50 @@ function ClientDetailScreen(props: {
 
   const weightStats = useMemo(() => {
     if (!weightsStatsExercise) return [];
-    const raw = (weightsStatsExercise.weight || "").replace(",", ".");
-    const parsed = Number.parseFloat(raw.replace(/[^\d.]/g, ""));
-    const base = Number.isFinite(parsed) ? parsed : 60;
+    const history = exerciseHistoryMap[weightsStatsExercise.id] || [];
+    const sortedHistory = history
+      .slice()
+      .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+    const currentWeight = parseWeightValue(weightsStatsExercise.weight || "");
     const days: Array<{ label: string; value: number; date: Date }> = [];
     for (let i = 6; i >= 0; i -= 1) {
       const date = addDays(weightsStatsToday, -i);
-      const delta = i === 0 ? 0 : Math.max(1, Math.round((i / 6) * 6));
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+      let value = Number.isFinite(currentWeight) ? currentWeight : 0;
+      for (let idx = sortedHistory.length - 1; idx >= 0; idx -= 1) {
+        const h = sortedHistory[idx];
+        if (new Date(h.recordedAt).getTime() <= dayEnd.getTime()) {
+          const v = parseWeightValue(h.value);
+          value = Number.isFinite(v) ? v : value;
+          break;
+        }
+      }
       days.push({
         label: formatDateShort(date),
-        value: Math.max(0, base - delta),
+        value,
         date,
       });
     }
     return days;
-  }, [weightsStatsExercise, weightsStatsToday, tr]);
+  }, [weightsStatsExercise, weightsStatsToday, exerciseHistoryMap]);
+
+  const weightHistoryList = useMemo(() => {
+    if (!weightsStatsExercise) return [];
+    const history = exerciseHistoryMap[weightsStatsExercise.id] || [];
+    const byDate = new Map<string, ExerciseHistoryItem>();
+    history.forEach((h) => {
+      const d = startOfDay(new Date(h.recordedAt));
+      const key = formatDateKey(d);
+      const prev = byDate.get(key);
+      if (!prev || new Date(prev.recordedAt).getTime() < new Date(h.recordedAt).getTime()) {
+        byDate.set(key, h);
+      }
+    });
+    return Array.from(byDate.values()).sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    );
+  }, [weightsStatsExercise, exerciseHistoryMap]);
 
   const saveLocalClientField = (
     field:
@@ -6213,6 +6271,7 @@ function ClientDetailScreen(props: {
                           onClick={() => {
                             setWeightsStatsExercise(ex);
                             setWeightsStatsOpen(true);
+                            void ensureExerciseHistory(ex.id);
                           }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -6233,6 +6292,7 @@ function ClientDetailScreen(props: {
                                   if (!client) return;
                                   const key = `${client.id}:${ex.id}`;
                                   const value = clientWeightDrafts[key] ?? ex.weight ?? "";
+                                  const prevValue = ex.weight ?? "";
                                   const list = client.exercises ? [...client.exercises] : [];
                                   const next = list.map((item) =>
                                     item.id === ex.id ? { ...item, weight: value } : item
@@ -6245,6 +6305,17 @@ function ClientDetailScreen(props: {
                                     return nextDrafts;
                                   });
                                   onSaveExercises?.(client.id, next);
+                                  if (value.trim() && value.trim() !== String(prevValue || "").trim()) {
+                                    const entry: ExerciseHistoryItem = {
+                                      id: `local_${cryptoId()}`,
+                                      value: value.trim(),
+                                      recordedAt: new Date().toISOString(),
+                                    };
+                                    setExerciseHistoryMap((prev) => {
+                                      const prevList = prev[ex.id] ? [...prev[ex.id]] : [];
+                                      return { ...prev, [ex.id]: [...prevList, entry] };
+                                    });
+                                  }
                                 }}
                                 placeholder={tr("Вес не указан", "Weight not set")}
                                 style={styles.exerciseInput}
@@ -6352,23 +6423,30 @@ function ClientDetailScreen(props: {
                   })()}
                 </div>
                 <div style={styles.weightsStatsList}>
-                  {weightStats
-                    .slice()
-                    .reverse()
-                    .map((p, idx) => (
-                      <div
-                        key={`${p.label}-${idx}`}
-                        style={{
-                          ...styles.weightsStatsListRow,
-                          borderBottom: idx === weightStats.length - 1 ? "none" : "1px solid var(--border-2)",
-                        }}
-                      >
-                        <div style={styles.weightsStatsListLabel}>{p.label}</div>
-                        <div style={styles.weightsStatsListValue}>
-                          {Number.isFinite(p.value) ? `${p.value} кг` : "—"}
+                  {weightHistoryList.length === 0 ? (
+                    <div style={styles.weightsStatsEmpty}>
+                      {tr("Пока нет изменений веса.", "No weight changes yet.")}
+                    </div>
+                  ) : (
+                    weightHistoryList.map((item, idx) => {
+                      const label = formatDateShort(new Date(item.recordedAt));
+                      const value = parseWeightValue(item.value);
+                      return (
+                        <div
+                          key={item.id}
+                          style={{
+                            ...styles.weightsStatsListRow,
+                            borderBottom: idx === weightHistoryList.length - 1 ? "none" : "1px solid var(--border-2)",
+                          }}
+                        >
+                          <div style={styles.weightsStatsListLabel}>{label}</div>
+                          <div style={styles.weightsStatsListValue}>
+                            {Number.isFinite(value) ? `${value} кг` : "—"}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
@@ -10146,6 +10224,11 @@ const styles: Record<string, any> = {
     border: "1px solid var(--border-2)",
     background: "var(--surface)",
     overflow: "hidden",
+  },
+  weightsStatsEmpty: {
+    padding: "12px 12px",
+    fontSize: 13,
+    color: "var(--muted)",
   },
   weightsStatsListRow: {
     display: "flex",

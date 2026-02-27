@@ -130,8 +130,23 @@ model ClientExercise {
   updatedAt  DateTime      @updatedAt
 
   client     TrainerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  history    ClientExerciseHistory[]
 
   @@index([clientId])
+}
+
+model ClientExerciseHistory {
+  id         String      @id @default(cuid())
+  clientId   String
+  exerciseId String
+  value      String
+  recordedAt DateTime    @default(now())
+  createdAt  DateTime    @default(now())
+
+  client   TrainerClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  exercise ClientExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, exerciseId, recordedAt])
 }
 
 model TrainingSlot {

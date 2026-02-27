@@ -927,15 +927,33 @@ app.post("/clients/:id/exercises", async (req, reply) => {
     if (toDelete.length) {
       await tx.clientExercise.deleteMany({ where: { id: { in: toDelete } } });
     }
+    const existingById = new Map(existing.map((ex) => [ex.id, ex]));
     for (const ex of normalized) {
       if (ex.id) {
+        const prev = existingById.get(ex.id);
         await tx.clientExercise.update({
           where: { id: ex.id },
           data: { name: ex.name, weight: ex.weight },
         });
+        if (prev && prev.weight.trim() !== ex.weight.trim()) {
+          await (tx as any).clientExerciseHistory.create({
+            data: {
+              clientId: id,
+              exerciseId: ex.id,
+              value: ex.weight,
+            },
+          });
+        }
       } else {
-        await tx.clientExercise.create({
+        const created = await tx.clientExercise.create({
           data: { clientId: id, name: ex.name, weight: ex.weight },
+        });
+        await (tx as any).clientExerciseHistory.create({
+          data: {
+            clientId: id,
+            exerciseId: created.id,
+            value: ex.weight,
+          },
         });
       }
     }
@@ -947,6 +965,41 @@ app.post("/clients/:id/exercises", async (req, reply) => {
   });
 
   return { ok: true, client: serializeClient(next) };
+});
+
+app.get("/clients/:id/exercises/:exerciseId/history", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  const exerciseId = String((req.params as any)?.exerciseId || "");
+  if (!id || !exerciseId) return reply.code(400).send({ message: "id/exerciseId required" });
+
+  const client = await prismaAny.trainerClient.findUnique({
+    where: { id },
+  });
+  if (!client) {
+    return reply.code(404).send({ message: "Client not found" });
+  }
+  const isTrainerOwner = client.trainerTgUserId === dbUser.tgUserId;
+  const isClientOwner = client.clientTgUserId === dbUser.tgUserId;
+  if (!isTrainerOwner && !isClientOwner) {
+    return reply.code(404).send({ message: "Client not found" });
+  }
+
+  const history = await (prismaAny as any).clientExerciseHistory.findMany({
+    where: { clientId: id, exerciseId },
+    orderBy: { recordedAt: "asc" },
+  });
+
+  return {
+    ok: true,
+    history: history.map((h: any) => ({
+      id: h.id,
+      value: h.value,
+      recordedAt: h.recordedAt.toISOString(),
+    })),
+  };
 });
 
 app.delete("/clients/:id", async (req, reply) => {
