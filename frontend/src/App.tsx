@@ -6238,16 +6238,16 @@ function ClientDetailScreen(props: {
                               />
                               <button
                                 type="button"
-                                onClick={async () => {
+                                onClick={async (e) => {
+                                  e.stopPropagation();
                                   if (!client) return;
                                   const next = client.exercises!.filter((x) => x.id !== ex.id);
-                                onUpdateClient(client.id, { exercises: next });
-                                const updated = await onSaveExercises?.(client.id, next);
-                                if (updated?.exercises) {
-                                  onUpdateClient(client.id, { exercises: updated.exercises });
-                                }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
+                                  onUpdateClient(client.id, { exercises: next });
+                                  const updated = await onSaveExercises?.(client.id, next);
+                                  if (updated?.exercises) {
+                                    onUpdateClient(client.id, { exercises: updated.exercises });
+                                  }
+                                }}
                               style={styles.exerciseTrashBtn}
                               aria-label="delete exercise"
                               title={tr("Удалить", "Delete")}
