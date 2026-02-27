@@ -5213,6 +5213,10 @@ function ClientDetailScreen(props: {
   const [exerciseError, setExerciseError] = useState("");
   const clientWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
   const [clientWeightDrafts, setClientWeightDrafts] = useState<Record<string, string>>({});
+  const [weightsStatsOpen, setWeightsStatsOpen] = useState(false);
+  const [weightsStatsExercise, setWeightsStatsExercise] = useState<{ id: string; name: string; weight: string } | null>(
+    null
+  );
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -5337,6 +5341,19 @@ function ClientDetailScreen(props: {
       <div style={styles.readOnlyValue}>{value && String(value).trim() ? value : "—"}</div>
     </div>
   );
+
+  const weightStats = useMemo(() => {
+    if (!weightsStatsExercise) return [];
+    const raw = (weightsStatsExercise.weight || "").replace(",", ".");
+    const parsed = Number.parseFloat(raw.replace(/[^\d.]/g, ""));
+    const base = Number.isFinite(parsed) ? parsed : 60;
+    return [
+      { label: tr("3 недели назад", "3 weeks ago"), value: Math.max(0, base - 7) },
+      { label: tr("2 недели назад", "2 weeks ago"), value: Math.max(0, base - 4) },
+      { label: tr("Неделю назад", "1 week ago"), value: Math.max(0, base - 2) },
+      { label: tr("Сейчас", "Now"), value: base },
+    ];
+  }, [weightsStatsExercise, tr]);
 
   const saveLocalClientField = (
     field:
@@ -6178,7 +6195,13 @@ function ClientDetailScreen(props: {
                         padding: "12px 0",
                       }}
                     >
-                        <div style={styles.exerciseRow}>
+                        <div
+                          style={styles.exerciseRow}
+                          onClick={() => {
+                            setWeightsStatsExercise(ex);
+                            setWeightsStatsOpen(true);
+                          }}
+                        >
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                             <div style={styles.exerciseWeightRow}>
@@ -6192,6 +6215,7 @@ function ClientDetailScreen(props: {
                                     [`${client.id}:${ex.id}`]: value,
                                   }));
                                 }}
+                                onClick={(e) => e.stopPropagation()}
                                 onBlur={() => {
                                   if (!client) return;
                                   const key = `${client.id}:${ex.id}`;
@@ -6217,24 +6241,90 @@ function ClientDetailScreen(props: {
                                 onClick={async () => {
                                   if (!client) return;
                                   const next = client.exercises!.filter((x) => x.id !== ex.id);
-                                  onUpdateClient(client.id, { exercises: next });
-                                  const updated = await onSaveExercises?.(client.id, next);
-                                  if (updated?.exercises) {
-                                    onUpdateClient(client.id, { exercises: updated.exercises });
-                                  }
-                                }}
-                                style={styles.exerciseTrashBtn}
-                                aria-label="delete exercise"
-                                title={tr("Удалить", "Delete")}
-                              >
-                                <span aria-hidden="true">➖</span>
-                              </button>
+                                onUpdateClient(client.id, { exercises: next });
+                                const updated = await onSaveExercises?.(client.id, next);
+                                if (updated?.exercises) {
+                                  onUpdateClient(client.id, { exercises: updated.exercises });
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={styles.exerciseTrashBtn}
+                              aria-label="delete exercise"
+                              title={tr("Удалить", "Delete")}
+                            >
+                              <span aria-hidden="true">➖</span>
+                            </button>
                             </div>
                           </div>
                         </div>
                       </div>
                     );
-                  })}
+                })}
+              </div>
+            </div>
+          ) : null}
+          {weightsStatsOpen ? (
+            <div style={styles.weightsStatsOverlay}>
+              <button
+                type="button"
+                aria-label="close weights stats"
+                style={styles.weightsStatsBackdrop}
+                onClick={() => setWeightsStatsOpen(false)}
+              />
+              <div style={styles.weightsStatsSheet}>
+                <div style={styles.weightsStatsHandle} />
+                <div style={styles.weightsStatsHeader}>
+                  <div style={styles.weightsStatsTitle}>
+                    {weightsStatsExercise?.name || tr("Рабочие веса", "Working weights")}
+                  </div>
+                  <button
+                    type="button"
+                    style={styles.weightsStatsCloseBtn}
+                    onClick={() => setWeightsStatsOpen(false)}
+                  >
+                    {tr("Закрыть", "Close")}
+                  </button>
+                </div>
+                <div style={styles.weightsStatsHint}>
+                  {tr("Пример отображения. История появится после тренировок.", "Example view. History will appear after workouts.")}
+                </div>
+                <div style={styles.weightsStatsChart}>
+                  {weightStats.map((p) => (
+                    <div key={p.label} style={styles.weightsStatsBarRow}>
+                      <div style={styles.weightsStatsBarLabel}>{p.label}</div>
+                      <div style={styles.weightsStatsBarTrack}>
+                        <div
+                          style={{
+                            ...styles.weightsStatsBarFill,
+                            width: `${Math.min(100, Math.max(8, (p.value / Math.max(1, weightStats[weightStats.length - 1]?.value || 1)) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                      <div style={styles.weightsStatsBarValue}>
+                        {Number.isFinite(p.value) ? `${p.value} кг` : "—"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={styles.weightsStatsList}>
+                  {weightStats
+                    .slice()
+                    .reverse()
+                    .map((p, idx) => (
+                      <div
+                        key={`${p.label}-${idx}`}
+                        style={{
+                          ...styles.weightsStatsListRow,
+                          borderBottom: idx === weightStats.length - 1 ? "none" : "1px solid var(--border-2)",
+                        }}
+                      >
+                        <div style={styles.weightsStatsListLabel}>{p.label}</div>
+                        <div style={styles.weightsStatsListValue}>
+                          {Number.isFinite(p.value) ? `${p.value} кг` : "—"}
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
             </div>
           ) : null}
@@ -9895,6 +9985,120 @@ const styles: Record<string, any> = {
   },
   clientScheduleFields: {
     marginTop: 6,
+  },
+  weightsStatsOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 41,
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  weightsStatsBackdrop: {
+    position: "absolute",
+    inset: 0,
+    border: "none",
+    background: "rgba(15, 23, 42, 0.35)",
+    cursor: "pointer",
+  },
+  weightsStatsSheet: {
+    position: "relative",
+    width: "100%",
+    maxWidth: 520,
+    height: "58vh",
+    background: "var(--bg)",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: "10px 18px 18px",
+    boxSizing: "border-box",
+    boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
+    overflowY: "auto",
+  },
+  weightsStatsHandle: {
+    width: 46,
+    height: 4,
+    borderRadius: 999,
+    background: "rgba(15, 23, 42, 0.12)",
+    margin: "4px auto 12px",
+  },
+  weightsStatsHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  weightsStatsTitle: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  weightsStatsCloseBtn: {
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontWeight: 700,
+    cursor: "pointer",
+    padding: 4,
+  },
+  weightsStatsHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "var(--muted)",
+  },
+  weightsStatsChart: {
+    marginTop: 14,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  weightsStatsBarRow: {
+    display: "grid",
+    gridTemplateColumns: "92px 1fr 52px",
+    alignItems: "center",
+    gap: 10,
+  },
+  weightsStatsBarLabel: {
+    fontSize: 12,
+    color: "var(--muted)",
+  },
+  weightsStatsBarTrack: {
+    height: 10,
+    borderRadius: 999,
+    background: "var(--surface-2)",
+    overflow: "hidden",
+  },
+  weightsStatsBarFill: {
+    height: "100%",
+    borderRadius: 999,
+    background: "linear-gradient(90deg, #1F6BFF 0%, #49A0FF 100%)",
+  },
+  weightsStatsBarValue: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--text)",
+    textAlign: "right",
+  },
+  weightsStatsList: {
+    marginTop: 16,
+    borderRadius: 14,
+    border: "1px solid var(--border-2)",
+    background: "var(--surface)",
+    overflow: "hidden",
+  },
+  weightsStatsListRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "10px 12px",
+  },
+  weightsStatsListLabel: {
+    fontSize: 13,
+    color: "var(--muted)",
+  },
+  weightsStatsListValue: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "var(--text)",
   },
   clientTabs: {
     display: "flex",
