@@ -5217,6 +5217,7 @@ function ClientDetailScreen(props: {
   const [weightsStatsExercise, setWeightsStatsExercise] = useState<{ id: string; name: string; weight: string } | null>(
     null
   );
+  const [weightsStatsToday, setWeightsStatsToday] = useState<Date>(() => startOfDay(new Date()));
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -5279,6 +5280,13 @@ function ClientDetailScreen(props: {
     setScheduleError("");
     setScheduleSaving(false);
   }, [scheduleOpen]);
+
+  useEffect(() => {
+    const tick = () => setWeightsStatsToday(startOfDay(new Date()));
+    tick();
+    const id = window.setInterval(tick, 60 * 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const tick = () => setScheduleToday(startOfDay(new Date()));
@@ -5347,13 +5355,18 @@ function ClientDetailScreen(props: {
     const raw = (weightsStatsExercise.weight || "").replace(",", ".");
     const parsed = Number.parseFloat(raw.replace(/[^\d.]/g, ""));
     const base = Number.isFinite(parsed) ? parsed : 60;
-    return [
-      { label: tr("3 недели назад", "3 weeks ago"), value: Math.max(0, base - 7) },
-      { label: tr("2 недели назад", "2 weeks ago"), value: Math.max(0, base - 4) },
-      { label: tr("Неделю назад", "1 week ago"), value: Math.max(0, base - 2) },
-      { label: tr("Сейчас", "Now"), value: base },
-    ];
-  }, [weightsStatsExercise, tr]);
+    const days: Array<{ label: string; value: number; date: Date }> = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const date = addDays(weightsStatsToday, -i);
+      const delta = i === 0 ? 0 : Math.max(1, Math.round((i / 6) * 6));
+      days.push({
+        label: formatDateShort(date),
+        value: Math.max(0, base - delta),
+        date,
+      });
+    }
+    return days;
+  }, [weightsStatsExercise, weightsStatsToday, tr]);
 
   const saveLocalClientField = (
     field:
@@ -6289,22 +6302,54 @@ function ClientDetailScreen(props: {
                   {tr("Пример отображения. История появится после тренировок.", "Example view. History will appear after workouts.")}
                 </div>
                 <div style={styles.weightsStatsChart}>
-                  {weightStats.map((p) => (
-                    <div key={p.label} style={styles.weightsStatsBarRow}>
-                      <div style={styles.weightsStatsBarLabel}>{p.label}</div>
-                      <div style={styles.weightsStatsBarTrack}>
-                        <div
-                          style={{
-                            ...styles.weightsStatsBarFill,
-                            width: `${Math.min(100, Math.max(8, (p.value / Math.max(1, weightStats[weightStats.length - 1]?.value || 1)) * 100))}%`,
-                          }}
-                        />
+                  {(() => {
+                    if (weightStats.length === 0) return null;
+                    const values = weightStats.map((p) => p.value);
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    const range = Math.max(1, max - min);
+                    const width = 320;
+                    const height = 120;
+                    const padX = 8;
+                    const padY = 12;
+                    const step = (width - padX * 2) / (weightStats.length - 1 || 1);
+                    const points = weightStats.map((p, idx) => {
+                      const x = padX + step * idx;
+                      const y = padY + (1 - (p.value - min) / range) * (height - padY * 2);
+                      return { x, y, value: p.value };
+                    });
+                    const d = points.map((p) => `${p.x},${p.y}`).join(" ");
+                    return (
+                      <div style={styles.weightsStatsLineWrap}>
+                        <svg
+                          viewBox={`0 0 ${width} ${height}`}
+                          width="100%"
+                          height="120"
+                          role="img"
+                          aria-label={tr("График динамики за 7 дней", "7-day progress chart")}
+                        >
+                          <polyline
+                            points={d}
+                            fill="none"
+                            stroke="#1F6BFF"
+                            strokeWidth="3"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                          {points.map((p, idx) => (
+                            <circle key={idx} cx={p.x} cy={p.y} r="4" fill="#1F6BFF" stroke="#fff" strokeWidth="2" />
+                          ))}
+                        </svg>
+                        <div style={styles.weightsStatsLineAxis}>
+                          {weightStats.map((p) => (
+                            <div key={p.label} style={styles.weightsStatsLineAxisLabel}>
+                              {p.label}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div style={styles.weightsStatsBarValue}>
-                        {Number.isFinite(p.value) ? `${p.value} кг` : "—"}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })()}
                 </div>
                 <div style={styles.weightsStatsList}>
                   {weightStats
@@ -10050,6 +10095,23 @@ const styles: Record<string, any> = {
     display: "flex",
     flexDirection: "column",
     gap: 10,
+  },
+  weightsStatsLineWrap: {
+    padding: "12px 10px 6px",
+    borderRadius: 16,
+    border: "1px solid var(--border-2)",
+    background: "var(--surface)",
+  },
+  weightsStatsLineAxis: {
+    marginTop: 6,
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+    gap: 4,
+  },
+  weightsStatsLineAxisLabel: {
+    fontSize: 10,
+    textAlign: "center",
+    color: "var(--muted)",
   },
   weightsStatsBarRow: {
     display: "grid",
