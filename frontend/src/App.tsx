@@ -1436,8 +1436,11 @@ export default function App() {
                   invites={invites}
                   setInvites={setInvites}
                   historyByClient={historyByClient}
+                  sessionsByDate={sessionsByDate}
+                  setSessionsByDate={setSessionsByDate}
                   token={token}
                   apiBase={apiBase}
+                  trainerTgUserId={tgUserId}
                   onLoadHistory={loadClientHistory}
                   onRefreshClients={fetchClients}
                   onSaveClientExercises={saveClientExercises}
@@ -4519,8 +4522,11 @@ function TrainerClients(props: {
   invites: TrainerClientInvite[];
   setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   historyByClient: Record<string, SessionItem[]>;
+  sessionsByDate: Record<string, SessionItem[]>;
+  setSessionsByDate: React.Dispatch<React.SetStateAction<Record<string, SessionItem[]>>>;
   token: string;
   apiBase: string;
+  trainerTgUserId: string;
   onLoadHistory?: (client: TrainerClientInvite) => void;
   onRefreshClients?: () => void;
   onSaveClientExercises?: (
@@ -4534,8 +4540,11 @@ function TrainerClients(props: {
     invites,
     setInvites,
     historyByClient,
+    sessionsByDate,
+    setSessionsByDate,
     token,
     apiBase,
+    trainerTgUserId,
     onLoadHistory,
     onRefreshClients,
     onSaveClientExercises,
@@ -4685,6 +4694,11 @@ function TrainerClients(props: {
         client={client}
         onBack={() => setScreen("list")}
         onUpdateClient={updateClient}
+        sessionsByDate={sessionsByDate}
+        setSessionsByDate={setSessionsByDate}
+        token={token}
+        apiBase={apiBase}
+        trainerTgUserId={trainerTgUserId}
         onToggleArchive={(target, nextArchived) => {
           updateClient(target.id, { archived: nextArchived });
           setScreen("list");
@@ -5144,6 +5158,11 @@ function ClientDetailScreen(props: {
   client: TrainerClientInvite | null;
   onBack: () => void;
   onUpdateClient: (id: string, patch: Partial<TrainerClientInvite>) => void;
+  sessionsByDate: Record<string, SessionItem[]>;
+  setSessionsByDate: React.Dispatch<React.SetStateAction<Record<string, SessionItem[]>>>;
+  token: string;
+  apiBase: string;
+  trainerTgUserId: string;
   onToggleArchive: (client: TrainerClientInvite, nextArchived: boolean) => void;
   onDeleteClient: (client: TrainerClientInvite) => void;
   history: SessionItem[];
@@ -5153,6 +5172,7 @@ function ClientDetailScreen(props: {
   ) => Promise<TrainerClientInvite | null> | void;
 }) {
   const { client, onBack, onUpdateClient, onToggleArchive, onDeleteClient, history, onSaveExercises } = props;
+  const { sessionsByDate, setSessionsByDate, token, apiBase, trainerTgUserId } = props;
   const tr = useTr();
   const [tab, setTab] = useState<"info" | "contacts" | "subscription" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
@@ -5176,6 +5196,8 @@ function ClientDetailScreen(props: {
   const [scheduleSelected, setScheduleSelected] = useState<Date>(() => startOfDay(new Date()));
   const [scheduleStart, setScheduleStart] = useState("12:30");
   const [scheduleEnd, setScheduleEnd] = useState("13:30");
+  const [scheduleError, setScheduleError] = useState("");
+  const [scheduleSaving, setScheduleSaving] = useState(false);
   const scheduleScrollerRef = useRef<HTMLDivElement | null>(null);
   const scheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
   const scheduleTodayRef = useRef<HTMLButtonElement | null>(null);
@@ -5249,6 +5271,12 @@ function ClientDetailScreen(props: {
   }, [draftComment, tab]);
 
   useEffect(() => {
+    if (!scheduleOpen) return;
+    setScheduleError("");
+    setScheduleSaving(false);
+  }, [scheduleOpen]);
+
+  useEffect(() => {
     const tick = () => setScheduleToday(startOfDay(new Date()));
     const id = window.setInterval(tick, 60 * 1000);
     return () => window.clearInterval(id);
@@ -5288,6 +5316,20 @@ function ClientDetailScreen(props: {
       window.removeEventListener("pointercancel", handleUp);
     };
   }, [scheduleDragging]);
+
+  const maybeCloseSchedule = (planned: boolean) => {
+    setScheduleOpen(false);
+    if (!planned) return;
+    try {
+      WebApp?.showPopup?.({
+        title: tr("Тренировка запланирована", "Session scheduled"),
+        message: tr("Тренировка добавлена в расписание.", "The session has been added to the schedule."),
+        buttons: [{ type: "ok" }],
+      });
+    } catch {
+      // ignore
+    }
+  };
 
   const renderReadOnly = (label: string, value?: string) => (
     <div style={{ marginTop: 16 }}>
@@ -5422,6 +5464,7 @@ function ClientDetailScreen(props: {
                     onClick={() => {
                       if (isPast) return;
                       setScheduleSelected(d.date);
+                      if (scheduleError) setScheduleError("");
                     }}
                     style={{
                       ...styles.calendarDay,
@@ -5444,7 +5487,10 @@ function ClientDetailScreen(props: {
                 <input
                   type="time"
                   value={scheduleStart}
-                  onChange={(e) => setScheduleStart(e.target.value)}
+                  onChange={(e) => {
+                    setScheduleStart(e.target.value);
+                    if (scheduleError) setScheduleError("");
+                  }}
                   step={300}
                   style={styles.input}
                 />
@@ -5454,12 +5500,122 @@ function ClientDetailScreen(props: {
                 <input
                   type="time"
                   value={scheduleEnd}
-                  onChange={(e) => setScheduleEnd(e.target.value)}
+                  onChange={(e) => {
+                    setScheduleEnd(e.target.value);
+                    if (scheduleError) setScheduleError("");
+                  }}
                   step={300}
                   style={styles.input}
                 />
               </div>
-              <button type="button" style={styles.saveBtn}>
+              {scheduleError ? <div style={styles.errorText}>{scheduleError}</div> : null}
+              <button
+                type="button"
+                style={styles.saveBtn}
+                disabled={scheduleSaving}
+                onClick={async () => {
+                  if (scheduleSaving) return;
+                  if (!client) return;
+                  setScheduleSaving(true);
+                  const dateKey = formatDateKey(scheduleSelected);
+                  const start = normalizeTimeInput(scheduleStart);
+                  const end = normalizeTimeInput(scheduleEnd);
+                  if (!start || !end) {
+                    setScheduleError(tr("Укажите время в формате ЧЧ:ММ (например 10:00).", "Enter time in HH:MM (e.g., 10:00)."));
+                    setScheduleSaving(false);
+                    return;
+                  }
+                  if (end <= start) {
+                    setScheduleError(tr("Время окончания должно быть больше времени начала.", "End time must be after start time."));
+                    setScheduleSaving(false);
+                    return;
+                  }
+                  const now = new Date();
+                  const selectedDay = startOfDay(scheduleSelected);
+                  const todayDay = startOfDay(now);
+                  if (selectedDay.getTime() < todayDay.getTime()) {
+                    setScheduleError(tr("Нельзя создавать тренировки в прошедших датах.", "You can't schedule sessions in past dates."));
+                    setScheduleSaving(false);
+                    return;
+                  }
+                  if (selectedDay.getTime() === todayDay.getTime()) {
+                    const startMin = timeToMinutes(start);
+                    const nowMin = now.getHours() * 60 + now.getMinutes();
+                    if (startMin <= nowMin) {
+                      setScheduleError(tr("Время начала должно быть позже текущего.", "Start time must be later than now."));
+                      setScheduleSaving(false);
+                      return;
+                    }
+                  }
+                  const startMin = timeToMinutes(start);
+                  const endMin = timeToMinutes(end);
+                  const existingSessions = sessionsByDate[dateKey] || [];
+                  const overlapsSession = existingSessions.some((s) => {
+                    const sStart = timeToMinutes(s.start);
+                    const sEnd = timeToMinutes(s.end);
+                    return startMin < sEnd && endMin > sStart;
+                  });
+                  if (overlapsSession) {
+                    setScheduleError(tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time."));
+                    setScheduleSaving(false);
+                    return;
+                  }
+                  if (!token) {
+                    setScheduleError(tr("Сначала войдите в аккаунт.", "Please login first."));
+                    setScheduleSaving(false);
+                    return;
+                  }
+
+                  const newSession: SessionItem = {
+                    id: cryptoId(),
+                    dateKey,
+                    start,
+                    end,
+                    clientUsername: client.username,
+                    trainerTgUserId,
+                    source: "trainer",
+                  };
+
+                  setSessionsByDate((prev) => {
+                    const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                    list.push(newSession);
+                    return { ...prev, [dateKey]: list };
+                  });
+
+                  if (token) {
+                    try {
+                      const res = await fetch(
+                        `${apiBase}/slots?trainerTgUserId=${encodeURIComponent(trainerTgUserId)}&dateKey=${encodeURIComponent(
+                          dateKey
+                        )}`,
+                        { headers: { Authorization: `Bearer ${token}` } }
+                      );
+                      if (res.ok) {
+                        const data = (await res.json()) as { ok: boolean; slots?: TrainingSlot[] };
+                        const slots = data.slots || [];
+                        const toDelete = slots.filter((w) => {
+                          const wStart = timeToMinutes(w.start);
+                          const wEnd = timeToMinutes(w.end);
+                          return startMin < wEnd && endMin > wStart;
+                        });
+                        await Promise.all(
+                          toDelete.map((w) =>
+                            fetch(`${apiBase}/slots/${encodeURIComponent(w.id)}`, {
+                              method: "DELETE",
+                              headers: { Authorization: `Bearer ${token}` },
+                            })
+                          )
+                        );
+                      }
+                    } catch {
+                      // ignore slot cleanup errors
+                    }
+                  }
+
+                  setScheduleSaving(false);
+                  maybeCloseSchedule(true);
+                }}
+              >
                 {tr("Добавить", "Add")}
               </button>
             </div>
