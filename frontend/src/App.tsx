@@ -5180,6 +5180,10 @@ function ClientDetailScreen(props: {
   const scheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
   const scheduleTodayRef = useRef<HTMLButtonElement | null>(null);
   const scheduleDays = useMemo(() => buildCalendarStrip(scheduleToday, 14, 30), [scheduleToday]);
+  const [scheduleDragY, setScheduleDragY] = useState(0);
+  const [scheduleDragging, setScheduleDragging] = useState(false);
+  const scheduleDragStartRef = useRef<number>(0);
+  const scheduleDragYRef = useRef<number>(0);
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [draftExerciseName, setDraftExerciseName] = useState("");
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
@@ -5258,6 +5262,32 @@ function ClientDetailScreen(props: {
     const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [scheduleOpen, scheduleSelected, scheduleDays]);
+
+  useEffect(() => {
+    if (!scheduleDragging) return;
+    const handleMove = (event: PointerEvent) => {
+      const next = Math.max(0, event.clientY - scheduleDragStartRef.current);
+      scheduleDragYRef.current = next;
+      setScheduleDragY(next);
+    };
+    const handleUp = () => {
+      setScheduleDragging(false);
+      const shouldClose = scheduleDragYRef.current > 120;
+      if (shouldClose) {
+        setScheduleOpen(false);
+      }
+      scheduleDragYRef.current = 0;
+      setScheduleDragY(0);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, [scheduleDragging]);
 
   const renderReadOnly = (label: string, value?: string) => (
     <div style={{ marginTop: 16 }}>
@@ -5357,8 +5387,21 @@ function ClientDetailScreen(props: {
             style={styles.clientScheduleBackdrop}
             onClick={() => setScheduleOpen(false)}
           />
-          <div style={styles.clientScheduleSheet}>
-            <div style={styles.clientScheduleHandle} />
+          <div
+            style={{
+              ...styles.clientScheduleSheet,
+              transform: scheduleDragY ? `translateY(${scheduleDragY}px)` : undefined,
+              transition: scheduleDragging ? "none" : "transform 180ms ease",
+            }}
+          >
+            <div
+              style={styles.clientScheduleHandle}
+              onPointerDown={(event) => {
+                scheduleDragStartRef.current = event.clientY;
+                scheduleDragYRef.current = 0;
+                setScheduleDragging(true);
+              }}
+            />
             <div style={styles.clientScheduleTitleRow}>
               <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
               <button type="button" onClick={() => setScheduleOpen(false)} style={styles.clientScheduleCloseBtn}>
