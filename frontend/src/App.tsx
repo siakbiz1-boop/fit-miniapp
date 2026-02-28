@@ -4082,7 +4082,7 @@ function TrainerSchedule(props: {
                 {weekDays.map((d) => (
                   <div key={formatDateKey(d)} style={styles.scheduleWeekDayHeader}>
                     <div style={styles.scheduleWeekDayName}>{formatWeekdayShort(d, language)}</div>
-                    <div style={styles.scheduleWeekDayTitle}>{formatDateShort(d)}</div>
+                    <div style={styles.scheduleWeekDayTitle}>{d.getDate()}</div>
                   </div>
                 ))}
               </div>
@@ -10528,10 +10528,12 @@ const styles: Record<string, any> = {
     border: "1px solid var(--border-2)",
     background: "var(--surface)",
     overflow: "hidden",
+    width: "100%",
+    boxSizing: "border-box",
   },
   scheduleWeekHeader: {
     display: "grid",
-    gridTemplateColumns: "60px repeat(7, 1fr)",
+    gridTemplateColumns: "52px repeat(7, 1fr)",
     borderBottom: "1px solid var(--border-2)",
     background: "var(--surface-2)",
   },
@@ -10539,7 +10541,7 @@ const styles: Record<string, any> = {
     borderRight: "1px solid var(--border-2)",
   },
   scheduleWeekDayHeader: {
-    padding: "8px 6px",
+    padding: "6px 4px",
     textAlign: "center",
     fontSize: 12,
     fontWeight: 700,
@@ -10559,7 +10561,7 @@ const styles: Record<string, any> = {
   },
   scheduleWeekGrid: {
     display: "grid",
-    gridTemplateColumns: "60px 1fr",
+    gridTemplateColumns: "52px 1fr",
   },
   scheduleWeekTimeCol: {
     borderRight: "1px solid var(--border-2)",
