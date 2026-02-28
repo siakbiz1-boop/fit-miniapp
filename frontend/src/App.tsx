@@ -6394,30 +6394,41 @@ function ClientDetailScreen(props: {
                 <div style={{ marginTop: 16 }}>
                   <div style={styles.weightInlineRow}>
                     <div style={styles.fieldLabel}>{tr("Изменить рабочий вес:", "Update working weight:")}</div>
-                    <input
-                      ref={statsWeightInputRef}
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={draftStatsWeight}
-                      onChange={(e) => {
-                        setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
-                        if (statsWeightError) setStatsWeightError("");
-                      }}
-                      onFocus={() => {
-                        const el = statsWeightInputRef.current;
-                        if (!el) return;
-                        window.setTimeout(() => {
-                          el.scrollIntoView({ block: "start", behavior: "smooth" });
-                        }, 100);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key !== "Enter") return;
-                        e.currentTarget.blur();
-                        void saveStatsWeight();
-                      }}
-                      placeholder={tr("Вес", "Weight")}
-                      style={styles.weightInlineInput}
-                    />
+                    <div style={styles.weightInlineControls}>
+                      <input
+                        ref={statsWeightInputRef}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={draftStatsWeight}
+                        onChange={(e) => {
+                          setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
+                          if (statsWeightError) setStatsWeightError("");
+                        }}
+                        onFocus={() => {
+                          const el = statsWeightInputRef.current;
+                          if (!el) return;
+                          window.setTimeout(() => {
+                            el.scrollIntoView({ block: "start", behavior: "smooth" });
+                          }, 100);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+                          e.currentTarget.blur();
+                          void saveStatsWeight();
+                        }}
+                        placeholder={tr("Вес", "Weight")}
+                        style={styles.weightInlineInput}
+                      />
+                      <button
+                        type="button"
+                        style={styles.weightInlineSaveBtn}
+                        onClick={() => void saveStatsWeight()}
+                        aria-label={tr("Сохранить", "Save")}
+                        title={tr("Сохранить", "Save")}
+                      >
+                        ✓
+                      </button>
+                    </div>
                   </div>
                   {statsWeightError ? <div style={styles.errorText}>{statsWeightError}</div> : null}
                 </div>
@@ -9065,17 +9076,33 @@ const styles: Record<string, any> = {
     justifyContent: "space-between",
     gap: 12,
   },
+  weightInlineControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
   weightInlineInput: {
-    width: 90,
-    height: 38,
+    width: 74,
+    height: 34,
     borderRadius: 12,
     border: "1px solid var(--border)",
     background: "var(--surface)",
-    padding: "0 12px",
+    padding: "0 10px",
     textAlign: "center",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 700,
     color: "var(--text)",
+  },
+  weightInlineSaveBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: "50%",
+    border: "none",
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
+    fontWeight: 800,
+    cursor: "pointer",
+    lineHeight: 1,
   },
   rowSubtitle: {
     marginTop: 2,
