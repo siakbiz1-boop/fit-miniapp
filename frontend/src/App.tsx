@@ -5222,7 +5222,6 @@ function ClientDetailScreen(props: {
   const [weightsStatsExercise, setWeightsStatsExercise] = useState<{ id: string; name: string; weight: string } | null>(
     null
   );
-  const [weightsStatsToday, setWeightsStatsToday] = useState<Date>(() => startOfDay(new Date()));
   const [exerciseHistoryMap, setExerciseHistoryMap] = useState<Record<string, ExerciseHistoryItem[]>>({});
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
@@ -5284,13 +5283,6 @@ function ClientDetailScreen(props: {
     setScheduleError("");
     setScheduleSaving(false);
   }, [scheduleOpen]);
-
-  useEffect(() => {
-    const tick = () => setWeightsStatsToday(startOfDay(new Date()));
-    tick();
-    const id = window.setInterval(tick, 60 * 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
   useEffect(() => {
     const tick = () => setScheduleToday(startOfDay(new Date()));
@@ -5376,36 +5368,6 @@ function ClientDetailScreen(props: {
     </div>
   );
 
-  const weightStats = useMemo(() => {
-    if (!weightsStatsExercise) return [];
-    const history = exerciseHistoryMap[weightsStatsExercise.id] || [];
-    const sortedHistory = history
-      .slice()
-      .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
-    const currentWeight = parseWeightValue(weightsStatsExercise.weight || "");
-    const days: Array<{ label: string; value: number; date: Date }> = [];
-    for (let i = 6; i >= 0; i -= 1) {
-      const date = addDays(weightsStatsToday, -i);
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
-      let value = Number.isFinite(currentWeight) ? currentWeight : 0;
-      for (let idx = sortedHistory.length - 1; idx >= 0; idx -= 1) {
-        const h = sortedHistory[idx];
-        if (new Date(h.recordedAt).getTime() <= dayEnd.getTime()) {
-          const v = parseWeightValue(h.value);
-          value = Number.isFinite(v) ? v : value;
-          break;
-        }
-      }
-      days.push({
-        label: formatDateShort(date),
-        value,
-        date,
-      });
-    }
-    return days;
-  }, [weightsStatsExercise, weightsStatsToday, exerciseHistoryMap]);
-
   const weightHistoryList = useMemo(() => {
     if (!weightsStatsExercise) return [];
     const history = exerciseHistoryMap[weightsStatsExercise.id] || [];
@@ -5422,6 +5384,33 @@ function ClientDetailScreen(props: {
       (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
     );
   }, [weightsStatsExercise, exerciseHistoryMap]);
+
+  const weightStats = useMemo(() => {
+    if (!weightsStatsExercise) return [];
+    if (!weightHistoryList.length) return [];
+    const chron = weightHistoryList
+      .slice()
+      .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+    const last = chron.slice(-7);
+    const mapped = last.map((h) => {
+      const date = new Date(h.recordedAt);
+      const v = parseWeightValue(h.value);
+      return {
+        label: formatDateShort(date),
+        value: Number.isFinite(v) ? v : 0,
+        date,
+        hasValue: Number.isFinite(v),
+      };
+    });
+    if (mapped.length >= 7) return mapped;
+    const padding = Array.from({ length: 7 - mapped.length }, () => ({
+      label: "",
+      value: 0,
+      date: null as Date | null,
+      hasValue: false,
+    }));
+    return [...padding, ...mapped];
+  }, [weightsStatsExercise, weightHistoryList]);
 
   const saveLocalClientField = (
     field:
@@ -6347,9 +6336,10 @@ function ClientDetailScreen(props: {
                 <div style={styles.weightsStatsChart}>
                   {(() => {
                     if (weightStats.length === 0) return null;
-                    const values = weightStats.map((p) => p.value);
-                    const min = Math.min(...values);
-                    const max = Math.max(...values);
+                    const values = weightStats.filter((p) => p.hasValue).map((p) => p.value);
+                    const hasValues = values.length > 0;
+                    const min = hasValues ? Math.min(...values) : 0;
+                    const max = hasValues ? Math.max(...values) : 1;
                     const range = Math.max(1, max - min);
                     const width = 320;
                     const height = 120;
@@ -6358,10 +6348,13 @@ function ClientDetailScreen(props: {
                     const step = (width - padX * 2) / (weightStats.length - 1 || 1);
                     const points = weightStats.map((p, idx) => {
                       const x = padX + step * idx;
-                      const y = padY + (1 - (p.value - min) / range) * (height - padY * 2);
-                      return { x, y, value: p.value };
+                      const y = p.hasValue
+                        ? padY + (1 - (p.value - min) / range) * (height - padY * 2)
+                        : padY + 0.5 * (height - padY * 2);
+                      return { x, y, value: p.value, hasValue: p.hasValue };
                     });
-                    const d = points.map((p) => `${p.x},${p.y}`).join(" ");
+                    const linePoints = points.filter((p) => p.hasValue);
+                    const d = linePoints.map((p) => `${p.x},${p.y}`).join(" ");
                     return (
                       <div style={styles.weightsStatsLineWrap}>
                         <svg
@@ -6369,24 +6362,34 @@ function ClientDetailScreen(props: {
                           width="100%"
                           height="120"
                           role="img"
-                          aria-label={tr("График динамики за 7 дней", "7-day progress chart")}
+                          aria-label={tr("График динамики за 7 изменений", "7-change progress chart")}
                         >
-                          <polyline
-                            points={d}
-                            fill="none"
-                            stroke="#1F6BFF"
-                            strokeWidth="3"
-                            strokeLinejoin="round"
-                            strokeLinecap="round"
-                          />
+                          {linePoints.length >= 2 ? (
+                            <polyline
+                              points={d}
+                              fill="none"
+                              stroke="#1F6BFF"
+                              strokeWidth="3"
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                            />
+                          ) : null}
                           {points.map((p, idx) => (
-                            <circle key={idx} cx={p.x} cy={p.y} r="4" fill="#1F6BFF" stroke="#fff" strokeWidth="2" />
+                            <circle
+                              key={idx}
+                              cx={p.x}
+                              cy={p.y}
+                              r="4"
+                              fill={p.hasValue ? "#1F6BFF" : "var(--border)"}
+                              stroke="#fff"
+                              strokeWidth="2"
+                            />
                           ))}
                         </svg>
                         <div style={styles.weightsStatsLineAxis}>
-                          {weightStats.map((p) => (
-                            <div key={p.label} style={styles.weightsStatsLineAxisLabel}>
-                              {p.label}
+                          {weightStats.map((p, idx) => (
+                            <div key={`${p.label}-${idx}`} style={styles.weightsStatsLineAxisLabel}>
+                              {p.label || " "}
                             </div>
                           ))}
                         </div>
