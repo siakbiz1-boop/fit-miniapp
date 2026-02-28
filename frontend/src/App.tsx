@@ -3347,6 +3347,7 @@ function TrainerSchedule(props: {
     onSaveExercises,
   } = props;
   const tr = useTr();
+  const language = React.useContext(LanguageContext);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const [today, setToday] = useState<Date>(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
