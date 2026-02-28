@@ -6386,7 +6386,7 @@ function ClientDetailScreen(props: {
                         <div style={styles.weightsStatsLineAxis}>
                           {weightStats.map((p, idx) => (
                             <div key={`${p.label}-${idx}`} style={styles.weightsStatsLineAxisLabel}>
-                              {p.label || " "}
+                              {p.label || "dd.mm"}
                             </div>
                           ))}
                         </div>
