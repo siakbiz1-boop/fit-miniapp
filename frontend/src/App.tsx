@@ -6259,67 +6259,10 @@ function ClientDetailScreen(props: {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                             <div style={styles.exerciseWeightRow}>
-                              <input
-                                value={clientWeightDrafts[`${client.id}:${ex.id}`] ?? ex.weight ?? ""}
-                                onChange={(e) => {
-                                  if (!client) return;
-                                  const value = e.target.value;
-                                  setClientWeightDrafts((prev) => ({
-                                    ...prev,
-                                    [`${client.id}:${ex.id}`]: value,
-                                  }));
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                onBlur={() => {
-                                  if (!client) return;
-                                  const key = `${client.id}:${ex.id}`;
-                                  const value = clientWeightDrafts[key] ?? ex.weight ?? "";
-                                  const prevValue = ex.weight ?? "";
-                                  const list = client.exercises ? [...client.exercises] : [];
-                                  const next = list.map((item) =>
-                                    item.id === ex.id ? { ...item, weight: value } : item
-                                  );
-                                  onUpdateClient(client.id, { exercises: next });
-                                  clientWeightsRef.current[client.id] = next;
-                                  setClientWeightDrafts((prev) => {
-                                    const nextDrafts = { ...prev };
-                                    delete nextDrafts[key];
-                                    return nextDrafts;
-                                  });
-                                  onSaveExercises?.(client.id, next);
-                                  if (value.trim() && value.trim() !== String(prevValue || "").trim()) {
-                                    const entry: ExerciseHistoryItem = {
-                                      id: `local_${cryptoId()}`,
-                                      value: value.trim(),
-                                      recordedAt: new Date().toISOString(),
-                                    };
-                                    setExerciseHistoryMap((prev) => {
-                                      const prevList = prev[ex.id] ? [...prev[ex.id]] : [];
-                                      return { ...prev, [ex.id]: [...prevList, entry] };
-                                    });
-                                  }
-                                }}
-                                placeholder={tr("Вес не указан", "Weight not set")}
-                                style={styles.exerciseInput}
-                              />
-                              <button
-                                type="button"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (!client) return;
-                                  const next = client.exercises!.filter((x) => x.id !== ex.id);
-                                  onUpdateClient(client.id, { exercises: next });
-                                  const updated = await onSaveExercises?.(client.id, next);
-                                  if (updated?.exercises) {
-                                    onUpdateClient(client.id, { exercises: updated.exercises });
-                                  }
-                                }}
-                              style={styles.exerciseTrashBtn}
-                              aria-label="delete exercise"
-                              title={tr("Удалить", "Delete")}
-                            >
-                              <span aria-hidden="true">➖</span>
-                            </button>
+                              <div style={styles.exerciseSubtitle}>
+                                {tr("Текущий рабочий вес:", "Current working weight:")}{" "}
+                                {ex.weight?.trim() ? ex.weight : tr("не указан", "not set")}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -9018,6 +8961,13 @@ const styles: Record<string, any> = {
     color: "var(--text)",
     letterSpacing: -0.1,
     lineHeight: 1.25,
+    paddingLeft: 6,
+  },
+  exerciseSubtitle: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "var(--muted)",
+    lineHeight: 1.35,
     paddingLeft: 6,
   },
   rowSubtitle: {
