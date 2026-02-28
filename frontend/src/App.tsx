@@ -4080,7 +4080,13 @@ function TrainerSchedule(props: {
               <div style={styles.scheduleWeekHeader}>
                 <div style={styles.scheduleWeekTimeSpacer} />
                 {weekDays.map((d) => (
-                  <div key={formatDateKey(d)} style={styles.scheduleWeekDayHeader}>
+                  <div
+                    key={formatDateKey(d)}
+                    style={{
+                      ...styles.scheduleWeekDayHeader,
+                      ...(isSameDay(d, today) ? styles.scheduleWeekDayHeaderToday : null),
+                    }}
+                  >
                     <div style={styles.scheduleWeekDayName}>{formatWeekdayShort(d, language)}</div>
                     <div style={styles.scheduleWeekDayTitle}>{d.getDate()}</div>
                   </div>
@@ -10548,6 +10554,10 @@ const styles: Record<string, any> = {
     color: "var(--text)",
     borderRight: "1px solid var(--border-2)",
   },
+  scheduleWeekDayHeaderToday: {
+    background: "rgba(31, 107, 255, 0.12)",
+    color: "var(--accent)",
+  },
   scheduleWeekDayTitle: {
     whiteSpace: "nowrap",
   },
@@ -10570,9 +10580,12 @@ const styles: Record<string, any> = {
     height: 44,
     fontSize: 11,
     color: "var(--muted)",
-    padding: "4px 6px",
+    padding: "0 6px",
+    display: "flex",
+    alignItems: "flex-start",
     boxSizing: "border-box",
     borderBottom: "1px solid var(--border-2)",
+    transform: "translateY(-6px)",
   },
   scheduleWeekDays: {
     display: "grid",
