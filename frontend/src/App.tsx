@@ -5214,6 +5214,8 @@ function ClientDetailScreen(props: {
   const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [draftExerciseName, setDraftExerciseName] = useState("");
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
+  const [draftStatsWeight, setDraftStatsWeight] = useState("");
+  const [statsWeightError, setStatsWeightError] = useState("");
   const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
   const [exerciseError, setExerciseError] = useState("");
   const [weightsStatsOpen, setWeightsStatsOpen] = useState(false);
@@ -5260,6 +5262,11 @@ function ClientDetailScreen(props: {
     client?.contactOtherSocial,
     client?.status,
   ]);
+
+  useEffect(() => {
+    setDraftStatsWeight(weightsStatsExercise?.weight ?? "");
+    setStatsWeightError("");
+  }, [weightsStatsExercise?.id]);
 
   useEffect(() => {
     const el = goalRef.current;
@@ -6349,6 +6356,58 @@ function ClientDetailScreen(props: {
                       </div>
                     );
                   })()}
+                </div>
+                <div style={{ marginTop: 16 }}>
+                  <div style={styles.fieldLabel}>{tr("Изменить рабочий вес", "Update working weight")}</div>
+                  <input
+                    value={draftStatsWeight}
+                    onChange={(e) => {
+                      setDraftStatsWeight(e.target.value);
+                      if (statsWeightError) setStatsWeightError("");
+                    }}
+                    placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
+                    style={styles.input}
+                  />
+                  {statsWeightError ? <div style={styles.errorText}>{statsWeightError}</div> : null}
+                  <button
+                    type="button"
+                    style={{ ...styles.saveBtn, marginTop: 10 }}
+                    onClick={async () => {
+                      if (!client || !weightsStatsExercise) return;
+                      const value = draftStatsWeight.trim();
+                      if (!value) {
+                        setStatsWeightError(tr("Укажите рабочий вес.", "Enter the working weight."));
+                        return;
+                      }
+                      const list = client.exercises ? [...client.exercises] : [];
+                      const next = list.map((item) =>
+                        item.id === weightsStatsExercise.id ? { ...item, weight: value } : item
+                      );
+                      onUpdateClient(client.id, { exercises: next });
+                      setWeightsStatsExercise((prev) => (prev ? { ...prev, weight: value } : prev));
+                      const updated = await onSaveExercises?.(client.id, next);
+                      if (updated?.exercises) {
+                        onUpdateClient(client.id, { exercises: updated.exercises });
+                        const updatedExercise = updated.exercises.find((ex) => ex.id === weightsStatsExercise.id);
+                        if (updatedExercise) {
+                          setWeightsStatsExercise(updatedExercise);
+                        }
+                      }
+                      if (value.trim() !== String(weightsStatsExercise.weight || "").trim()) {
+                        const entry: ExerciseHistoryItem = {
+                          id: `local_${cryptoId()}`,
+                          value: value.trim(),
+                          recordedAt: new Date().toISOString(),
+                        };
+                        setExerciseHistoryMap((prev) => {
+                          const prevList = prev[weightsStatsExercise.id] ? [...prev[weightsStatsExercise.id]] : [];
+                          return { ...prev, [weightsStatsExercise.id]: [...prevList, entry] };
+                        });
+                      }
+                    }}
+                  >
+                    {tr("Сохранить", "Save")}
+                  </button>
                 </div>
                 <div style={styles.weightsStatsList}>
                   {weightHistoryList.length === 0 ? (
