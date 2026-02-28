@@ -4118,7 +4118,7 @@ function TrainerSchedule(props: {
                     return (
                       <div key={dateKey} style={styles.scheduleWeekDayCol}>
                         <div style={styles.scheduleWeekDayBody}>
-                          {Array.from({ length: 16 }, (_, idx) => (
+                          {Array.from({ length: 17 }, (_, idx) => (
                             <div
                               key={idx}
                               style={{ ...styles.scheduleWeekHourLineTick, top: idx * 44 }}
