@@ -3530,6 +3530,10 @@ function TrainerSchedule(props: {
   const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
   const weekStart = useMemo(() => startOfWeekMonday(today), [today]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, idx) => addDays(weekStart, idx)), [weekStart]);
+  const gridStartHour = 7;
+  const gridEndHour = 22;
+  const gridRowHeight = 44;
+  const gridRows = gridEndHour - gridStartHour + 1;
 
   useEffect(() => {
     if (!selectedRef.current || !scrollerRef.current) return;
@@ -4094,14 +4098,14 @@ function TrainerSchedule(props: {
               </div>
               <div style={styles.scheduleWeekGrid}>
                 <div style={styles.scheduleWeekTimeCol}>
-                  {Array.from({ length: 16 }, (_, idx) => {
-                    const hour = 7 + idx;
+                  {Array.from({ length: gridRows }, (_, idx) => {
+                    const hour = gridStartHour + idx;
                     return (
                       <div
                         key={hour}
                         style={{
                           ...styles.scheduleWeekTimeLabel,
-                          top: (idx + 1) * 44,
+                          top: (idx + 1) * gridRowHeight,
                         }}
                       >
                         {String(hour).padStart(2, "0")}:00
@@ -4117,18 +4121,18 @@ function TrainerSchedule(props: {
                       .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
                     return (
                       <div key={dateKey} style={styles.scheduleWeekDayCol}>
-                        <div style={styles.scheduleWeekDayBody}>
-                          {Array.from({ length: 17 }, (_, idx) => (
+                        <div style={{ ...styles.scheduleWeekDayBody, height: gridRowHeight * gridRows }}>
+                          {Array.from({ length: gridRows + 1 }, (_, idx) => (
                             <div
                               key={idx}
-                              style={{ ...styles.scheduleWeekHourLineTick, top: idx * 44 }}
+                              style={{ ...styles.scheduleWeekHourLineTick, top: idx * gridRowHeight }}
                             />
                           ))}
                           {daySessions.map((s) => {
                             const startMin = timeToMinutes(s.start);
                             const endMin = timeToMinutes(s.end);
-                            const top = Math.max(0, (startMin - 7 * 60) * (44 / 60));
-                            const height = Math.max(28, (endMin - startMin) * (44 / 60));
+                            const top = Math.max(0, (startMin - gridStartHour * 60) * (gridRowHeight / 60));
+                            const height = Math.max(28, (endMin - startMin) * (gridRowHeight / 60));
                             return (
                               <button
                                 key={s.id}
@@ -10603,7 +10607,6 @@ const styles: Record<string, any> = {
   },
   scheduleWeekDayBody: {
     position: "relative",
-    height: 44 * 16,
   },
   scheduleWeekHourLineTick: {
     position: "absolute",
