@@ -1461,6 +1461,8 @@ export default function App() {
                 username={tgUsername}
                 photoUrl={tgPhotoUrl}
                 roleLabel={roleLabel(role, language)}
+                token={token}
+                apiBase={apiBase}
                 theme={theme}
                 setTheme={setTheme}
                 language={language}
@@ -1621,6 +1623,8 @@ export default function App() {
               username={tgUsername}
               photoUrl={tgPhotoUrl}
               roleLabel={roleLabel("client", language)}
+              token={token}
+              apiBase={apiBase}
               theme={theme}
               setTheme={setTheme}
               language={language}
@@ -2541,12 +2545,7 @@ function ClientSchedule(props: {
   const [scheduleScreen, setScheduleScreen] = useState<"list" | "session">("list");
   const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
   const [sessionTab, setSessionTab] = useState<"info" | "weights">("info");
-  const [showWeightsForm, setShowWeightsForm] = useState(false);
-  const [draftWeightName, setDraftWeightName] = useState("");
-  const [draftWeightValue, setDraftWeightValue] = useState("");
-  const [weightsError, setWeightsError] = useState("");
   const [clientWeights, setClientWeights] = useState<{ id: string; name: string; weight: string }[]>([]);
-  const weightsDraftRef = useRef<{ id: string; name: string; weight: string }[]>([]);
   const [nowTs, setNowTs] = useState(() => Date.now());
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -2566,10 +2565,6 @@ function ClientSchedule(props: {
   const clientExercises = activeTrainer?.exercises || [];
 
   useEffect(() => {
-    weightsDraftRef.current = clientWeights;
-  }, [clientWeights]);
-
-  useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 30000);
     return () => window.clearInterval(id);
   }, []);
@@ -2580,10 +2575,6 @@ function ClientSchedule(props: {
     if (sig === weightsSigRef.current) return;
     weightsSigRef.current = sig;
     setClientWeights(clientExercises.map((ex) => ({ ...ex })));
-    setShowWeightsForm(false);
-    setDraftWeightName("");
-    setDraftWeightValue("");
-    setWeightsError("");
   }, [activeTrainer, clientExercises]);
 
   const applySlots = useCallback((next: TrainingSlot[]) => {
@@ -2839,142 +2830,15 @@ function ClientSchedule(props: {
               ) : null}
             </div>
           ) : (
-            <div>
-              <button
-                type="button"
-                style={styles.addWindowBtn}
-                onClick={() => {
-                  setShowWeightsForm((v) => !v);
-                  setWeightsError("");
-                }}
-              >
-                {tr("Добавить упражнение", "Add exercise")}
-              </button>
-              {showWeightsForm ? (
-                <div style={{ marginTop: 12 }}>
-                  <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
-                  <input
-                    value={draftWeightName}
-                    onChange={(e) => {
-                      setDraftWeightName(e.target.value);
-                      if (weightsError) setWeightsError("");
-                    }}
-                    placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
-                    style={styles.input}
-                  />
-                  <div style={{ marginTop: 12 }}>
-                    <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
-                    <input
-                      value={draftWeightValue}
-                      onChange={(e) => {
-                        setDraftWeightValue(e.target.value);
-                        if (weightsError) setWeightsError("");
-                      }}
-                      placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
-                      style={styles.input}
-                    />
-                  </div>
-                  {weightsError ? <div style={styles.errorText}>{weightsError}</div> : null}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!activeTrainer || !onSaveExercises) {
-                        setWeightsError(tr("Нет доступного тренера.", "No available coach."));
-                        return;
-                      }
-                      const nameValue = draftWeightName.trim();
-                      const weightValue = draftWeightValue.trim();
-                      if (!nameValue || !weightValue) {
-                        setWeightsError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
-                        return;
-                      }
-                      const next = [
-                        ...clientWeights,
-                        { id: localExerciseId(), name: nameValue, weight: weightValue },
-                      ];
-                      setClientWeights(next);
-                      const updated = await onSaveExercises(activeTrainer.id, next);
-                      if (updated?.exercises) {
-                        setClientWeights(updated.exercises.map((ex) => ({ ...ex })));
-                      }
-                      setDraftWeightName("");
-                      setDraftWeightValue("");
-                      setShowWeightsForm(false);
-                      setWeightsError("");
-                    }}
-                    style={styles.saveBtn}
-                  >
-                    {tr("Сохранить", "Save")}
-                  </button>
-                </div>
-              ) : null}
-
-              {clientWeights.length > 0 ? (
-                <div style={styles.exerciseListBlock}>
-                  {clientWeights.map((ex, idx) => {
-                    const isLast = idx === clientWeights.length - 1;
-                    return (
-                      <div
-                        key={ex.id}
-                        style={{
-                          ...styles.exerciseCard,
-                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                          padding: "12px 0",
-                        }}
-                      >
-                        <div style={styles.exerciseRow}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
-                            <div style={styles.exerciseWeightRow}>
-                              <input
-                                value={ex.weight || ""}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                const next = clientWeights.map((item) =>
-                                  item.id === ex.id ? { ...item, weight: value } : item
-                                );
-                                setClientWeights(next);
-                                weightsDraftRef.current = next;
-                              }}
-                              onBlur={() => {
-                                if (activeTrainer && onSaveExercises) {
-                                  onSaveExercises(activeTrainer.id, weightsDraftRef.current);
-                                }
-                              }}
-                                placeholder={tr("Вес не указан", "Weight not set")}
-                                style={styles.exerciseInput}
-                              />
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const next = clientWeights.filter((item) => item.id !== ex.id);
-                                  setClientWeights(next);
-                                  if (activeTrainer && onSaveExercises) {
-                                    const updated = await onSaveExercises(activeTrainer.id, next);
-                                    if (updated?.exercises) {
-                                      setClientWeights(updated.exercises.map((item) => ({ ...item })));
-                                    }
-                                  }
-                                }}
-                                style={styles.exerciseTrashBtn}
-                                aria-label="delete exercise"
-                                title={tr("Удалить", "Delete")}
-                              >
-                                <span aria-hidden="true">➖</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={styles.clientPanelBody}>
-                  {tr("Пока нет упражнений.", "No exercises yet.")}
-                </div>
-              )}
-            </div>
+            <ExerciseStatsPanel
+              clientId={activeTrainer?.id ?? null}
+              exercises={clientWeights}
+              setExercises={setClientWeights}
+              onSaveExercises={onSaveExercises}
+              token={token}
+              apiBase={apiBase}
+              embedded
+            />
           )}
         </div>
       </div>
@@ -3395,6 +3259,8 @@ function ClientSettings(props: {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
+  token?: string;
+  apiBase?: string;
   invites: TrainerClientInvite[];
   setInvites: React.Dispatch<React.SetStateAction<TrainerClientInvite[]>>;
   setClientConnected: (v: boolean) => void;
@@ -3408,6 +3274,8 @@ function ClientSettings(props: {
     setClientConnected,
     onDeleteProfile,
     onSaveClientExercises,
+    token,
+    apiBase,
     ...rest
   } = props;
   const tr = useTr();
@@ -3426,6 +3294,8 @@ function ClientSettings(props: {
   return (
     <TrainerSettings
       {...rest}
+      token={token}
+      apiBase={apiBase}
       screen={screen}
       setScreen={setScreen}
       personalShowSubscription={false}
@@ -3484,11 +3354,6 @@ function TrainerSchedule(props: {
   const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
   const [sessionTab, setSessionTab] = useState<"info" | "weights" | "history">("info");
   const sessionCommentRef = useRef<HTMLTextAreaElement | null>(null);
-  const [showSessionExerciseForm, setShowSessionExerciseForm] = useState(false);
-  const [draftSessionExerciseName, setDraftSessionExerciseName] = useState("");
-  const [draftSessionExerciseWeight, setDraftSessionExerciseWeight] = useState("");
-  const sessionWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
-  const [sessionWeightDrafts, setSessionWeightDrafts] = useState<Record<string, string>>({});
   const [nowTs, setNowTs] = useState(() => Date.now());
   const [draftSessionType, setDraftSessionType] = useState("");
   const [draftSessionPrice, setDraftSessionPrice] = useState("");
@@ -3515,10 +3380,6 @@ function TrainerSchedule(props: {
     const id = window.setInterval(() => setNowTs(Date.now()), 30000);
     return () => window.clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    setSessionWeightDrafts({});
-  }, [activeSession?.clientUsername]);
 
   const saveSessionPatch = async (sessionId: string, patch: { type?: string; price?: string; comment?: string }) => {
     if (!token) return;
@@ -3607,7 +3468,6 @@ function TrainerSchedule(props: {
       }
     };
   }, [hasTgBack, scheduleScreen]);
-  const [sessionExerciseError, setSessionExerciseError] = useState("");
   const [section, setSection] = useState<"sessions" | "free">("sessions");
   const [scheduleView, setScheduleView] = useState<"list" | "grid">("list");
   const [slotsByDate, setSlotsByDate] = useState<Record<string, TrainingSlot[]>>({});
@@ -4003,165 +3863,20 @@ function TrainerSchedule(props: {
               ) : null}
             </div>
           ) : sessionTab === "weights" ? (
-            <div>
-              <button
-                type="button"
-                style={styles.addWindowBtn}
-                onClick={() => {
-                  setShowSessionExerciseForm((v) => !v);
-                  setSessionExerciseError("");
-                }}
-              >
-                {tr("Добавить упражнение", "Add exercise")}
-              </button>
-              {showSessionExerciseForm ? (
-                <div style={{ marginTop: 12 }}>
-                  <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
-                  <input
-                    value={draftSessionExerciseName}
-                    onChange={(e) => {
-                      setDraftSessionExerciseName(e.target.value);
-                      if (sessionExerciseError) setSessionExerciseError("");
-                    }}
-                    placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
-                    style={styles.input}
-                  />
-                  <div style={{ marginTop: 12 }}>
-                    <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
-                    <input
-                      value={draftSessionExerciseWeight}
-                      onChange={(e) => {
-                        setDraftSessionExerciseWeight(e.target.value);
-                        if (sessionExerciseError) setSessionExerciseError("");
-                      }}
-                      placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
-                      style={styles.input}
-                    />
-                  </div>
-                  {sessionExerciseError ? <div style={styles.errorText}>{sessionExerciseError}</div> : null}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!sessionClient) return;
-                      const name = draftSessionExerciseName.trim();
-                      const weight = draftSessionExerciseWeight.trim();
-                      if (!name || !weight) {
-                        setSessionExerciseError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
-                        return;
-                      }
-                      const nextList = [
-                        ...(sessionClient.exercises ? sessionClient.exercises : []),
-                        { id: localExerciseId(), name, weight },
-                      ];
-                      setClients((prev) =>
-                        prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
-                      );
-                      const updated = await onSaveExercises?.(sessionClient.id, nextList);
-                      if (updated?.exercises) {
-                        setClients((prev) =>
-                          prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: updated.exercises } : c))
-                        );
-                      }
-                      setDraftSessionExerciseName("");
-                      setDraftSessionExerciseWeight("");
-                      setShowSessionExerciseForm(false);
-                      setSessionExerciseError("");
-                    }}
-                    style={styles.saveBtn}
-                  >
-                    {tr("Сохранить", "Save")}
-                  </button>
-                </div>
-              ) : null}
-
-              {sessionClient?.exercises && sessionClient.exercises.length > 0 ? (
-                <div style={{ marginTop: 16 }}>
-                  <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
-                <div style={styles.exerciseListBlock}>
-                  {sessionClient.exercises.map((ex, idx) => {
-                    const isLast = idx === sessionClient.exercises!.length - 1;
-                    return (
-                      <div
-                        key={ex.id}
-                        style={{
-                          ...styles.exerciseCard,
-                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                          padding: "12px 0",
-                        }}
-                      >
-                          <div style={styles.exerciseRow}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
-                              <div style={styles.exerciseWeightRow}>
-                              <input
-                                value={sessionWeightDrafts[`${sessionClient.id}:${ex.id}`] ?? ex.weight ?? ""}
-                                onChange={(e) => {
-                                  if (!sessionClient) return;
-                                  const value = e.target.value;
-                                  setSessionWeightDrafts((prev) => ({
-                                    ...prev,
-                                    [`${sessionClient.id}:${ex.id}`]: value,
-                                  }));
-                                }}
-                                onBlur={() => {
-                                  if (!sessionClient) return;
-                                  const key = `${sessionClient.id}:${ex.id}`;
-                                  const value = sessionWeightDrafts[key] ?? ex.weight ?? "";
-                                  const list = sessionClient.exercises ? [...sessionClient.exercises] : [];
-                                  const nextList = list.map((item) =>
-                                    item.id === ex.id ? { ...item, weight: value } : item
-                                  );
-                                  setClients((prev) =>
-                                    prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
-                                  );
-                                  sessionWeightsRef.current[sessionClient.id] = nextList;
-                                  setSessionWeightDrafts((prev) => {
-                                    const next = { ...prev };
-                                    delete next[key];
-                                    return next;
-                                  });
-                                  onSaveExercises?.(sessionClient.id, nextList);
-                                }}
-                                placeholder={tr("Вес не указан", "Weight not set")}
-                                style={styles.exerciseInput}
-                              />
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (!sessionClient) return;
-                                    const nextList = (sessionClient.exercises || []).filter((item) => item.id !== ex.id);
-                                    setClients((prev) =>
-                                      prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: nextList } : c))
-                                    );
-                                    const updated = await onSaveExercises?.(sessionClient.id, nextList);
-                                    if (updated?.exercises) {
-                                      setClients((prev) =>
-                                        prev.map((c) =>
-                                          c.id === sessionClient.id ? { ...c, exercises: updated.exercises } : c
-                                        )
-                                      );
-                                    }
-                                  }}
-                                  style={styles.exerciseTrashBtn}
-                                  aria-label="delete exercise"
-                                  title={tr("Удалить", "Delete")}
-                                >
-                                  <span aria-hidden="true">➖</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ marginTop: 16, opacity: 0.7, fontSize: 14 }}>
-                  {tr("Пока нет упражнений.", "No exercises yet.")}
-                </div>
-              )}
-            </div>
+            <ExerciseStatsPanel
+              clientId={sessionClient?.id ?? null}
+              exercises={sessionClient?.exercises || []}
+              setExercises={(next) => {
+                if (!sessionClient) return;
+                setClients((prev) =>
+                  prev.map((c) => (c.id === sessionClient.id ? { ...c, exercises: next } : c))
+                );
+              }}
+              onSaveExercises={onSaveExercises}
+              token={token}
+              apiBase={apiBase}
+              embedded
+            />
           ) : sessionTab === "history" ? (
             <div>
               {(historyByClient[activeSession.clientUsername] || []).some((s) => isSessionEnded(s, new Date())) ? (
@@ -5254,6 +4969,475 @@ function AddClientScreen(props: {
   );
 }
 
+function ExerciseStatsPanel(props: {
+  clientId: string | null;
+  exercises: { id: string; name: string; weight: string }[];
+  setExercises: (next: { id: string; name: string; weight: string }[]) => void;
+  onSaveExercises?: (
+    clientId: string,
+    exercises: { id: string; name: string; weight: string }[]
+  ) => Promise<TrainerClientInvite | null> | void;
+  token?: string;
+  apiBase?: string;
+  embedded?: boolean;
+}) {
+  const { clientId, exercises, setExercises, onSaveExercises, token, apiBase, embedded = false } = props;
+  const tr = useTr();
+  const [showExerciseForm, setShowExerciseForm] = useState(false);
+  const [draftExerciseName, setDraftExerciseName] = useState("");
+  const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
+  const [draftStatsWeight, setDraftStatsWeight] = useState("");
+  const [statsWeightError, setStatsWeightError] = useState("");
+  const [exerciseError, setExerciseError] = useState("");
+  const [weightsStatsOpen, setWeightsStatsOpen] = useState(false);
+  const [weightsStatsExercise, setWeightsStatsExercise] = useState<{ id: string; name: string; weight: string } | null>(
+    null
+  );
+  const [exerciseHistoryMap, setExerciseHistoryMap] = useState<Record<string, ExerciseHistoryItem[]>>({});
+  const statsSheetRef = useRef<HTMLDivElement | null>(null);
+  const statsWeightInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setShowExerciseForm(false);
+    setDraftExerciseName("");
+    setDraftExerciseWeight("");
+    setExerciseError("");
+    setWeightsStatsOpen(false);
+    setWeightsStatsExercise(null);
+  }, [clientId]);
+
+  useEffect(() => {
+    setDraftStatsWeight(weightsStatsExercise?.weight ?? "");
+    setStatsWeightError("");
+  }, [weightsStatsExercise?.id]);
+
+  useEffect(() => {
+    if (!weightsStatsExercise) return;
+    const next = exercises.find((ex) => ex.id === weightsStatsExercise.id);
+    if (!next) {
+      setWeightsStatsExercise(null);
+      return;
+    }
+    if (next.name !== weightsStatsExercise.name || next.weight !== weightsStatsExercise.weight) {
+      setWeightsStatsExercise(next);
+    }
+  }, [exercises, weightsStatsExercise]);
+
+  const parseWeightValue = (raw: string) => {
+    const cleaned = String(raw || "").replace(",", ".");
+    const parsed = Number.parseFloat(cleaned.replace(/[^\d.]/g, ""));
+    return Number.isFinite(parsed) ? parsed : NaN;
+  };
+
+  const ensureExerciseHistory = async (exerciseId: string) => {
+    if (!clientId || !token || !apiBase) return;
+    try {
+      const res = await fetch(
+        `${apiBase}/clients/${encodeURIComponent(clientId)}/exercises/${encodeURIComponent(exerciseId)}/history`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as { ok: boolean; history?: ExerciseHistoryItem[] };
+      if (!data?.history) return;
+      setExerciseHistoryMap((prev) => ({ ...prev, [exerciseId]: data.history || [] }));
+    } catch {
+      // ignore history fetch errors
+    }
+  };
+
+  const weightHistoryList = useMemo(() => {
+    if (!weightsStatsExercise) return [];
+    const history = exerciseHistoryMap[weightsStatsExercise.id] || [];
+    const byDate = new Map<string, ExerciseHistoryItem>();
+    history.forEach((h) => {
+      const d = startOfDay(new Date(h.recordedAt));
+      const key = formatDateKey(d);
+      const prev = byDate.get(key);
+      if (!prev || new Date(prev.recordedAt).getTime() < new Date(h.recordedAt).getTime()) {
+        byDate.set(key, h);
+      }
+    });
+    return Array.from(byDate.values()).sort(
+      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+    );
+  }, [weightsStatsExercise, exerciseHistoryMap]);
+
+  const weightStats = useMemo(() => {
+    if (!weightsStatsExercise) return [];
+    if (!weightHistoryList.length) return [];
+    const chron = weightHistoryList
+      .slice()
+      .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+    const last = chron.slice(-7);
+    const mapped = last.map((h) => {
+      const date = new Date(h.recordedAt);
+      const v = parseWeightValue(h.value);
+      return {
+        label: formatDateShort(date),
+        value: Number.isFinite(v) ? v : 0,
+        date,
+        hasValue: Number.isFinite(v),
+      };
+    });
+    if (mapped.length >= 7) return mapped;
+    const padding = Array.from({ length: 7 - mapped.length }, () => ({
+      label: "",
+      value: 0,
+      date: null as Date | null,
+      hasValue: false,
+    }));
+    return [...mapped, ...padding];
+  }, [weightsStatsExercise, weightHistoryList]);
+
+  const saveStatsWeight = useCallback(async () => {
+    if (!clientId || !weightsStatsExercise) return;
+    const value = draftStatsWeight.trim();
+    if (!value) {
+      setStatsWeightError(tr("Укажите рабочий вес.", "Enter the working weight."));
+      return;
+    }
+    const list = exercises ? [...exercises] : [];
+    const next = list.map((item) => (item.id === weightsStatsExercise.id ? { ...item, weight: value } : item));
+    setExercises(next);
+    setWeightsStatsExercise((prev) => (prev ? { ...prev, weight: value } : prev));
+    const updated = await onSaveExercises?.(clientId, next);
+    if (updated?.exercises) {
+      setExercises(updated.exercises);
+      const updatedExercise = updated.exercises.find((ex) => ex.id === weightsStatsExercise.id);
+      if (updatedExercise) {
+        setWeightsStatsExercise(updatedExercise);
+      }
+    }
+    if (value.trim() !== String(weightsStatsExercise.weight || "").trim()) {
+      const entry: ExerciseHistoryItem = {
+        id: `local_${cryptoId()}`,
+        value: value.trim(),
+        recordedAt: new Date().toISOString(),
+      };
+      setExerciseHistoryMap((prev) => {
+        const prevList = prev[weightsStatsExercise.id] ? [...prev[weightsStatsExercise.id]] : [];
+        return { ...prev, [weightsStatsExercise.id]: [...prevList, entry] };
+      });
+    }
+  }, [clientId, draftStatsWeight, exercises, onSaveExercises, setExercises, tr, weightsStatsExercise]);
+
+  const body = (
+    <>
+      <button
+        type="button"
+        style={styles.addWindowBtn}
+        onClick={() => {
+          setShowExerciseForm(true);
+        }}
+      >
+        {tr("Добавить упражнение", "Add exercise")}
+      </button>
+      {showExerciseForm ? (
+        <div style={styles.exerciseFormOverlay}>
+          <button
+            type="button"
+            aria-label="close add exercise"
+            style={styles.exerciseFormBackdrop}
+            onClick={() => setShowExerciseForm(false)}
+          />
+          <div style={styles.exerciseFormSheet}>
+            <div style={styles.exerciseFormHandle} />
+            <div style={styles.exerciseFormHeader}>
+              <div style={styles.exerciseFormTitle}>{tr("Новое упражнение", "New exercise")}</div>
+              <button
+                type="button"
+                style={styles.exerciseFormCloseBtn}
+                onClick={() => setShowExerciseForm(false)}
+              >
+                {tr("Закрыть", "Close")}
+              </button>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
+              <input
+                value={draftExerciseName}
+                onChange={(e) => {
+                  setDraftExerciseName(e.target.value);
+                  if (exerciseError) setExerciseError("");
+                }}
+                placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
+                style={styles.input}
+              />
+              <div style={{ marginTop: 12 }}>
+                <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
+                <input
+                  value={draftExerciseWeight}
+                  onChange={(e) => {
+                    setDraftExerciseWeight(e.target.value);
+                    if (exerciseError) setExerciseError("");
+                  }}
+                  placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
+                  style={styles.input}
+                />
+              </div>
+              {exerciseError ? <div style={styles.errorText}>{exerciseError}</div> : null}
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!clientId || !onSaveExercises) {
+                    setExerciseError(tr("Нет доступного тренера.", "No available coach."));
+                    return;
+                  }
+                  const name = draftExerciseName.trim();
+                  const weight = draftExerciseWeight.trim();
+                  if (!name || !weight) {
+                    setExerciseError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
+                    return;
+                  }
+                  const list = exercises ? [...exercises] : [];
+                  const next = [...list, { id: localExerciseId(), name, weight }];
+                  setExercises(next);
+                  const updated = await onSaveExercises?.(clientId, next);
+                  if (updated?.exercises) {
+                    setExercises(updated.exercises);
+                  }
+                  setDraftExerciseName("");
+                  setDraftExerciseWeight("");
+                  setShowExerciseForm(false);
+                  setExerciseError("");
+                }}
+                style={styles.saveBtn}
+              >
+                {tr("Сохранить", "Save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {exercises && exercises.length > 0 ? (
+        <div style={{ marginTop: 16 }}>
+          <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
+          <div style={styles.exerciseListBlock}>
+            {exercises.map((ex, idx) => {
+              const isLast = idx === exercises.length - 1;
+              return (
+                <div
+                  key={ex.id}
+                  style={{
+                    ...styles.exerciseCard,
+                    borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+                    padding: "12px 0",
+                  }}
+                  onClick={() => {
+                    setWeightsStatsExercise(ex);
+                    setWeightsStatsOpen(true);
+                    void ensureExerciseHistory(ex.id);
+                  }}
+                >
+                  <div style={styles.exerciseRow}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
+                      <div style={styles.exerciseWeightRow}>
+                        <div style={styles.exerciseSubtitle}>
+                          {tr("Текущий рабочий вес:", "Current working weight:")}{" "}
+                          {ex.weight?.trim() ? ex.weight : tr("не указан", "not set")}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, opacity: 0.7, fontSize: 14 }}>
+          {tr("Пока нет рабочих весов.", "No working weights yet.")}
+        </div>
+      )}
+
+      {weightsStatsOpen ? (
+        <div style={styles.weightsStatsOverlay}>
+          <button
+            type="button"
+            aria-label="close weights stats"
+            style={styles.weightsStatsBackdrop}
+            onClick={() => setWeightsStatsOpen(false)}
+          />
+          <div ref={statsSheetRef} style={styles.weightsStatsSheet}>
+            <div style={styles.weightsStatsHandle} />
+            <div style={styles.weightsStatsHeader}>
+              <div style={styles.weightsStatsTitle}>
+                {weightsStatsExercise?.name || tr("Рабочие веса", "Working weights")}
+              </div>
+              <button
+                type="button"
+                style={styles.weightsStatsCloseBtn}
+                onClick={() => setWeightsStatsOpen(false)}
+              >
+                {tr("Закрыть", "Close")}
+              </button>
+            </div>
+            <div style={styles.weightsStatsChart}>
+              {(() => {
+                if (weightStats.length === 0) return null;
+                const values = weightStats.filter((p) => p.hasValue).map((p) => p.value);
+                const hasValues = values.length > 0;
+                const min = hasValues ? Math.min(...values) : 0;
+                const max = hasValues ? Math.max(...values) : 1;
+                const range = Math.max(1, max - min);
+                const width = 320;
+                const height = 120;
+                const padX = 8;
+                const padY = 12;
+                const step = (width - padX * 2) / (weightStats.length - 1 || 1);
+                const lastValue = hasValues ? values[values.length - 1] : 0;
+                const points = weightStats.map((p, idx) => {
+                  const x = padX + step * idx;
+                  const effectiveValue = p.hasValue ? p.value : hasValues ? lastValue : min;
+                  const y = padY + (1 - (effectiveValue - min) / range) * (height - padY * 2);
+                  return { x, y, value: p.value, hasValue: p.hasValue };
+                });
+                const d = points.map((p) => `${p.x},${p.y}`).join(" ");
+                return (
+                  <div style={styles.weightsStatsLineWrap}>
+                    <svg
+                      viewBox={`0 0 ${width} ${height}`}
+                      width="100%"
+                      height="120"
+                      role="img"
+                      aria-label={tr("График динамики за 7 изменений", "7-change progress chart")}
+                    >
+                      <polyline
+                        points={d}
+                        fill="none"
+                        stroke="#1F6BFF"
+                        strokeWidth="3"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                      {points.map((p, idx) => (
+                        <circle
+                          key={idx}
+                          cx={p.x}
+                          cy={p.y}
+                          r="4"
+                          fill={p.hasValue ? "#1F6BFF" : "var(--border)"}
+                          stroke="#fff"
+                          strokeWidth="2"
+                        />
+                      ))}
+                    </svg>
+                    <div style={styles.weightsStatsLineAxis}>
+                      {weightStats.map((p, idx) => (
+                        <div key={`${p.label}-${idx}`} style={styles.weightsStatsLineAxisLabel}>
+                          {p.label || "dd.mm"}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <div style={styles.weightInlineRow}>
+                <div style={styles.fieldLabel}>{tr("Изменить рабочий вес:", "Update working weight:")}</div>
+                <div style={styles.weightInlineControls}>
+                  <input
+                    ref={statsWeightInputRef}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    enterKeyHint="done"
+                    value={draftStatsWeight}
+                    onChange={(e) => {
+                      setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
+                      if (statsWeightError) setStatsWeightError("");
+                    }}
+                    onFocus={() => {
+                      const el = statsWeightInputRef.current;
+                      if (!el) return;
+                      window.setTimeout(() => {
+                        el.scrollIntoView({ block: "start", behavior: "smooth" });
+                      }, 100);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.currentTarget.blur();
+                      void saveStatsWeight();
+                    }}
+                    placeholder={tr("Вес", "Weight")}
+                    style={styles.weightInlineInput}
+                  />
+                  <button
+                    type="button"
+                    style={styles.weightInlineSaveBtn}
+                    onClick={() => void saveStatsWeight()}
+                    aria-label={tr("Сохранить", "Save")}
+                    title={tr("Сохранить", "Save")}
+                  >
+                    ✓
+                  </button>
+                </div>
+              </div>
+              {statsWeightError ? <div style={styles.errorText}>{statsWeightError}</div> : null}
+            </div>
+            <div style={styles.weightsStatsList}>
+              {weightHistoryList.length === 0 ? (
+                <div style={styles.weightsStatsEmpty}>
+                  {tr("Пока нет изменений веса.", "No weight changes yet.")}
+                </div>
+              ) : (
+                weightHistoryList.map((item, idx) => {
+                  const label = formatDateShort(new Date(item.recordedAt));
+                  const value = parseWeightValue(item.value);
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        ...styles.weightsStatsListRow,
+                        borderBottom: idx === weightHistoryList.length - 1 ? "none" : "1px solid var(--border-2)",
+                      }}
+                    >
+                      <div style={styles.weightsStatsListLabel}>{label}</div>
+                      <div style={styles.weightsStatsListValue}>
+                        {Number.isFinite(value) ? `${value} кг` : "—"}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <button
+              type="button"
+              style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
+              onClick={async () => {
+                if (!clientId || !weightsStatsExercise) return;
+                const message = tr("Удалить упражнение?", "Delete exercise?");
+                const doDelete = async () => {
+                  const next = (exercises || []).filter((x) => x.id !== weightsStatsExercise.id);
+                  setExercises(next);
+                  const updated = await onSaveExercises?.(clientId, next);
+                  if (updated?.exercises) {
+                    setExercises(updated.exercises);
+                  }
+                  setWeightsStatsOpen(false);
+                };
+                if (typeof WebApp?.showConfirm === "function") {
+                  WebApp.showConfirm(message, (yes) => {
+                    if (yes) void doDelete();
+                  });
+                  return;
+                }
+                if (window.confirm(message)) void doDelete();
+              }}
+            >
+              {tr("Удалить упражнение", "Delete exercise")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+
+  return embedded ? body : <div style={styles.clientPanelPlain}>{body}</div>;
+}
+
 function ClientDetailScreen(props: {
   client: TrainerClientInvite | null;
   onBack: () => void;
@@ -5305,20 +5489,7 @@ function ClientDetailScreen(props: {
   const [scheduleDragging, setScheduleDragging] = useState(false);
   const scheduleDragStartRef = useRef<number>(0);
   const scheduleDragYRef = useRef<number>(0);
-  const [showExerciseForm, setShowExerciseForm] = useState(false);
-  const [draftExerciseName, setDraftExerciseName] = useState("");
-  const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
-  const [draftStatsWeight, setDraftStatsWeight] = useState("");
-  const [statsWeightError, setStatsWeightError] = useState("");
   const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
-  const [exerciseError, setExerciseError] = useState("");
-  const [weightsStatsOpen, setWeightsStatsOpen] = useState(false);
-  const [weightsStatsExercise, setWeightsStatsExercise] = useState<{ id: string; name: string; weight: string } | null>(
-    null
-  );
-  const [exerciseHistoryMap, setExerciseHistoryMap] = useState<Record<string, ExerciseHistoryItem[]>>({});
-  const statsSheetRef = useRef<HTMLDivElement | null>(null);
-  const statsWeightInputRef = useRef<HTMLInputElement | null>(null);
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -5336,10 +5507,6 @@ function ClientDetailScreen(props: {
     setDraftContactPhone(client?.contactPhone ?? "");
     setDraftContactInstagram(client?.contactInstagram ?? "");
     setDraftContactOtherSocial(client?.contactOtherSocial ?? "");
-    setDraftExerciseName("");
-    setDraftExerciseWeight("");
-    setShowExerciseForm(false);
-    setExerciseError("");
     if (client?.status === "pending") setTab("info");
   }, [
     client?.id,
@@ -5358,43 +5525,6 @@ function ClientDetailScreen(props: {
     client?.contactOtherSocial,
     client?.status,
   ]);
-
-  useEffect(() => {
-    setDraftStatsWeight(weightsStatsExercise?.weight ?? "");
-    setStatsWeightError("");
-  }, [weightsStatsExercise?.id]);
-
-  const saveStatsWeight = useCallback(async () => {
-    if (!client || !weightsStatsExercise) return;
-    const value = draftStatsWeight.trim();
-    if (!value) {
-      setStatsWeightError(tr("Укажите рабочий вес.", "Enter the working weight."));
-      return;
-    }
-    const list = client.exercises ? [...client.exercises] : [];
-    const next = list.map((item) => (item.id === weightsStatsExercise.id ? { ...item, weight: value } : item));
-    onUpdateClient(client.id, { exercises: next });
-    setWeightsStatsExercise((prev) => (prev ? { ...prev, weight: value } : prev));
-    const updated = await onSaveExercises?.(client.id, next);
-    if (updated?.exercises) {
-      onUpdateClient(client.id, { exercises: updated.exercises });
-      const updatedExercise = updated.exercises.find((ex) => ex.id === weightsStatsExercise.id);
-      if (updatedExercise) {
-        setWeightsStatsExercise(updatedExercise);
-      }
-    }
-    if (value.trim() !== String(weightsStatsExercise.weight || "").trim()) {
-      const entry: ExerciseHistoryItem = {
-        id: `local_${cryptoId()}`,
-        value: value.trim(),
-        recordedAt: new Date().toISOString(),
-      };
-      setExerciseHistoryMap((prev) => {
-        const prevList = prev[weightsStatsExercise.id] ? [...prev[weightsStatsExercise.id]] : [];
-        return { ...prev, [weightsStatsExercise.id]: [...prevList, entry] };
-      });
-    }
-  }, [client, draftStatsWeight, onSaveExercises, onUpdateClient, tr, weightsStatsExercise]);
 
   useEffect(() => {
     const el = goalRef.current;
@@ -5471,28 +5601,6 @@ function ClientDetailScreen(props: {
     }
   };
 
-  const parseWeightValue = (raw: string) => {
-    const cleaned = String(raw || "").replace(",", ".");
-    const parsed = Number.parseFloat(cleaned.replace(/[^\d.]/g, ""));
-    return Number.isFinite(parsed) ? parsed : NaN;
-  };
-
-  const ensureExerciseHistory = async (exerciseId: string) => {
-    if (!client || !token) return;
-    try {
-      const res = await fetch(
-        `${apiBase}/clients/${encodeURIComponent(client.id)}/exercises/${encodeURIComponent(exerciseId)}/history`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!res.ok) return;
-      const data = (await res.json()) as { ok: boolean; history?: ExerciseHistoryItem[] };
-      if (!data?.history) return;
-      setExerciseHistoryMap((prev) => ({ ...prev, [exerciseId]: data.history || [] }));
-    } catch {
-      // ignore history fetch errors
-    }
-  };
-
   const renderReadOnly = (label: string, value?: string) => (
     <div style={{ marginTop: 16 }}>
       <div style={styles.fieldLabel}>{label}</div>
@@ -5500,49 +5608,6 @@ function ClientDetailScreen(props: {
     </div>
   );
 
-  const weightHistoryList = useMemo(() => {
-    if (!weightsStatsExercise) return [];
-    const history = exerciseHistoryMap[weightsStatsExercise.id] || [];
-    const byDate = new Map<string, ExerciseHistoryItem>();
-    history.forEach((h) => {
-      const d = startOfDay(new Date(h.recordedAt));
-      const key = formatDateKey(d);
-      const prev = byDate.get(key);
-      if (!prev || new Date(prev.recordedAt).getTime() < new Date(h.recordedAt).getTime()) {
-        byDate.set(key, h);
-      }
-    });
-    return Array.from(byDate.values()).sort(
-      (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
-    );
-  }, [weightsStatsExercise, exerciseHistoryMap]);
-
-  const weightStats = useMemo(() => {
-    if (!weightsStatsExercise) return [];
-    if (!weightHistoryList.length) return [];
-    const chron = weightHistoryList
-      .slice()
-      .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
-    const last = chron.slice(-7);
-    const mapped = last.map((h) => {
-      const date = new Date(h.recordedAt);
-      const v = parseWeightValue(h.value);
-      return {
-        label: formatDateShort(date),
-        value: Number.isFinite(v) ? v : 0,
-        date,
-        hasValue: Number.isFinite(v),
-      };
-    });
-    if (mapped.length >= 7) return mapped;
-    const padding = Array.from({ length: 7 - mapped.length }, () => ({
-      label: "",
-      value: 0,
-      date: null as Date | null,
-      hasValue: false,
-    }));
-    return [...mapped, ...padding];
-  }, [weightsStatsExercise, weightHistoryList]);
 
   const saveLocalClientField = (
     field:
@@ -6280,309 +6345,17 @@ function ClientDetailScreen(props: {
           )}
         </div>
       ) : (
-        <div style={styles.clientPanelPlain}>
-          <button
-            type="button"
-            style={styles.addWindowBtn}
-            onClick={() => {
-              setShowExerciseForm(true);
-            }}
-          >
-            {tr("Добавить упражнение", "Add exercise")}
-          </button>
-          {showExerciseForm ? (
-            <div style={styles.exerciseFormOverlay}>
-              <button
-                type="button"
-                aria-label="close add exercise"
-                style={styles.exerciseFormBackdrop}
-                onClick={() => setShowExerciseForm(false)}
-              />
-              <div style={styles.exerciseFormSheet}>
-                <div style={styles.exerciseFormHandle} />
-                <div style={styles.exerciseFormHeader}>
-                  <div style={styles.exerciseFormTitle}>{tr("Новое упражнение", "New exercise")}</div>
-                  <button
-                    type="button"
-                    style={styles.exerciseFormCloseBtn}
-                    onClick={() => setShowExerciseForm(false)}
-                  >
-                    {tr("Закрыть", "Close")}
-                  </button>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
-                  <input
-                    value={draftExerciseName}
-                    onChange={(e) => {
-                      setDraftExerciseName(e.target.value);
-                      if (exerciseError) setExerciseError("");
-                    }}
-                    placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
-                    style={styles.input}
-                  />
-                  <div style={{ marginTop: 12 }}>
-                    <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
-                    <input
-                      value={draftExerciseWeight}
-                      onChange={(e) => {
-                        setDraftExerciseWeight(e.target.value);
-                        if (exerciseError) setExerciseError("");
-                      }}
-                      placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
-                      style={styles.input}
-                    />
-                  </div>
-                  {exerciseError ? <div style={styles.errorText}>{exerciseError}</div> : null}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!client) return;
-                      const name = draftExerciseName.trim();
-                      const weight = draftExerciseWeight.trim();
-                      if (!name || !weight) {
-                        setExerciseError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
-                        return;
-                      }
-                      const list = client.exercises ? [...client.exercises] : [];
-                      const next = [...list, { id: localExerciseId(), name, weight }];
-                      onUpdateClient(client.id, { exercises: next });
-                      const updated = await onSaveExercises?.(client.id, next);
-                      if (updated?.exercises) {
-                        onUpdateClient(client.id, { exercises: updated.exercises });
-                      }
-                      setDraftExerciseName("");
-                      setDraftExerciseWeight("");
-                      setShowExerciseForm(false);
-                      setExerciseError("");
-                    }}
-                    style={styles.saveBtn}
-                  >
-                    {tr("Сохранить", "Save")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {client?.exercises && client.exercises.length > 0 ? (
-            <div style={{ marginTop: 16 }}>
-              <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
-              <div style={styles.exerciseListBlock}>
-                {client.exercises.map((ex, idx) => {
-                  const isLast = idx === client.exercises!.length - 1;
-                  return (
-                    <div
-                      key={ex.id}
-                      style={{
-                        ...styles.exerciseCard,
-                        borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                        padding: "12px 0",
-                      }}
-                      onClick={() => {
-                        setWeightsStatsExercise(ex);
-                        setWeightsStatsOpen(true);
-                        void ensureExerciseHistory(ex.id);
-                      }}
-                    >
-                        <div style={styles.exerciseRow}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
-                            <div style={styles.exerciseWeightRow}>
-                              <div style={styles.exerciseSubtitle}>
-                                {tr("Текущий рабочий вес:", "Current working weight:")}{" "}
-                                {ex.weight?.trim() ? ex.weight : tr("не указан", "not set")}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                })}
-              </div>
-            </div>
-          ) : null}
-          {weightsStatsOpen ? (
-            <div style={styles.weightsStatsOverlay}>
-              <button
-                type="button"
-                aria-label="close weights stats"
-                style={styles.weightsStatsBackdrop}
-                onClick={() => setWeightsStatsOpen(false)}
-              />
-              <div ref={statsSheetRef} style={styles.weightsStatsSheet}>
-                <div style={styles.weightsStatsHandle} />
-                <div style={styles.weightsStatsHeader}>
-                  <div style={styles.weightsStatsTitle}>
-                    {weightsStatsExercise?.name || tr("Рабочие веса", "Working weights")}
-                  </div>
-                  <button
-                    type="button"
-                    style={styles.weightsStatsCloseBtn}
-                    onClick={() => setWeightsStatsOpen(false)}
-                  >
-                    {tr("Закрыть", "Close")}
-                  </button>
-                </div>
-                <div style={styles.weightsStatsChart}>
-                  {(() => {
-                    if (weightStats.length === 0) return null;
-                    const values = weightStats.filter((p) => p.hasValue).map((p) => p.value);
-                    const hasValues = values.length > 0;
-                    const min = hasValues ? Math.min(...values) : 0;
-                    const max = hasValues ? Math.max(...values) : 1;
-                    const range = Math.max(1, max - min);
-                    const width = 320;
-                    const height = 120;
-                    const padX = 8;
-                    const padY = 12;
-                    const step = (width - padX * 2) / (weightStats.length - 1 || 1);
-                    const lastValue = hasValues ? values[values.length - 1] : 0;
-                    const points = weightStats.map((p, idx) => {
-                      const x = padX + step * idx;
-                      const effectiveValue = p.hasValue ? p.value : hasValues ? lastValue : min;
-                      const y = padY + (1 - (effectiveValue - min) / range) * (height - padY * 2);
-                      return { x, y, value: p.value, hasValue: p.hasValue };
-                    });
-                    const d = points.map((p) => `${p.x},${p.y}`).join(" ");
-                    return (
-                      <div style={styles.weightsStatsLineWrap}>
-                        <svg
-                          viewBox={`0 0 ${width} ${height}`}
-                          width="100%"
-                          height="120"
-                          role="img"
-                          aria-label={tr("График динамики за 7 изменений", "7-change progress chart")}
-                        >
-                          <polyline
-                            points={d}
-                            fill="none"
-                            stroke="#1F6BFF"
-                            strokeWidth="3"
-                            strokeLinejoin="round"
-                            strokeLinecap="round"
-                          />
-                          {points.map((p, idx) => (
-                            <circle
-                              key={idx}
-                              cx={p.x}
-                              cy={p.y}
-                              r="4"
-                              fill={p.hasValue ? "#1F6BFF" : "var(--border)"}
-                              stroke="#fff"
-                              strokeWidth="2"
-                            />
-                          ))}
-                        </svg>
-                        <div style={styles.weightsStatsLineAxis}>
-                          {weightStats.map((p, idx) => (
-                            <div key={`${p.label}-${idx}`} style={styles.weightsStatsLineAxisLabel}>
-                              {p.label || "dd.mm"}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <div style={{ marginTop: 16 }}>
-                  <div style={styles.weightInlineRow}>
-                    <div style={styles.fieldLabel}>{tr("Изменить рабочий вес:", "Update working weight:")}</div>
-                    <div style={styles.weightInlineControls}>
-                      <input
-                        ref={statsWeightInputRef}
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        enterKeyHint="done"
-                        value={draftStatsWeight}
-                        onChange={(e) => {
-                          setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
-                          if (statsWeightError) setStatsWeightError("");
-                        }}
-                        onFocus={() => {
-                          const el = statsWeightInputRef.current;
-                          if (!el) return;
-                          window.setTimeout(() => {
-                            el.scrollIntoView({ block: "start", behavior: "smooth" });
-                          }, 100);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key !== "Enter") return;
-                          e.currentTarget.blur();
-                          void saveStatsWeight();
-                        }}
-                        placeholder={tr("Вес", "Weight")}
-                        style={styles.weightInlineInput}
-                      />
-                      <button
-                        type="button"
-                        style={styles.weightInlineSaveBtn}
-                        onClick={() => void saveStatsWeight()}
-                        aria-label={tr("Сохранить", "Save")}
-                        title={tr("Сохранить", "Save")}
-                      >
-                        ✓
-                      </button>
-                    </div>
-                  </div>
-                  {statsWeightError ? <div style={styles.errorText}>{statsWeightError}</div> : null}
-                </div>
-                <div style={styles.weightsStatsList}>
-                  {weightHistoryList.length === 0 ? (
-                    <div style={styles.weightsStatsEmpty}>
-                      {tr("Пока нет изменений веса.", "No weight changes yet.")}
-                    </div>
-                  ) : (
-                    weightHistoryList.map((item, idx) => {
-                      const label = formatDateShort(new Date(item.recordedAt));
-                      const value = parseWeightValue(item.value);
-                      return (
-                        <div
-                          key={item.id}
-                          style={{
-                            ...styles.weightsStatsListRow,
-                            borderBottom: idx === weightHistoryList.length - 1 ? "none" : "1px solid var(--border-2)",
-                          }}
-                        >
-                          <div style={styles.weightsStatsListLabel}>{label}</div>
-                          <div style={styles.weightsStatsListValue}>
-                            {Number.isFinite(value) ? `${value} кг` : "—"}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-                <button
-                  type="button"
-                  style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
-                  onClick={async () => {
-                    if (!client || !weightsStatsExercise) return;
-                    const message = tr("Удалить упражнение?", "Delete exercise?");
-                    const doDelete = async () => {
-                      const next = (client.exercises || []).filter((x) => x.id !== weightsStatsExercise.id);
-                      onUpdateClient(client.id, { exercises: next });
-                      const updated = await onSaveExercises?.(client.id, next);
-                      if (updated?.exercises) {
-                        onUpdateClient(client.id, { exercises: updated.exercises });
-                      }
-                      setWeightsStatsOpen(false);
-                    };
-                    if (typeof WebApp?.showConfirm === "function") {
-                      WebApp.showConfirm(message, (yes) => {
-                        if (yes) void doDelete();
-                      });
-                      return;
-                    }
-                    if (window.confirm(message)) void doDelete();
-                  }}
-                >
-                  {tr("Удалить упражнение", "Delete exercise")}
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
+        <ExerciseStatsPanel
+          clientId={client?.id ?? null}
+          exercises={client?.exercises || []}
+          setExercises={(next) => {
+            if (!client) return;
+            onUpdateClient(client.id, { exercises: next });
+          }}
+          onSaveExercises={onSaveExercises}
+          token={token}
+          apiBase={apiBase}
+        />
       )}
     </div>
   );
@@ -6615,6 +6388,8 @@ function TrainerSettings(props: {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
+  token?: string;
+  apiBase?: string;
   personalShowSubscription?: boolean;
   personalShowMySubscription?: boolean;
   personalShowExtendedAbout?: boolean;
@@ -6648,6 +6423,8 @@ function TrainerSettings(props: {
     clientProfile,
     onSaveClientProfile,
     onSaveClientExercises,
+    token,
+    apiBase,
     personalShowSubscription = true,
     personalShowMySubscription = false,
     personalShowExtendedAbout = true,
@@ -6687,26 +6464,28 @@ function TrainerSettings(props: {
 
   if (screen === "personal") {
     return (
-      <PersonalDataScreen
-        name={name}
-        username={username}
-        photoUrl={photoUrl}
-        onUpdateName={setName}
-        trainerProfile={trainerProfile}
-        onSaveTrainerProfile={onSaveTrainerProfile}
-        showSubscriptionTab={personalShowSubscription}
-        showMySubscriptionTab={personalShowMySubscription}
-        showExtendedAbout={personalShowExtendedAbout}
-        showClientBasics={personalShowClientBasics}
-        showClientWeights={personalShowClientWeights}
-        subscriptionTabLabel={resolvedSubscriptionTabLabel}
-        subscriptionItems={subscriptionItems}
-        trainerHistory={trainerHistory}
-        clientProfile={clientProfile}
-        onSaveClientProfile={onSaveClientProfile}
-        onSaveClientExercises={onSaveClientExercises}
-      />
-    );
+    <PersonalDataScreen
+      name={name}
+      username={username}
+      photoUrl={photoUrl}
+      onUpdateName={setName}
+      trainerProfile={trainerProfile}
+      onSaveTrainerProfile={onSaveTrainerProfile}
+      showSubscriptionTab={personalShowSubscription}
+      showMySubscriptionTab={personalShowMySubscription}
+      showExtendedAbout={personalShowExtendedAbout}
+      showClientBasics={personalShowClientBasics}
+      showClientWeights={personalShowClientWeights}
+      subscriptionTabLabel={resolvedSubscriptionTabLabel}
+      subscriptionItems={subscriptionItems}
+      trainerHistory={trainerHistory}
+      clientProfile={clientProfile}
+      onSaveClientProfile={onSaveClientProfile}
+      onSaveClientExercises={onSaveClientExercises}
+      token={token}
+      apiBase={apiBase}
+    />
+  );
   }
   if (screen === "theme") {
     return (
@@ -7050,6 +6829,8 @@ function PersonalDataScreen(props: {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
+  token?: string;
+  apiBase?: string;
 }) {
   const {
     name,
@@ -7069,6 +6850,8 @@ function PersonalDataScreen(props: {
     onSaveClientProfile,
     onSaveClientExercises,
     showMySubscriptionTab = false,
+    token,
+    apiBase,
   } = props;
   const tr = useTr();
   const resolvedSubscriptionTabLabel = subscriptionTabLabel ?? tr("Моя подписка", "My subscription");
@@ -7083,11 +6866,6 @@ function PersonalDataScreen(props: {
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const [clientWeights, setClientWeights] = useState<{ id: string; name: string; weight: string }[]>([]);
-  const clientWeightsRef = useRef<{ id: string; name: string; weight: string }[]>([]);
-  const [showWeightsForm, setShowWeightsForm] = useState(false);
-  const [draftWeightName, setDraftWeightName] = useState("");
-  const [draftWeightValue, setDraftWeightValue] = useState("");
-  const [weightsError, setWeightsError] = useState("");
   const [phone, setPhone] = useState("");
   const [instagram, setInstagram] = useState("");
   const [otherSocial, setOtherSocial] = useState("");
@@ -7111,10 +6889,6 @@ function PersonalDataScreen(props: {
     subscriptionTrainers.find((t) => t.id === selectedTrainerId) || subscriptionTrainers[0] || null;
   const activeTrainerExercises = activeTrainer?.exercises || [];
   const weightsSigRef = useRef<string>("");
-
-  useEffect(() => {
-    clientWeightsRef.current = clientWeights;
-  }, [clientWeights]);
 
   useEffect(() => {
     if (!trainerProfile) return;
@@ -7629,142 +7403,14 @@ function PersonalDataScreen(props: {
           </div>
         </div>
       ) : personalTab === "weights" ? (
-        <div style={styles.clientPanelPlain}>
-          <button
-            type="button"
-            style={styles.addWindowBtn}
-            onClick={() => {
-              setShowWeightsForm((v) => !v);
-              setWeightsError("");
-            }}
-          >
-            {tr("Добавить упражнение", "Add exercise")}
-          </button>
-          {showWeightsForm ? (
-            <div style={{ marginTop: 12 }}>
-              <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
-              <input
-                value={draftWeightName}
-                onChange={(e) => {
-                  setDraftWeightName(e.target.value);
-                  if (weightsError) setWeightsError("");
-                }}
-                placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
-                style={styles.input}
-              />
-              <div style={{ marginTop: 12 }}>
-                <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
-                <input
-                  value={draftWeightValue}
-                  onChange={(e) => {
-                    setDraftWeightValue(e.target.value);
-                    if (weightsError) setWeightsError("");
-                  }}
-                  placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
-                  style={styles.input}
-                />
-              </div>
-              {weightsError ? <div style={styles.errorText}>{weightsError}</div> : null}
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!activeTrainer || !onSaveClientExercises) {
-                    setWeightsError(tr("Нет доступного тренера.", "No available coach."));
-                    return;
-                  }
-                  const nameValue = draftWeightName.trim();
-                  const weightValue = draftWeightValue.trim();
-                  if (!nameValue || !weightValue) {
-                    setWeightsError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
-                    return;
-                  }
-                  const next = [
-                    ...clientWeights,
-                    { id: localExerciseId(), name: nameValue, weight: weightValue },
-                  ];
-                  setClientWeights(next);
-                  const updated = await onSaveClientExercises(activeTrainer.id, next);
-                  if (updated?.exercises) {
-                    setClientWeights(updated.exercises.map((ex) => ({ ...ex })));
-                  }
-                  setDraftWeightName("");
-                  setDraftWeightValue("");
-                  setShowWeightsForm(false);
-                  setWeightsError("");
-                }}
-                style={styles.saveBtn}
-              >
-                {tr("Сохранить", "Save")}
-              </button>
-            </div>
-          ) : null}
-
-          {clientWeights.length === 0 ? (
-            <div style={{ marginTop: 12, opacity: 0.7, fontSize: 14 }}>
-              {tr("Пока нет рабочих весов.", "No working weights yet.")}
-            </div>
-          ) : (
-            <div style={{ marginTop: 16 }}>
-              <div style={styles.sectionHeaderSmall}>{tr("Список упражнений", "Exercises list")}</div>
-              <div style={styles.exerciseListBlock}>
-                {clientWeights.map((ex, idx, arr) => {
-                  const isLast = idx === arr.length - 1;
-                  return (
-                    <div
-                      key={ex.id}
-                      style={{
-                        ...styles.exerciseCard,
-                        borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                        padding: "12px 0",
-                      }}
-                    >
-                      <div style={styles.exerciseRow}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
-                          <div style={styles.exerciseWeightRow}>
-                            <input
-                              value={ex.weight || ""}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                const next = clientWeights.map((item) =>
-                                  item.id === ex.id ? { ...item, weight: value } : item
-                                );
-                                setClientWeights(next);
-                                clientWeightsRef.current = next;
-                              }}
-                              onBlur={() => {
-                                if (activeTrainer && onSaveClientExercises) {
-                                  onSaveClientExercises(activeTrainer.id, clientWeightsRef.current);
-                                }
-                              }}
-                              placeholder={tr("Вес не указан", "Weight not set")}
-                              style={styles.exerciseInput}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = clientWeights.filter((item) => item.id !== ex.id);
-                                setClientWeights(next);
-                                if (activeTrainer && onSaveClientExercises) {
-                                  onSaveClientExercises(activeTrainer.id, next);
-                                }
-                              }}
-                              style={styles.exerciseTrashBtn}
-                              aria-label="delete exercise"
-                              title={tr("Удалить", "Delete")}
-                            >
-                              <span aria-hidden="true">➖</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        <ExerciseStatsPanel
+          clientId={activeTrainer?.id ?? null}
+          exercises={clientWeights}
+          setExercises={setClientWeights}
+          onSaveExercises={onSaveClientExercises}
+          token={token}
+          apiBase={apiBase}
+        />
       ) : personalTab === "subscription" ? (
         <div style={styles.clientPanelPlain}>
           {trainerHistory ? (
