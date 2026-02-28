@@ -3952,54 +3952,58 @@ function TrainerSchedule(props: {
         ) : null}
       </div>
 
-      <div ref={scrollerRef} style={styles.calendarStrip}>
-        {days.map((d) => {
-          const isToday = isSameDay(d.date, today);
-          const isSelected = isSameDay(d.date, selected);
-          const isPast = d.date.getTime() < today.getTime();
+      {scheduleView === "list" ? (
+        <>
+          <div ref={scrollerRef} style={styles.calendarStrip}>
+            {days.map((d) => {
+              const isToday = isSameDay(d.date, today);
+              const isSelected = isSameDay(d.date, selected);
+              const isPast = d.date.getTime() < today.getTime();
 
-          return (
+              return (
+                <button
+                  key={d.key}
+                  ref={isSelected ? selectedRef : isToday ? todayRef : null}
+                  onClick={() => setSelected(d.date)}
+                  style={{
+                    ...styles.calendarDay,
+                    ...(isToday ? styles.calendarDayActive : {}),
+                    ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
+                    ...(isPast ? styles.calendarDayPast : {}),
+                  }}
+                  aria-current={isToday ? "date" : undefined}
+                  type="button"
+                >
+                  <div style={styles.calendarDayDate}>{d.dateText}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={styles.scheduleTabs}>
             <button
-              key={d.key}
-              ref={isSelected ? selectedRef : isToday ? todayRef : null}
-              onClick={() => setSelected(d.date)}
-              style={{
-                ...styles.calendarDay,
-                ...(isToday ? styles.calendarDayActive : {}),
-                ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
-                ...(isPast ? styles.calendarDayPast : {}),
-              }}
-              aria-current={isToday ? "date" : undefined}
               type="button"
+              onClick={() => setSection("sessions")}
+              style={{
+                ...styles.scheduleTab,
+                ...(section === "sessions" ? styles.scheduleTabActive : null),
+              }}
             >
-              <div style={styles.calendarDayDate}>{d.dateText}</div>
+              {tr("Занятия сегодня", "Today's sessions")}
             </button>
-          );
-        })}
-      </div>
-
-      <div style={styles.scheduleTabs}>
-        <button
-          type="button"
-          onClick={() => setSection("sessions")}
-          style={{
-            ...styles.scheduleTab,
-            ...(section === "sessions" ? styles.scheduleTabActive : null),
-          }}
-        >
-          {tr("Занятия сегодня", "Today's sessions")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setSection("free")}
-          style={{
-            ...styles.scheduleTab,
-            ...(section === "free" ? styles.scheduleTabActive : null),
-          }}
-        >
-          {tr("Свободные окна", "Available slots")}
-        </button>
-      </div>
+            <button
+              type="button"
+              onClick={() => setSection("free")}
+              style={{
+                ...styles.scheduleTab,
+                ...(section === "free" ? styles.scheduleTabActive : null),
+              }}
+            >
+              {tr("Свободные окна", "Available slots")}
+            </button>
+          </div>
+        </>
+      ) : null}
 
       {section === "sessions" ? (
         <div style={styles.schedulePanelPlain}>
