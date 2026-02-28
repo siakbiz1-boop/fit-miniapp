@@ -5409,7 +5409,7 @@ function ClientDetailScreen(props: {
       date: null as Date | null,
       hasValue: false,
     }));
-    return [...padding, ...mapped];
+    return [...mapped, ...padding];
   }, [weightsStatsExercise, weightHistoryList]);
 
   const saveLocalClientField = (
