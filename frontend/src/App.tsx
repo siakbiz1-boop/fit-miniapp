@@ -4121,7 +4121,7 @@ function TrainerSchedule(props: {
                           {Array.from({ length: 16 }, (_, idx) => (
                             <div
                               key={idx}
-                              style={{ ...styles.scheduleWeekHourLine, top: idx * 44 }}
+                              style={{ ...styles.scheduleWeekHourLineTick, top: idx * 44 }}
                             />
                           ))}
                           {daySessions.map((s) => {
@@ -10545,7 +10545,7 @@ const styles: Record<string, any> = {
   },
   scheduleWeekHeader: {
     display: "grid",
-    gridTemplateColumns: "52px repeat(7, 1fr)",
+    gridTemplateColumns: "44px repeat(7, 1fr)",
     borderBottom: "1px solid var(--border-2)",
     background: "var(--surface-2)",
   },
@@ -10577,11 +10577,12 @@ const styles: Record<string, any> = {
   },
   scheduleWeekGrid: {
     display: "grid",
-    gridTemplateColumns: "52px 1fr",
+    gridTemplateColumns: "44px 1fr",
   },
   scheduleWeekTimeCol: {
     borderRight: "1px solid var(--border-2)",
     position: "relative",
+    background: "var(--surface)",
   },
   scheduleWeekTimeLabel: {
     position: "absolute",
@@ -10603,6 +10604,13 @@ const styles: Record<string, any> = {
   scheduleWeekDayBody: {
     position: "relative",
     height: 44 * 16,
+  },
+  scheduleWeekHourLineTick: {
+    position: "absolute",
+    left: -10,
+    right: 0,
+    height: 1,
+    background: "var(--border-2)",
   },
   scheduleWeekHourLine: {
     position: "absolute",
