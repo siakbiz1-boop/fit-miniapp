@@ -3928,9 +3928,12 @@ function TrainerSchedule(props: {
       <div style={styles.scheduleHeaderRow}>
         <div style={styles.pageTitle}>
           {scheduleView === "grid"
-            ? new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", { month: "long" }).format(
-                startOfWeekMonday(selected)
-              )
+            ? (() => {
+                const raw = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", {
+                  month: "long",
+                }).format(today);
+                return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
+              })()
             : tr("Расписание", "Schedule")}
         </div>
         {section === "sessions" ? (
