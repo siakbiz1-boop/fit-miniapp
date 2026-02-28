@@ -6153,62 +6153,83 @@ function ClientDetailScreen(props: {
             type="button"
             style={styles.addWindowBtn}
             onClick={() => {
-              setShowExerciseForm((v) => !v);
+              setShowExerciseForm(true);
             }}
           >
             {tr("Добавить упражнение", "Add exercise")}
           </button>
           {showExerciseForm ? (
-            <div style={{ marginTop: 12 }}>
-              <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
-              <input
-                value={draftExerciseName}
-                onChange={(e) => {
-                  setDraftExerciseName(e.target.value);
-                  if (exerciseError) setExerciseError("");
-                }}
-                placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
-                style={styles.input}
-              />
-              <div style={{ marginTop: 12 }}>
-                <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
-                <input
-                  value={draftExerciseWeight}
-                  onChange={(e) => {
-                    setDraftExerciseWeight(e.target.value);
-                    if (exerciseError) setExerciseError("");
-                  }}
-                  placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
-                  style={styles.input}
-                />
-              </div>
-              {exerciseError ? <div style={styles.errorText}>{exerciseError}</div> : null}
+            <div style={styles.exerciseFormOverlay}>
               <button
                 type="button"
-                onClick={async () => {
-                  if (!client) return;
-                  const name = draftExerciseName.trim();
-                  const weight = draftExerciseWeight.trim();
-                  if (!name || !weight) {
-                    setExerciseError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
-                    return;
-                  }
-                  const list = client.exercises ? [...client.exercises] : [];
-                  const next = [...list, { id: localExerciseId(), name, weight }];
-                  onUpdateClient(client.id, { exercises: next });
-                  const updated = await onSaveExercises?.(client.id, next);
-                  if (updated?.exercises) {
-                    onUpdateClient(client.id, { exercises: updated.exercises });
-                  }
-                  setDraftExerciseName("");
-                  setDraftExerciseWeight("");
-                  setShowExerciseForm(false);
-                  setExerciseError("");
-                }}
-                style={styles.saveBtn}
-              >
-                {tr("Сохранить", "Save")}
-              </button>
+                aria-label="close add exercise"
+                style={styles.exerciseFormBackdrop}
+                onClick={() => setShowExerciseForm(false)}
+              />
+              <div style={styles.exerciseFormSheet}>
+                <div style={styles.exerciseFormHandle} />
+                <div style={styles.exerciseFormHeader}>
+                  <div style={styles.exerciseFormTitle}>{tr("Новое упражнение", "New exercise")}</div>
+                  <button
+                    type="button"
+                    style={styles.exerciseFormCloseBtn}
+                    onClick={() => setShowExerciseForm(false)}
+                  >
+                    {tr("Закрыть", "Close")}
+                  </button>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
+                  <input
+                    value={draftExerciseName}
+                    onChange={(e) => {
+                      setDraftExerciseName(e.target.value);
+                      if (exerciseError) setExerciseError("");
+                    }}
+                    placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
+                    style={styles.input}
+                  />
+                  <div style={{ marginTop: 12 }}>
+                    <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
+                    <input
+                      value={draftExerciseWeight}
+                      onChange={(e) => {
+                        setDraftExerciseWeight(e.target.value);
+                        if (exerciseError) setExerciseError("");
+                      }}
+                      placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
+                      style={styles.input}
+                    />
+                  </div>
+                  {exerciseError ? <div style={styles.errorText}>{exerciseError}</div> : null}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!client) return;
+                      const name = draftExerciseName.trim();
+                      const weight = draftExerciseWeight.trim();
+                      if (!name || !weight) {
+                        setExerciseError(tr("Заполни название и вес упражнения.", "Enter the exercise name and weight."));
+                        return;
+                      }
+                      const list = client.exercises ? [...client.exercises] : [];
+                      const next = [...list, { id: localExerciseId(), name, weight }];
+                      onUpdateClient(client.id, { exercises: next });
+                      const updated = await onSaveExercises?.(client.id, next);
+                      if (updated?.exercises) {
+                        onUpdateClient(client.id, { exercises: updated.exercises });
+                      }
+                      setDraftExerciseName("");
+                      setDraftExerciseWeight("");
+                      setShowExerciseForm(false);
+                      setExerciseError("");
+                    }}
+                    style={styles.saveBtn}
+                  >
+                    {tr("Сохранить", "Save")}
+                  </button>
+                </div>
+              </div>
             </div>
           ) : null}
 
@@ -10088,6 +10109,60 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "flex-end",
     justifyContent: "center",
+  },
+  exerciseFormOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 42,
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  exerciseFormBackdrop: {
+    position: "absolute",
+    inset: 0,
+    border: "none",
+    background: "rgba(15, 23, 42, 0.35)",
+    cursor: "pointer",
+  },
+  exerciseFormSheet: {
+    position: "relative",
+    width: "100%",
+    maxWidth: 520,
+    height: "50vh",
+    background: "var(--bg)",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: "10px 18px 18px",
+    boxSizing: "border-box",
+    boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
+    overflowY: "auto",
+  },
+  exerciseFormHandle: {
+    width: 46,
+    height: 4,
+    borderRadius: 999,
+    background: "rgba(15, 23, 42, 0.12)",
+    margin: "4px auto 12px",
+  },
+  exerciseFormHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  exerciseFormTitle: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  exerciseFormCloseBtn: {
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontWeight: 700,
+    cursor: "pointer",
+    padding: 4,
   },
   weightsStatsBackdrop: {
     position: "absolute",
