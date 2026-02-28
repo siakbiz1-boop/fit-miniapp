@@ -3924,7 +3924,33 @@ function TrainerSchedule(props: {
 
   return (
     <div style={styles.pageContainer}>
-      <div style={styles.pageTitle}>{tr("Расписание", "Schedule")}</div>
+      <div style={styles.scheduleHeaderRow}>
+        <div style={styles.pageTitle}>{tr("Расписание", "Schedule")}</div>
+        {section === "sessions" ? (
+          <div style={styles.scheduleViewSwitch}>
+            <button
+              type="button"
+              onClick={() => setScheduleView("list")}
+              style={{
+                ...styles.scheduleViewSwitchBtn,
+                ...(scheduleView === "list" ? styles.scheduleViewSwitchBtnActive : null),
+              }}
+            >
+              {tr("Список", "List")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleView("grid")}
+              style={{
+                ...styles.scheduleViewSwitchBtn,
+                ...(scheduleView === "grid" ? styles.scheduleViewSwitchBtnActive : null),
+              }}
+            >
+              {tr("Неделя", "Week")}
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       <div ref={scrollerRef} style={styles.calendarStrip}>
         {days.map((d) => {
@@ -3977,28 +4003,6 @@ function TrainerSchedule(props: {
 
       {section === "sessions" ? (
         <div style={styles.schedulePanelPlain}>
-          <div style={styles.scheduleViewTabs}>
-            <button
-              type="button"
-              onClick={() => setScheduleView("list")}
-              style={{
-                ...styles.scheduleViewTab,
-                ...(scheduleView === "list" ? styles.scheduleViewTabActive : null),
-              }}
-            >
-              {tr("Список", "List")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setScheduleView("grid")}
-              style={{
-                ...styles.scheduleViewTab,
-                ...(scheduleView === "grid" ? styles.scheduleViewTabActive : null),
-              }}
-            >
-              {tr("Неделя", "Week")}
-            </button>
-          </div>
           {scheduleView === "list" ? (
             (() => {
               const list = (sessionsByDate[formatDateKey(selected)] || [])
@@ -10431,6 +10435,29 @@ const styles: Record<string, any> = {
     background: "var(--accent)",
     color: "var(--accent-contrast)",
     borderColor: "var(--accent)",
+  },
+  scheduleViewSwitch: {
+    display: "flex",
+    gap: 4,
+    padding: 3,
+    borderRadius: 999,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    flex: "0 0 auto",
+  },
+  scheduleViewSwitchBtn: {
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    padding: "6px 12px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  scheduleViewSwitchBtnActive: {
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
   },
   scheduleTab: {
     flex: 1,
