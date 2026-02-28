@@ -6346,15 +6346,14 @@ function ClientDetailScreen(props: {
                     const padX = 8;
                     const padY = 12;
                     const step = (width - padX * 2) / (weightStats.length - 1 || 1);
+                    const lastValue = hasValues ? values[values.length - 1] : 0;
                     const points = weightStats.map((p, idx) => {
                       const x = padX + step * idx;
-                      const y = p.hasValue
-                        ? padY + (1 - (p.value - min) / range) * (height - padY * 2)
-                        : padY + 0.5 * (height - padY * 2);
+                      const effectiveValue = p.hasValue ? p.value : hasValues ? lastValue : min;
+                      const y = padY + (1 - (effectiveValue - min) / range) * (height - padY * 2);
                       return { x, y, value: p.value, hasValue: p.hasValue };
                     });
-                    const linePoints = points.filter((p) => p.hasValue);
-                    const d = linePoints.map((p) => `${p.x},${p.y}`).join(" ");
+                    const d = points.map((p) => `${p.x},${p.y}`).join(" ");
                     return (
                       <div style={styles.weightsStatsLineWrap}>
                         <svg
@@ -6364,16 +6363,14 @@ function ClientDetailScreen(props: {
                           role="img"
                           aria-label={tr("График динамики за 7 изменений", "7-change progress chart")}
                         >
-                          {linePoints.length >= 2 ? (
-                            <polyline
-                              points={d}
-                              fill="none"
-                              stroke="#1F6BFF"
-                              strokeWidth="3"
-                              strokeLinejoin="round"
-                              strokeLinecap="round"
-                            />
-                          ) : null}
+                          <polyline
+                            points={d}
+                            fill="none"
+                            stroke="#1F6BFF"
+                            strokeWidth="3"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
                           {points.map((p, idx) => (
                             <circle
                               key={idx}
