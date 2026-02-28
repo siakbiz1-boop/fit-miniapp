@@ -4097,7 +4097,13 @@ function TrainerSchedule(props: {
                   {Array.from({ length: 16 }, (_, idx) => {
                     const hour = 7 + idx;
                     return (
-                      <div key={hour} style={styles.scheduleWeekTimeLabel}>
+                      <div
+                        key={hour}
+                        style={{
+                          ...styles.scheduleWeekTimeLabel,
+                          top: (idx + 1) * 44,
+                        }}
+                      >
                         {String(hour).padStart(2, "0")}:00
                       </div>
                     );
@@ -10575,16 +10581,16 @@ const styles: Record<string, any> = {
   },
   scheduleWeekTimeCol: {
     borderRight: "1px solid var(--border-2)",
+    position: "relative",
   },
   scheduleWeekTimeLabel: {
-    height: 44,
+    position: "absolute",
+    left: 0,
+    right: 0,
     fontSize: 11,
     color: "var(--muted)",
     padding: "0 6px",
-    display: "flex",
-    alignItems: "flex-start",
     boxSizing: "border-box",
-    borderBottom: "1px solid var(--border-2)",
     transform: "translateY(-6px)",
   },
   scheduleWeekDays: {
