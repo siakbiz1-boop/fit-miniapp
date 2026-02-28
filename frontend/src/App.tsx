@@ -5193,7 +5193,6 @@ function ClientDetailScreen(props: {
   const [draftSubPrice, setDraftSubPrice] = useState("");
   const [draftSubTotal, setDraftSubTotal] = useState("");
   const [draftSubLeft, setDraftSubLeft] = useState("");
-  const [draftContactTelegram, setDraftContactTelegram] = useState("");
   const [draftContactPhone, setDraftContactPhone] = useState("");
   const [draftContactInstagram, setDraftContactInstagram] = useState("");
   const [draftContactOtherSocial, setDraftContactOtherSocial] = useState("");
@@ -5239,7 +5238,6 @@ function ClientDetailScreen(props: {
     setDraftSubPrice(client?.subscriptionPrice ?? "");
     setDraftSubTotal(client?.subscriptionTotal ?? "");
     setDraftSubLeft(client?.subscriptionLeft ?? "");
-    setDraftContactTelegram(client?.contactTelegram ?? "");
     setDraftContactPhone(client?.contactPhone ?? "");
     setDraftContactInstagram(client?.contactInstagram ?? "");
     setDraftContactOtherSocial(client?.contactOtherSocial ?? "");
@@ -5261,7 +5259,6 @@ function ClientDetailScreen(props: {
     client?.subscriptionPrice,
     client?.subscriptionTotal,
     client?.subscriptionLeft,
-    client?.contactTelegram,
     client?.contactPhone,
     client?.contactInstagram,
     client?.contactOtherSocial,
@@ -5898,12 +5895,13 @@ function ClientDetailScreen(props: {
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
                 />
               </div>
+              <div style={{ ...styles.clientTabsDivider, marginTop: 16 }} />
             </>
           ) : (
             <>
               {renderReadOnly(tr("Цель", "Goal"), client?.goal)}
               {renderReadOnly(tr("Комментарии", "Comments"), client?.comment)}
-              {renderReadOnly("Telegram", client?.username ? `@${client.username}` : "")}
+              <div style={{ ...styles.clientTabsDivider, marginTop: 16 }} />
               {renderReadOnly(tr("Номер телефона", "Phone number"), client?.clientProfile?.phone)}
               {renderReadOnly("Instagram", client?.clientProfile?.instagram)}
               {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
@@ -5911,16 +5909,6 @@ function ClientDetailScreen(props: {
           )}
           {isLocalClient ? (
             <>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>Telegram</div>
-                <input
-                  value={draftContactTelegram}
-                  onChange={(e) => setDraftContactTelegram(e.target.value)}
-                  onBlur={() => saveLocalClientField("contactTelegram", draftContactTelegram)}
-                  placeholder={tr("@username или ссылка", "@username or link")}
-                  style={styles.input}
-                />
-              </div>
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Номер телефона", "Phone number")}</div>
                 <input
