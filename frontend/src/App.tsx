@@ -3609,6 +3609,7 @@ function TrainerSchedule(props: {
   }, [hasTgBack, scheduleScreen]);
   const [sessionExerciseError, setSessionExerciseError] = useState("");
   const [section, setSection] = useState<"sessions" | "free">("sessions");
+  const [scheduleView, setScheduleView] = useState<"list" | "grid">("list");
   const [slotsByDate, setSlotsByDate] = useState<Record<string, TrainingSlot[]>>({});
   const [showAddFree, setShowAddFree] = useState(false);
   const [freeStart, setFreeStart] = useState("");
@@ -3656,6 +3657,8 @@ function TrainerSchedule(props: {
   }, [draftSessionComment, sessionTab, scheduleScreen]);
 
   const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
+  const weekStart = useMemo(() => startOfWeekMonday(selected), [selected]);
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, idx) => addDays(weekStart, idx)), [weekStart]);
 
   useEffect(() => {
     if (!selectedRef.current || !scrollerRef.current) return;
@@ -4259,53 +4262,144 @@ function TrainerSchedule(props: {
 
       {section === "sessions" ? (
         <div style={styles.schedulePanelPlain}>
-          {(() => {
-            const list = (sessionsByDate[formatDateKey(selected)] || [])
-              .slice()
-              .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
-            if (list.length === 0) {
+          <div style={styles.scheduleViewTabs}>
+            <button
+              type="button"
+              onClick={() => setScheduleView("list")}
+              style={{
+                ...styles.scheduleViewTab,
+                ...(scheduleView === "list" ? styles.scheduleViewTabActive : null),
+              }}
+            >
+              {tr("Список", "List")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleView("grid")}
+              style={{
+                ...styles.scheduleViewTab,
+                ...(scheduleView === "grid" ? styles.scheduleViewTabActive : null),
+              }}
+            >
+              {tr("Неделя", "Week")}
+            </button>
+          </div>
+          {scheduleView === "list" ? (
+            (() => {
+              const list = (sessionsByDate[formatDateKey(selected)] || [])
+                .slice()
+                .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+              if (list.length === 0) {
+                return (
+                  <div style={styles.schedulePanelBody}>
+                    {emptySessionsMessage(selected, today)}
+                  </div>
+                );
+              }
               return (
-                <div style={styles.schedulePanelBody}>
-                  {emptySessionsMessage(selected, today)}
+                <div style={styles.sessionList}>
+                  {list.map((s) => (
+                    <div
+                      key={s.id}
+                      style={styles.sessionBanner}
+                      onClick={() => {
+                        setActiveSession(s);
+                        setScheduleScreen("session");
+                      }}
+                    >
+                      <div style={styles.sessionBannerLeft}>
+                        <div style={styles.sessionBannerTitle}>
+                          {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
+                        </div>
+                        <div style={styles.sessionBannerTime}>
+                          {s.start} — {s.end}
+                        </div>
+                        <div style={styles.sessionBannerClient}>
+                          {getClientLabel(clients, s.clientUsername)}
+                        </div>
+                        <div
+                          style={{
+                            ...styles.sessionBannerStatus,
+                            color: sessionStatusColor(s),
+                          }}
+                        >
+                          {sessionStatusLabel(s)}
+                        </div>
+                      </div>
+                      <div style={styles.sessionBannerActions} />
+                    </div>
+                  ))}
                 </div>
               );
-            }
-            return (
-              <div style={styles.sessionList}>
-                {list.map((s) => (
-                  <div
-                    key={s.id}
-                    style={styles.sessionBanner}
-                    onClick={() => {
-                      setActiveSession(s);
-                      setScheduleScreen("session");
-                    }}
-                  >
-                    <div style={styles.sessionBannerLeft}>
-                      <div style={styles.sessionBannerTitle}>
-                        {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
-                      </div>
-                      <div style={styles.sessionBannerTime}>
-                        {s.start} — {s.end}
-                      </div>
-                      <div style={styles.sessionBannerClient}>
-                        {getClientLabel(clients, s.clientUsername)}
-                      </div>
-                      <div
-                        style={{
-                          ...styles.sessionBannerStatus,
-                          color: sessionStatusColor(s),
-                        }}
-                      >
-                        {sessionStatusLabel(s)}
-                      </div>
-                    </div>
-                    <div style={styles.sessionBannerActions} />
+            })()
+          ) : (
+            <div style={styles.scheduleWeekWrap}>
+              <div style={styles.scheduleWeekHeader}>
+                <div style={styles.scheduleWeekTimeSpacer} />
+                {weekDays.map((d) => (
+                  <div key={formatDateKey(d)} style={styles.scheduleWeekDayHeader}>
+                    <div style={styles.scheduleWeekDayTitle}>{formatDateShort(d)}</div>
                   </div>
                 ))}
               </div>
-            );
-          })()}
+              <div style={styles.scheduleWeekGrid}>
+                <div style={styles.scheduleWeekTimeCol}>
+                  {Array.from({ length: 16 }, (_, idx) => {
+                    const hour = 7 + idx;
+                    return (
+                      <div key={hour} style={styles.scheduleWeekTimeLabel}>
+                        {String(hour).padStart(2, "0")}:00
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={styles.scheduleWeekDays}>
+                  {weekDays.map((d) => {
+                    const dateKey = formatDateKey(d);
+                    const daySessions = (sessionsByDate[dateKey] || [])
+                      .slice()
+                      .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+                    return (
+                      <div key={dateKey} style={styles.scheduleWeekDayCol}>
+                        <div style={styles.scheduleWeekDayBody}>
+                          {Array.from({ length: 16 }, (_, idx) => (
+                            <div
+                              key={idx}
+                              style={{ ...styles.scheduleWeekHourLine, top: idx * 44 }}
+                            />
+                          ))}
+                          {daySessions.map((s) => {
+                            const startMin = timeToMinutes(s.start);
+                            const endMin = timeToMinutes(s.end);
+                            const top = Math.max(0, (startMin - 7 * 60) * (44 / 60));
+                            const height = Math.max(28, (endMin - startMin) * (44 / 60));
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                style={{ ...styles.scheduleWeekSession, top, height }}
+                                onClick={() => {
+                                  setActiveSession(s);
+                                  setScheduleScreen("session");
+                                }}
+                              >
+                                <div style={styles.scheduleWeekSessionTitle}>
+                                  {getClientLabel(clients, s.clientUsername)}
+                                </div>
+                                <div style={styles.scheduleWeekSessionTime}>
+                                  {s.start}–{s.end}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div style={styles.schedulePanelPlain}>
@@ -10671,6 +10765,28 @@ const styles: Record<string, any> = {
     gap: 10,
     width: "100%",
   },
+  scheduleViewTabs: {
+    display: "flex",
+    gap: 10,
+    marginBottom: 12,
+  },
+  scheduleViewTab: {
+    flex: 1,
+    height: 38,
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "var(--text)",
+    padding: "0 10px",
+  },
+  scheduleViewTabActive: {
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
+    borderColor: "var(--accent)",
+  },
   scheduleTab: {
     flex: 1,
     height: 44,
@@ -10703,6 +10819,94 @@ const styles: Record<string, any> = {
     border: "1px solid var(--border-2)",
     background: "var(--surface)",
   },
+  schedulePanelPlain: {
+    marginTop: 12,
+    padding: 0,
+    borderRadius: 0,
+    border: "none",
+    background: "transparent",
+  },
+  scheduleWeekWrap: {
+    borderRadius: 16,
+    border: "1px solid var(--border-2)",
+    background: "var(--surface)",
+    overflow: "hidden",
+  },
+  scheduleWeekHeader: {
+    display: "grid",
+    gridTemplateColumns: "60px repeat(7, 1fr)",
+    borderBottom: "1px solid var(--border-2)",
+    background: "var(--surface-2)",
+  },
+  scheduleWeekTimeSpacer: {
+    borderRight: "1px solid var(--border-2)",
+  },
+  scheduleWeekDayHeader: {
+    padding: "8px 6px",
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--text)",
+    borderRight: "1px solid var(--border-2)",
+  },
+  scheduleWeekDayTitle: {
+    whiteSpace: "nowrap",
+  },
+  scheduleWeekGrid: {
+    display: "grid",
+    gridTemplateColumns: "60px 1fr",
+  },
+  scheduleWeekTimeCol: {
+    borderRight: "1px solid var(--border-2)",
+  },
+  scheduleWeekTimeLabel: {
+    height: 44,
+    fontSize: 11,
+    color: "var(--muted)",
+    padding: "4px 6px",
+    boxSizing: "border-box",
+    borderBottom: "1px solid var(--border-2)",
+  },
+  scheduleWeekDays: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, 1fr)",
+  },
+  scheduleWeekDayCol: {
+    borderRight: "1px solid var(--border-2)",
+  },
+  scheduleWeekDayBody: {
+    position: "relative",
+    height: 44 * 16,
+  },
+  scheduleWeekHourLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 1,
+    background: "var(--border-2)",
+  },
+  scheduleWeekSession: {
+    position: "absolute",
+    left: 6,
+    right: 6,
+    borderRadius: 10,
+    border: "1px solid rgba(31, 107, 255, 0.2)",
+    background: "rgba(31, 107, 255, 0.12)",
+    color: "var(--text)",
+    padding: "6px 6px",
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  scheduleWeekSessionTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    lineHeight: 1.1,
+  },
+  scheduleWeekSessionTime: {
+    fontSize: 10,
+    opacity: 0.7,
+    marginTop: 2,
+  },
   scheduleHeaderRow: {
     display: "flex",
     alignItems: "center",
@@ -10734,13 +10938,6 @@ const styles: Record<string, any> = {
     cursor: "pointer",
     maxWidth: 220,
     boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
-  },
-  schedulePanelPlain: {
-    marginTop: 14,
-    padding: 0,
-    borderRadius: 0,
-    border: "none",
-    background: "transparent",
   },
   addWindowBtn: {
     width: "100%",
