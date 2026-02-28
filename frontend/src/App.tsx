@@ -2738,7 +2738,7 @@ function ClientSchedule(props: {
                 ...(sessionTab === "weights" ? styles.clientTabActive : null),
               }}
             >
-              {tr("Рабочие веса клиента", "Client weights")}
+              {tr("Статистика упражнений", "Exercise stats")}
             </button>
           </div>
         </div>
@@ -3800,7 +3800,7 @@ function TrainerSchedule(props: {
                 ...(sessionTab === "weights" ? styles.clientTabActive : null),
               }}
             >
-              {tr("Рабочие веса клиента", "Client weights")}
+              {tr("Статистика упражнений", "Exercise stats")}
             </button>
             <button
               type="button"
@@ -5729,7 +5729,7 @@ function ClientDetailScreen(props: {
                   ...(visibleTab === "weights" ? styles.clientTabActive : null),
                 }}
               >
-                {tr("Рабочие веса", "Working weights")}
+                {tr("Статистика упражнений", "Exercise stats")}
               </button>
               <button
                 type="button"
@@ -7146,7 +7146,7 @@ function PersonalDataScreen(props: {
                 ...(personalTab === "weights" ? styles.scheduleTabActive : null),
               }}
             >
-              {tr("Рабочие веса", "Working weights")}
+              {tr("Статистика упражнений", "Exercise stats")}
             </button>
           ) : null}
           {showSubscriptionTab ? (
