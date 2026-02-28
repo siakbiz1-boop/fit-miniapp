@@ -5223,6 +5223,8 @@ function ClientDetailScreen(props: {
     null
   );
   const [exerciseHistoryMap, setExerciseHistoryMap] = useState<Record<string, ExerciseHistoryItem[]>>({});
+  const statsSheetRef = useRef<HTMLDivElement | null>(null);
+  const statsWeightInputRef = useRef<HTMLInputElement | null>(null);
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -6314,7 +6316,7 @@ function ClientDetailScreen(props: {
                 style={styles.weightsStatsBackdrop}
                 onClick={() => setWeightsStatsOpen(false)}
               />
-              <div style={styles.weightsStatsSheet}>
+              <div ref={statsSheetRef} style={styles.weightsStatsSheet}>
                 <div style={styles.weightsStatsHandle} />
                 <div style={styles.weightsStatsHeader}>
                   <div style={styles.weightsStatsTitle}>
@@ -6393,12 +6395,20 @@ function ClientDetailScreen(props: {
                   <div style={styles.weightInlineRow}>
                     <div style={styles.fieldLabel}>{tr("Изменить рабочий вес:", "Update working weight:")}</div>
                     <input
+                      ref={statsWeightInputRef}
                       inputMode="numeric"
                       pattern="[0-9]*"
                       value={draftStatsWeight}
                       onChange={(e) => {
                         setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
                         if (statsWeightError) setStatsWeightError("");
+                      }}
+                      onFocus={() => {
+                        const el = statsWeightInputRef.current;
+                        if (!el) return;
+                        window.setTimeout(() => {
+                          el.scrollIntoView({ block: "start", behavior: "smooth" });
+                        }, 100);
                       }}
                       onKeyDown={(e) => {
                         if (e.key !== "Enter") return;
