@@ -6244,15 +6244,13 @@ function ClientDetailScreen(props: {
                         borderBottom: isLast ? "none" : "1px solid var(--border-2)",
                         padding: "12px 0",
                       }}
+                      onClick={() => {
+                        setWeightsStatsExercise(ex);
+                        setWeightsStatsOpen(true);
+                        void ensureExerciseHistory(ex.id);
+                      }}
                     >
-                        <div
-                          style={styles.exerciseRow}
-                          onClick={() => {
-                            setWeightsStatsExercise(ex);
-                            setWeightsStatsOpen(true);
-                            void ensureExerciseHistory(ex.id);
-                          }}
-                        >
+                        <div style={styles.exerciseRow}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={styles.exerciseTitle}>{ex.name || tr("Без названия", "Untitled")}</div>
                             <div style={styles.exerciseWeightRow}>
@@ -6291,129 +6289,119 @@ function ClientDetailScreen(props: {
                     {tr("Закрыть", "Close")}
                   </button>
                 </div>
-                <div style={styles.weightsStatsBody}>
-                  <div style={styles.weightsStatsHint}>
-                    {tr(
-                      "Пример отображения. История появится после тренировок.",
-                      "Example view. History will appear after workouts."
-                    )}
-                  </div>
-                  <div style={styles.weightsStatsChart}>
-                    {(() => {
-                      if (weightStats.length === 0) return null;
-                      const values = weightStats.filter((p) => p.hasValue).map((p) => p.value);
-                      const hasValues = values.length > 0;
-                      const min = hasValues ? Math.min(...values) : 0;
-                      const max = hasValues ? Math.max(...values) : 1;
-                      const range = Math.max(1, max - min);
-                      const width = 320;
-                      const height = 120;
-                      const padX = 8;
-                      const padY = 12;
-                      const step = (width - padX * 2) / (weightStats.length - 1 || 1);
-                      const lastValue = hasValues ? values[values.length - 1] : 0;
-                      const points = weightStats.map((p, idx) => {
-                        const x = padX + step * idx;
-                        const effectiveValue = p.hasValue ? p.value : hasValues ? lastValue : min;
-                        const y = padY + (1 - (effectiveValue - min) / range) * (height - padY * 2);
-                        return { x, y, value: p.value, hasValue: p.hasValue };
-                      });
-                      const d = points.map((p) => `${p.x},${p.y}`).join(" ");
-                      return (
-                        <div style={styles.weightsStatsLineWrap}>
-                          <svg
-                            viewBox={`0 0 ${width} ${height}`}
-                            width="100%"
-                            height="120"
-                            role="img"
-                            aria-label={tr("График динамики за 7 изменений", "7-change progress chart")}
-                          >
-                            <polyline
-                              points={d}
-                              fill="none"
-                              stroke="#1F6BFF"
-                              strokeWidth="3"
-                              strokeLinejoin="round"
-                              strokeLinecap="round"
+                <div style={styles.weightsStatsChart}>
+                  {(() => {
+                    if (weightStats.length === 0) return null;
+                    const values = weightStats.filter((p) => p.hasValue).map((p) => p.value);
+                    const hasValues = values.length > 0;
+                    const min = hasValues ? Math.min(...values) : 0;
+                    const max = hasValues ? Math.max(...values) : 1;
+                    const range = Math.max(1, max - min);
+                    const width = 320;
+                    const height = 120;
+                    const padX = 8;
+                    const padY = 12;
+                    const step = (width - padX * 2) / (weightStats.length - 1 || 1);
+                    const lastValue = hasValues ? values[values.length - 1] : 0;
+                    const points = weightStats.map((p, idx) => {
+                      const x = padX + step * idx;
+                      const effectiveValue = p.hasValue ? p.value : hasValues ? lastValue : min;
+                      const y = padY + (1 - (effectiveValue - min) / range) * (height - padY * 2);
+                      return { x, y, value: p.value, hasValue: p.hasValue };
+                    });
+                    const d = points.map((p) => `${p.x},${p.y}`).join(" ");
+                    return (
+                      <div style={styles.weightsStatsLineWrap}>
+                        <svg
+                          viewBox={`0 0 ${width} ${height}`}
+                          width="100%"
+                          height="120"
+                          role="img"
+                          aria-label={tr("График динамики за 7 изменений", "7-change progress chart")}
+                        >
+                          <polyline
+                            points={d}
+                            fill="none"
+                            stroke="#1F6BFF"
+                            strokeWidth="3"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                          {points.map((p, idx) => (
+                            <circle
+                              key={idx}
+                              cx={p.x}
+                              cy={p.y}
+                              r="4"
+                              fill={p.hasValue ? "#1F6BFF" : "var(--border)"}
+                              stroke="#fff"
+                              strokeWidth="2"
                             />
-                            {points.map((p, idx) => (
-                              <circle
-                                key={idx}
-                                cx={p.x}
-                                cy={p.y}
-                                r="4"
-                                fill={p.hasValue ? "#1F6BFF" : "var(--border)"}
-                                stroke="#fff"
-                                strokeWidth="2"
-                              />
-                            ))}
-                          </svg>
-                          <div style={styles.weightsStatsLineAxis}>
-                            {weightStats.map((p, idx) => (
-                              <div key={`${p.label}-${idx}`} style={styles.weightsStatsLineAxisLabel}>
-                                {p.label || "dd.mm"}
-                              </div>
-                            ))}
+                          ))}
+                        </svg>
+                        <div style={styles.weightsStatsLineAxis}>
+                          {weightStats.map((p, idx) => (
+                            <div key={`${p.label}-${idx}`} style={styles.weightsStatsLineAxisLabel}>
+                              {p.label || "dd.mm"}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div style={styles.weightsStatsList}>
+                  {weightHistoryList.length === 0 ? (
+                    <div style={styles.weightsStatsEmpty}>
+                      {tr("Пока нет изменений веса.", "No weight changes yet.")}
+                    </div>
+                  ) : (
+                    weightHistoryList.map((item, idx) => {
+                      const label = formatDateShort(new Date(item.recordedAt));
+                      const value = parseWeightValue(item.value);
+                      return (
+                        <div
+                          key={item.id}
+                          style={{
+                            ...styles.weightsStatsListRow,
+                            borderBottom: idx === weightHistoryList.length - 1 ? "none" : "1px solid var(--border-2)",
+                          }}
+                        >
+                          <div style={styles.weightsStatsListLabel}>{label}</div>
+                          <div style={styles.weightsStatsListValue}>
+                            {Number.isFinite(value) ? `${value} кг` : "—"}
                           </div>
                         </div>
                       );
-                    })()}
-                  </div>
-                  <div style={styles.weightsStatsList}>
-                    {weightHistoryList.length === 0 ? (
-                      <div style={styles.weightsStatsEmpty}>
-                        {tr("Пока нет изменений веса.", "No weight changes yet.")}
-                      </div>
-                    ) : (
-                      weightHistoryList.map((item, idx) => {
-                        const label = formatDateShort(new Date(item.recordedAt));
-                        const value = parseWeightValue(item.value);
-                        return (
-                          <div
-                            key={item.id}
-                            style={{
-                              ...styles.weightsStatsListRow,
-                              borderBottom: idx === weightHistoryList.length - 1 ? "none" : "1px solid var(--border-2)",
-                            }}
-                          >
-                            <div style={styles.weightsStatsListLabel}>{label}</div>
-                            <div style={styles.weightsStatsListValue}>
-                              {Number.isFinite(value) ? `${value} кг` : "—"}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                    })
+                  )}
                 </div>
-                <div style={styles.weightsStatsFooter}>
-                  <button
-                    type="button"
-                    style={{ ...styles.saveBtn, ...styles.dangerBtn }}
-                    onClick={async () => {
-                      if (!client || !weightsStatsExercise) return;
-                      const message = tr("Удалить упражнение?", "Delete exercise?");
-                      const doDelete = async () => {
-                        const next = (client.exercises || []).filter((x) => x.id !== weightsStatsExercise.id);
-                        onUpdateClient(client.id, { exercises: next });
-                        const updated = await onSaveExercises?.(client.id, next);
-                        if (updated?.exercises) {
-                          onUpdateClient(client.id, { exercises: updated.exercises });
-                        }
-                        setWeightsStatsOpen(false);
-                      };
-                      if (typeof WebApp?.showConfirm === "function") {
-                        WebApp.showConfirm(message, (yes) => {
-                          if (yes) void doDelete();
-                        });
-                        return;
+                <button
+                  type="button"
+                  style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 16 }}
+                  onClick={async () => {
+                    if (!client || !weightsStatsExercise) return;
+                    const message = tr("Удалить упражнение?", "Delete exercise?");
+                    const doDelete = async () => {
+                      const next = (client.exercises || []).filter((x) => x.id !== weightsStatsExercise.id);
+                      onUpdateClient(client.id, { exercises: next });
+                      const updated = await onSaveExercises?.(client.id, next);
+                      if (updated?.exercises) {
+                        onUpdateClient(client.id, { exercises: updated.exercises });
                       }
-                      if (window.confirm(message)) void doDelete();
-                    }}
-                  >
-                    {tr("Удалить приложение", "Delete exercise")}
-                  </button>
-                </div>
+                      setWeightsStatsOpen(false);
+                    };
+                    if (typeof WebApp?.showConfirm === "function") {
+                      WebApp.showConfirm(message, (yes) => {
+                        if (yes) void doDelete();
+                      });
+                      return;
+                    }
+                    if (window.confirm(message)) void doDelete();
+                  }}
+                >
+                  {tr("Удалить упражнение", "Delete exercise")}
+                </button>
               </div>
             </div>
           ) : null}
@@ -10162,18 +10150,7 @@ const styles: Record<string, any> = {
     padding: "10px 18px 18px",
     boxSizing: "border-box",
     boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
-    display: "flex",
-    flexDirection: "column",
-  },
-  weightsStatsBody: {
-    flex: 1,
     overflowY: "auto",
-    paddingBottom: 12,
-  },
-  weightsStatsFooter: {
-    paddingTop: 10,
-    borderTop: "1px solid var(--border-2)",
-    background: "var(--bg)",
   },
   weightsStatsHandle: {
     width: 46,
