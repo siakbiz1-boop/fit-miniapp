@@ -5180,7 +5180,7 @@ function ClientDetailScreen(props: {
   const { client, onBack, onUpdateClient, onToggleArchive, onDeleteClient, history, onSaveExercises } = props;
   const { sessionsByDate, setSessionsByDate, token, apiBase, trainerTgUserId } = props;
   const tr = useTr();
-  const [tab, setTab] = useState<"info" | "contacts" | "subscription" | "weights" | "history">("info");
+  const [tab, setTab] = useState<"info" | "subscription" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
   const [draftFullName, setDraftFullName] = useState("");
@@ -5727,16 +5727,6 @@ function ClientDetailScreen(props: {
             <>
               <button
                 type="button"
-                onClick={() => setTab("contacts")}
-                style={{
-                  ...styles.clientTab,
-                  ...(visibleTab === "contacts" ? styles.clientTabActive : null),
-                }}
-              >
-                {tr("Контакты клиента", "Client contacts")}
-              </button>
-              <button
-                type="button"
                 onClick={() => setTab("subscription")}
                 style={{
                   ...styles.clientTab,
@@ -5913,8 +5903,56 @@ function ClientDetailScreen(props: {
             <>
               {renderReadOnly(tr("Цель", "Goal"), client?.goal)}
               {renderReadOnly(tr("Комментарии", "Comments"), client?.comment)}
+              {renderReadOnly("Telegram", client?.username ? `@${client.username}` : "")}
+              {renderReadOnly(tr("Номер телефона", "Phone number"), client?.clientProfile?.phone)}
+              {renderReadOnly("Instagram", client?.clientProfile?.instagram)}
+              {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
             </>
           )}
+          {isLocalClient ? (
+            <>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>Telegram</div>
+                <input
+                  value={draftContactTelegram}
+                  onChange={(e) => setDraftContactTelegram(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactTelegram", draftContactTelegram)}
+                  placeholder={tr("@username или ссылка", "@username or link")}
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Номер телефона", "Phone number")}</div>
+                <input
+                  value={draftContactPhone}
+                  onChange={(e) => setDraftContactPhone(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactPhone", draftContactPhone)}
+                  placeholder={tr("Телефон", "Phone")}
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>Instagram</div>
+                <input
+                  value={draftContactInstagram}
+                  onChange={(e) => setDraftContactInstagram(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactInstagram", draftContactInstagram)}
+                  placeholder="Instagram"
+                  style={styles.input}
+                />
+              </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
+                <input
+                  value={draftContactOtherSocial}
+                  onChange={(e) => setDraftContactOtherSocial(e.target.value)}
+                  onBlur={() => saveLocalClientField("contactOtherSocial", draftContactOtherSocial)}
+                  placeholder={tr("Ссылка или ник", "Link or handle")}
+                  style={styles.input}
+                />
+              </div>
+            </>
+          ) : null}
           <button
             type="button"
             onClick={() => {
@@ -5967,60 +6005,6 @@ function ClientDetailScreen(props: {
               {tr("Удалить клиента", "Delete client")}
             </button>
           ) : null}
-        </div>
-      ) : visibleTab === "contacts" ? (
-        <div style={styles.clientPanelPlain}>
-          {isLocalClient ? (
-            <>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>Telegram</div>
-                <input
-                  value={draftContactTelegram}
-                  onChange={(e) => setDraftContactTelegram(e.target.value)}
-                  onBlur={() => saveLocalClientField("contactTelegram", draftContactTelegram)}
-                  placeholder={tr("@username или ссылка", "@username or link")}
-                  style={styles.input}
-                />
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Номер телефона", "Phone number")}</div>
-                <input
-                  value={draftContactPhone}
-                  onChange={(e) => setDraftContactPhone(e.target.value)}
-                  onBlur={() => saveLocalClientField("contactPhone", draftContactPhone)}
-                  placeholder={tr("Телефон", "Phone")}
-                  style={styles.input}
-                />
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>Instagram</div>
-                <input
-                  value={draftContactInstagram}
-                  onChange={(e) => setDraftContactInstagram(e.target.value)}
-                  onBlur={() => saveLocalClientField("contactInstagram", draftContactInstagram)}
-                  placeholder="Instagram"
-                  style={styles.input}
-                />
-              </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
-                <input
-                  value={draftContactOtherSocial}
-                  onChange={(e) => setDraftContactOtherSocial(e.target.value)}
-                  onBlur={() => saveLocalClientField("contactOtherSocial", draftContactOtherSocial)}
-                  placeholder={tr("Ссылка или ник", "Link or handle")}
-                  style={styles.input}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              {renderReadOnly("Telegram", client?.username ? `@${client.username}` : "")}
-              {renderReadOnly(tr("Номер телефона", "Phone number"), client?.clientProfile?.phone)}
-              {renderReadOnly("Instagram", client?.clientProfile?.instagram)}
-              {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
-            </>
-          )}
         </div>
       ) : visibleTab === "subscription" ? (
         <div style={styles.clientPanelPlain}>
