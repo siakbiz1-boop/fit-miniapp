@@ -1689,6 +1689,16 @@ function startOfWeekMonday(date: Date) {
   return d;
 }
 
+function formatWeekdayShort(date: Date, language: "ru" | "en") {
+  if (language === "en") {
+    return new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(date);
+  }
+  const names = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
+  const day = date.getDay();
+  const idx = day === 0 ? 6 : day - 1;
+  return names[idx];
+}
+
 function endOfWeekMonday(date: Date) {
   const start = startOfWeekMonday(date);
   const end = new Date(start);
@@ -3518,7 +3528,7 @@ function TrainerSchedule(props: {
   }, [draftSessionComment, sessionTab, scheduleScreen]);
 
   const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
-  const weekStart = useMemo(() => startOfWeekMonday(selected), [selected]);
+  const weekStart = useMemo(() => startOfWeekMonday(today), [today]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, idx) => addDays(weekStart, idx)), [weekStart]);
 
   useEffect(() => {
@@ -4071,6 +4081,7 @@ function TrainerSchedule(props: {
                 <div style={styles.scheduleWeekTimeSpacer} />
                 {weekDays.map((d) => (
                   <div key={formatDateKey(d)} style={styles.scheduleWeekDayHeader}>
+                    <div style={styles.scheduleWeekDayName}>{formatWeekdayShort(d, language)}</div>
                     <div style={styles.scheduleWeekDayTitle}>{formatDateShort(d)}</div>
                   </div>
                 ))}
@@ -10537,6 +10548,14 @@ const styles: Record<string, any> = {
   },
   scheduleWeekDayTitle: {
     whiteSpace: "nowrap",
+  },
+  scheduleWeekDayName: {
+    fontSize: 10,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    lineHeight: 1.1,
+    marginBottom: 2,
   },
   scheduleWeekGrid: {
     display: "grid",
