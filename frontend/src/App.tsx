@@ -5007,7 +5007,6 @@ function ExerciseStatsPanel(props: {
   }, [clientId]);
 
   useEffect(() => {
-    setDraftStatsWeight(weightsStatsExercise?.weight ?? "");
     setStatsWeightError("");
   }, [weightsStatsExercise?.id]);
 
