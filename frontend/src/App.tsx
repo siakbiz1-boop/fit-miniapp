@@ -5216,11 +5216,6 @@ function ClientDetailScreen(props: {
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
   const [draftStatsWeight, setDraftStatsWeight] = useState("");
   const [statsWeightError, setStatsWeightError] = useState("");
-  const [showWeightPicker, setShowWeightPicker] = useState(false);
-  const weightPickerValues = useMemo(() => Array.from({ length: 1000 }, (_, idx) => idx + 1), []);
-  const weightPickerRef = useRef<HTMLDivElement | null>(null);
-  const weightPickerRafRef = useRef<number | null>(null);
-  const weightPickerItemWidth = 68;
   const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
   const [exerciseError, setExerciseError] = useState("");
   const [weightsStatsOpen, setWeightsStatsOpen] = useState(false);
@@ -5271,33 +5266,39 @@ function ClientDetailScreen(props: {
   useEffect(() => {
     setDraftStatsWeight(weightsStatsExercise?.weight ?? "");
     setStatsWeightError("");
-    setShowWeightPicker(false);
   }, [weightsStatsExercise?.id]);
 
-  useEffect(() => {
-    if (!showWeightPicker) return;
-    const el = weightPickerRef.current;
-    if (!el) return;
-    const current = Number.parseInt(String(draftStatsWeight || ""), 10);
-    if (!Number.isFinite(current)) return;
-    const idx = Math.max(0, Math.min(weightPickerValues.length - 1, current - 1));
-    const target = idx * weightPickerItemWidth;
-    el.scrollTo({ left: target, behavior: "auto" });
-  }, [showWeightPicker, draftStatsWeight, weightPickerValues, weightPickerItemWidth]);
-
-  const handleWeightPickerScroll = useCallback(() => {
-    const el = weightPickerRef.current;
-    if (!el) return;
-    if (weightPickerRafRef.current) cancelAnimationFrame(weightPickerRafRef.current);
-    weightPickerRafRef.current = requestAnimationFrame(() => {
-      const idx = Math.round(el.scrollLeft / weightPickerItemWidth);
-      const value = weightPickerValues[idx];
-      if (value) {
-        setDraftStatsWeight(String(value));
-        setStatsWeightError("");
+  const saveStatsWeight = useCallback(async () => {
+    if (!client || !weightsStatsExercise) return;
+    const value = draftStatsWeight.trim();
+    if (!value) {
+      setStatsWeightError(tr("Укажите рабочий вес.", "Enter the working weight."));
+      return;
+    }
+    const list = client.exercises ? [...client.exercises] : [];
+    const next = list.map((item) => (item.id === weightsStatsExercise.id ? { ...item, weight: value } : item));
+    onUpdateClient(client.id, { exercises: next });
+    setWeightsStatsExercise((prev) => (prev ? { ...prev, weight: value } : prev));
+    const updated = await onSaveExercises?.(client.id, next);
+    if (updated?.exercises) {
+      onUpdateClient(client.id, { exercises: updated.exercises });
+      const updatedExercise = updated.exercises.find((ex) => ex.id === weightsStatsExercise.id);
+      if (updatedExercise) {
+        setWeightsStatsExercise(updatedExercise);
       }
-    });
-  }, [weightPickerValues, weightPickerItemWidth]);
+    }
+    if (value.trim() !== String(weightsStatsExercise.weight || "").trim()) {
+      const entry: ExerciseHistoryItem = {
+        id: `local_${cryptoId()}`,
+        value: value.trim(),
+        recordedAt: new Date().toISOString(),
+      };
+      setExerciseHistoryMap((prev) => {
+        const prevList = prev[weightsStatsExercise.id] ? [...prev[weightsStatsExercise.id]] : [];
+        return { ...prev, [weightsStatsExercise.id]: [...prevList, entry] };
+      });
+    }
+  }, [client, draftStatsWeight, onSaveExercises, onUpdateClient, tr, weightsStatsExercise]);
 
   useEffect(() => {
     const el = goalRef.current;
@@ -6389,110 +6390,27 @@ function ClientDetailScreen(props: {
                   })()}
                 </div>
                 <div style={{ marginTop: 16 }}>
-                  <div style={styles.fieldLabel}>{tr("Изменить рабочий вес", "Update working weight")}</div>
-                  <button
-                    type="button"
-                    onClick={() => setShowWeightPicker(true)}
-                    style={styles.weightPickerField}
-                  >
-                    {draftStatsWeight || tr("Выберите вес", "Select weight")}
-                  </button>
-                  {statsWeightError ? <div style={styles.errorText}>{statsWeightError}</div> : null}
-                  <button
-                    type="button"
-                    style={{ ...styles.saveBtn, marginTop: 10 }}
-                    onClick={async () => {
-                      if (!client || !weightsStatsExercise) return;
-                      const value = draftStatsWeight.trim();
-                      if (!value) {
-                        setStatsWeightError(tr("Укажите рабочий вес.", "Enter the working weight."));
-                        return;
-                      }
-                      const list = client.exercises ? [...client.exercises] : [];
-                      const next = list.map((item) =>
-                        item.id === weightsStatsExercise.id ? { ...item, weight: value } : item
-                      );
-                      onUpdateClient(client.id, { exercises: next });
-                      setWeightsStatsExercise((prev) => (prev ? { ...prev, weight: value } : prev));
-                      const updated = await onSaveExercises?.(client.id, next);
-                      if (updated?.exercises) {
-                        onUpdateClient(client.id, { exercises: updated.exercises });
-                        const updatedExercise = updated.exercises.find((ex) => ex.id === weightsStatsExercise.id);
-                        if (updatedExercise) {
-                          setWeightsStatsExercise(updatedExercise);
-                        }
-                      }
-                      if (value.trim() !== String(weightsStatsExercise.weight || "").trim()) {
-                        const entry: ExerciseHistoryItem = {
-                          id: `local_${cryptoId()}`,
-                          value: value.trim(),
-                          recordedAt: new Date().toISOString(),
-                        };
-                        setExerciseHistoryMap((prev) => {
-                          const prevList = prev[weightsStatsExercise.id] ? [...prev[weightsStatsExercise.id]] : [];
-                          return { ...prev, [weightsStatsExercise.id]: [...prevList, entry] };
-                        });
-                      }
-                    }}
-                  >
-                    {tr("Сохранить", "Save")}
-                  </button>
-                </div>
-                {showWeightPicker ? (
-                  <div style={styles.weightPickerOverlay}>
-                    <button
-                      type="button"
-                      aria-label="close weight picker"
-                      style={styles.weightPickerBackdrop}
-                      onClick={() => setShowWeightPicker(false)}
+                  <div style={styles.weightInlineRow}>
+                    <div style={styles.fieldLabel}>{tr("Изменить рабочий вес:", "Update working weight:")}</div>
+                    <input
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={draftStatsWeight}
+                      onChange={(e) => {
+                        setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
+                        if (statsWeightError) setStatsWeightError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        e.currentTarget.blur();
+                        void saveStatsWeight();
+                      }}
+                      placeholder={tr("Вес", "Weight")}
+                      style={styles.weightInlineInput}
                     />
-                    <div style={styles.weightPickerSheet}>
-                      <div style={styles.weightPickerHandle} />
-                      <div style={styles.weightPickerHeader}>
-                        <div style={styles.weightPickerTitle}>{tr("Выбор веса", "Select weight")}</div>
-                        <button
-                          type="button"
-                          style={styles.weightPickerCloseBtn}
-                          onClick={() => setShowWeightPicker(false)}
-                        >
-                          {tr("Готово", "Done")}
-                        </button>
-                      </div>
-                      <div style={styles.weightPickerListWrap}>
-                        <div style={styles.weightPickerCenterMark} />
-                        <div
-                          ref={weightPickerRef}
-                          style={styles.weightPickerList}
-                          onScroll={handleWeightPickerScroll}
-                        >
-                        {weightPickerValues.map((value) => {
-                          const isActive = String(value) === String(draftStatsWeight || "");
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => {
-                                setDraftStatsWeight(String(value));
-                                setStatsWeightError("");
-                                const el = weightPickerRef.current;
-                                if (el) {
-                                  el.scrollTo({ left: (value - 1) * weightPickerItemWidth, behavior: "smooth" });
-                                }
-                              }}
-                              style={{
-                                ...styles.weightPickerItem,
-                                ...(isActive ? styles.weightPickerItemActive : null),
-                              }}
-                            >
-                              {value}
-                            </button>
-                          );
-                        })}
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                ) : null}
+                  {statsWeightError ? <div style={styles.errorText}>{statsWeightError}</div> : null}
+                </div>
                 <div style={styles.weightsStatsList}>
                   {weightHistoryList.length === 0 ? (
                     <div style={styles.weightsStatsEmpty}>
@@ -9131,115 +9049,23 @@ const styles: Record<string, any> = {
     lineHeight: 1.35,
     paddingLeft: 6,
   },
-  weightPickerField: {
-    width: "100%",
-    height: 48,
-    borderRadius: 14,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
-    padding: "0 14px",
-    textAlign: "left",
-    fontSize: 15,
-    color: "var(--text)",
-    cursor: "pointer",
-  },
-  weightPickerOverlay: {
-    position: "fixed",
-    inset: 0,
-    zIndex: 43,
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "center",
-  },
-  weightPickerBackdrop: {
-    position: "absolute",
-    inset: 0,
-    border: "none",
-    background: "rgba(15, 23, 42, 0.35)",
-    cursor: "pointer",
-  },
-  weightPickerSheet: {
-    position: "relative",
-    width: "100%",
-    maxWidth: 520,
-    height: "55vh",
-    background: "var(--bg)",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    padding: "10px 18px 18px",
-    boxSizing: "border-box",
-    boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
-    overflow: "hidden",
-    display: "flex",
-    flexDirection: "column",
-  },
-  weightPickerHandle: {
-    width: 46,
-    height: 4,
-    borderRadius: 999,
-    background: "rgba(15, 23, 42, 0.12)",
-    margin: "4px auto 12px",
-  },
-  weightPickerHeader: {
+  weightInlineRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
-  weightPickerTitle: {
-    fontSize: 16,
-    fontWeight: 800,
-    color: "var(--text)",
-  },
-  weightPickerCloseBtn: {
-    border: "none",
-    background: "transparent",
-    color: "var(--muted)",
-    fontWeight: 700,
-    cursor: "pointer",
-    padding: 4,
-  },
-  weightPickerListWrap: {
-    marginTop: 8,
-    position: "relative",
-    padding: "8px 0",
-  },
-  weightPickerCenterMark: {
-    position: "absolute",
-    left: "50%",
-    top: 6,
-    bottom: 6,
-    width: 70,
-    transform: "translateX(-50%)",
-    borderRadius: 14,
-    background: "rgba(31, 107, 255, 0.08)",
-    border: "1px solid rgba(31, 107, 255, 0.25)",
-    pointerEvents: "none",
-  },
-  weightPickerList: {
-    overflowX: "auto",
-    overflowY: "hidden",
-    display: "flex",
-    gap: 8,
-    padding: "6px calc(50% - 34px)",
-    scrollSnapType: "x mandatory",
-    WebkitOverflowScrolling: "touch",
-  },
-  weightPickerItem: {
-    minWidth: 68,
-    height: 54,
+  weightInlineInput: {
+    width: 90,
+    height: 38,
     borderRadius: 12,
     border: "1px solid var(--border)",
     background: "var(--surface)",
-    color: "var(--text)",
+    padding: "0 12px",
+    textAlign: "center",
+    fontSize: 15,
     fontWeight: 700,
-    cursor: "pointer",
-    scrollSnapAlign: "center",
-  },
-  weightPickerItemActive: {
-    background: "var(--accent)",
-    color: "var(--accent-contrast)",
-    borderColor: "var(--accent)",
+    color: "var(--text)",
   },
   rowSubtitle: {
     marginTop: 2,
