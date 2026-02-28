@@ -3925,7 +3925,13 @@ function TrainerSchedule(props: {
   return (
     <div style={styles.pageContainer}>
       <div style={styles.scheduleHeaderRow}>
-        <div style={styles.pageTitle}>{tr("Расписание", "Schedule")}</div>
+        <div style={styles.pageTitle}>
+          {scheduleView === "grid"
+            ? new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", { month: "long" }).format(
+                startOfWeekMonday(selected)
+              )
+            : tr("Расписание", "Schedule")}
+        </div>
         {section === "sessions" ? (
           <div style={styles.scheduleViewSwitch}>
             <button
@@ -3946,7 +3952,7 @@ function TrainerSchedule(props: {
                 ...(scheduleView === "grid" ? styles.scheduleViewSwitchBtnActive : null),
               }}
             >
-              {tr("Неделя", "Week")}
+              {tr("Таблица", "Table")}
             </button>
           </div>
         ) : null}
