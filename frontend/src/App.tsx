@@ -5216,6 +5216,8 @@ function ClientDetailScreen(props: {
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
   const [draftStatsWeight, setDraftStatsWeight] = useState("");
   const [statsWeightError, setStatsWeightError] = useState("");
+  const [showWeightPicker, setShowWeightPicker] = useState(false);
+  const weightPickerValues = useMemo(() => Array.from({ length: 1000 }, (_, idx) => idx + 1), []);
   const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
   const [exerciseError, setExerciseError] = useState("");
   const [weightsStatsOpen, setWeightsStatsOpen] = useState(false);
@@ -5266,6 +5268,7 @@ function ClientDetailScreen(props: {
   useEffect(() => {
     setDraftStatsWeight(weightsStatsExercise?.weight ?? "");
     setStatsWeightError("");
+    setShowWeightPicker(false);
   }, [weightsStatsExercise?.id]);
 
   useEffect(() => {
@@ -6359,15 +6362,13 @@ function ClientDetailScreen(props: {
                 </div>
                 <div style={{ marginTop: 16 }}>
                   <div style={styles.fieldLabel}>{tr("Изменить рабочий вес", "Update working weight")}</div>
-                  <input
-                    value={draftStatsWeight}
-                    onChange={(e) => {
-                      setDraftStatsWeight(e.target.value);
-                      if (statsWeightError) setStatsWeightError("");
-                    }}
-                    placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
-                    style={styles.input}
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWeightPicker(true)}
+                    style={styles.weightPickerField}
+                  >
+                    {draftStatsWeight ? `${draftStatsWeight} кг` : tr("Выберите вес", "Select weight")}
+                  </button>
                   {statsWeightError ? <div style={styles.errorText}>{statsWeightError}</div> : null}
                   <button
                     type="button"
@@ -6409,6 +6410,51 @@ function ClientDetailScreen(props: {
                     {tr("Сохранить", "Save")}
                   </button>
                 </div>
+                {showWeightPicker ? (
+                  <div style={styles.weightPickerOverlay}>
+                    <button
+                      type="button"
+                      aria-label="close weight picker"
+                      style={styles.weightPickerBackdrop}
+                      onClick={() => setShowWeightPicker(false)}
+                    />
+                    <div style={styles.weightPickerSheet}>
+                      <div style={styles.weightPickerHandle} />
+                      <div style={styles.weightPickerHeader}>
+                        <div style={styles.weightPickerTitle}>{tr("Выбор веса", "Select weight")}</div>
+                        <button
+                          type="button"
+                          style={styles.weightPickerCloseBtn}
+                          onClick={() => setShowWeightPicker(false)}
+                        >
+                          {tr("Готово", "Done")}
+                        </button>
+                      </div>
+                      <div style={styles.weightPickerList}>
+                        {weightPickerValues.map((value) => {
+                          const isActive = String(value) === String(draftStatsWeight || "");
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => {
+                                setDraftStatsWeight(String(value));
+                                setStatsWeightError("");
+                                setShowWeightPicker(false);
+                              }}
+                              style={{
+                                ...styles.weightPickerItem,
+                                ...(isActive ? styles.weightPickerItemActive : null),
+                              }}
+                            >
+                              {value} кг
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 <div style={styles.weightsStatsList}>
                   {weightHistoryList.length === 0 ? (
                     <div style={styles.weightsStatsEmpty}>
@@ -9046,6 +9092,96 @@ const styles: Record<string, any> = {
     color: "var(--muted)",
     lineHeight: 1.35,
     paddingLeft: 6,
+  },
+  weightPickerField: {
+    width: "100%",
+    height: 48,
+    borderRadius: 14,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    padding: "0 14px",
+    textAlign: "left",
+    fontSize: 15,
+    color: "var(--text)",
+    cursor: "pointer",
+  },
+  weightPickerOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 43,
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  weightPickerBackdrop: {
+    position: "absolute",
+    inset: 0,
+    border: "none",
+    background: "rgba(15, 23, 42, 0.35)",
+    cursor: "pointer",
+  },
+  weightPickerSheet: {
+    position: "relative",
+    width: "100%",
+    maxWidth: 520,
+    height: "55vh",
+    background: "var(--bg)",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: "10px 18px 18px",
+    boxSizing: "border-box",
+    boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+  },
+  weightPickerHandle: {
+    width: 46,
+    height: 4,
+    borderRadius: 999,
+    background: "rgba(15, 23, 42, 0.12)",
+    margin: "4px auto 12px",
+  },
+  weightPickerHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  weightPickerTitle: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  weightPickerCloseBtn: {
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontWeight: 700,
+    cursor: "pointer",
+    padding: 4,
+  },
+  weightPickerList: {
+    marginTop: 8,
+    overflowY: "auto",
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 8,
+    paddingBottom: 8,
+  },
+  weightPickerItem: {
+    height: 42,
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text)",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  weightPickerItemActive: {
+    background: "var(--accent)",
+    color: "var(--accent-contrast)",
+    borderColor: "var(--accent)",
   },
   rowSubtitle: {
     marginTop: 2,
