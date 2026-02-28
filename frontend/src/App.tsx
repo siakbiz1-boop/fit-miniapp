@@ -5216,8 +5216,6 @@ function ClientDetailScreen(props: {
   const [draftExerciseWeight, setDraftExerciseWeight] = useState("");
   const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
   const [exerciseError, setExerciseError] = useState("");
-  const clientWeightsRef = useRef<Record<string, { id: string; name: string; weight: string }[]>>({});
-  const [clientWeightDrafts, setClientWeightDrafts] = useState<Record<string, string>>({});
   const [weightsStatsOpen, setWeightsStatsOpen] = useState(false);
   const [weightsStatsExercise, setWeightsStatsExercise] = useState<{ id: string; name: string; weight: string } | null>(
     null
@@ -5245,7 +5243,6 @@ function ClientDetailScreen(props: {
     setShowExerciseForm(false);
     setExerciseError("");
     if (client?.status === "pending") setTab("info");
-    setClientWeightDrafts({});
   }, [
     client?.id,
     client?.goal,
