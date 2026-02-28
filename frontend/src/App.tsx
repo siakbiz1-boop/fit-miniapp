@@ -6399,6 +6399,7 @@ function ClientDetailScreen(props: {
                         ref={statsWeightInputRef}
                         inputMode="numeric"
                         pattern="[0-9]*"
+                        enterKeyHint="done"
                         value={draftStatsWeight}
                         onChange={(e) => {
                           setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
@@ -9094,15 +9095,18 @@ const styles: Record<string, any> = {
     color: "var(--text)",
   },
   weightInlineSaveBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: "50%",
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     border: "none",
     background: "var(--accent)",
     color: "var(--accent-contrast)",
     fontWeight: 800,
     cursor: "pointer",
     lineHeight: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   rowSubtitle: {
     marginTop: 2,
