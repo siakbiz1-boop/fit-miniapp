@@ -3375,6 +3375,16 @@ function TrainerSchedule(props: {
   const [weekOffset, setWeekOffset] = useState(0);
   const weekSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [showWeekAddMenu, setShowWeekAddMenu] = useState(false);
+  const [showWeekSchedule, setShowWeekSchedule] = useState(false);
+  const [weekScheduleDate, setWeekScheduleDate] = useState<Date>(() => startOfDay(new Date()));
+  const [weekScheduleStart, setWeekScheduleStart] = useState("12:30");
+  const [weekScheduleEnd, setWeekScheduleEnd] = useState("13:30");
+  const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
+  const [weekScheduleError, setWeekScheduleError] = useState("");
+  const weekScheduleDays = useMemo(() => buildCalendarStrip(today, 14, 30), [today]);
+  const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
+  const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
+  const weekScheduleTodayRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3541,6 +3551,10 @@ function TrainerSchedule(props: {
   const gridEndHour = 23;
   const gridRowHeight = 44;
   const gridRows = gridEndHour - gridStartHour + 1;
+  const activeClients = useMemo(
+    () => clients.filter((c) => !c.archived && c.status === "active"),
+    [clients]
+  );
 
   useEffect(() => {
     if (!selectedRef.current || !scrollerRef.current) return;
@@ -3552,6 +3566,20 @@ function TrainerSchedule(props: {
     });
     return () => window.cancelAnimationFrame(id);
   }, [selected, days, scheduleScreen]);
+
+  useEffect(() => {
+    if (!showWeekSchedule) return;
+    setWeekScheduleError("");
+    if (!weekScheduleClientId) {
+      const first = activeClients[0];
+      if (first?.id) setWeekScheduleClientId(first.id);
+    }
+    const scroller = weekScheduleScrollerRef.current;
+    const target = weekScheduleSelectedRef.current || weekScheduleTodayRef.current;
+    if (!scroller || !target) return;
+    const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
+    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [showWeekSchedule, weekScheduleDate, activeClients, weekScheduleClientId]);
 
   useEffect(() => {
     if (!token || !trainerTgUserId) return;
@@ -4247,6 +4275,10 @@ function TrainerSchedule(props: {
                         ...styles.scheduleWeekAddBtn,
                         ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
                       }}
+                      onClick={() => {
+                        setShowWeekAddMenu(false);
+                        setShowWeekSchedule(true);
+                      }}
                     >
                       {tr("Тренировку клиента", "Client session")}
                     </button>
@@ -4259,6 +4291,184 @@ function TrainerSchedule(props: {
                     >
                       {tr("Разовую тренировку", "One-time session")}
                     </button>
+                  </div>
+                </div>
+              ) : null}
+              {showWeekSchedule ? (
+                <div
+                  style={styles.clientScheduleOverlay}
+                  onClick={() => setShowWeekSchedule(false)}
+                >
+                  <button
+                    type="button"
+                    aria-label="close schedule"
+                    style={styles.clientScheduleBackdrop}
+                    onClick={() => setShowWeekSchedule(false)}
+                  />
+                  <div
+                    style={styles.clientScheduleSheet}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div style={styles.clientScheduleHandle} />
+                    <div style={styles.clientScheduleTitleRow}>
+                      <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
+                      <button
+                        type="button"
+                        onClick={() => setShowWeekSchedule(false)}
+                        style={styles.clientScheduleCloseBtn}
+                      >
+                        {tr("Закрыть", "Close")}
+                      </button>
+                    </div>
+
+                    <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
+                      {weekScheduleDays.map((d) => {
+                        const isToday = isSameDay(d.date, today);
+                        const isSelected = isSameDay(d.date, weekScheduleDate);
+                        const isPast = d.date.getTime() < today.getTime();
+                        return (
+                          <button
+                            key={d.key}
+                            ref={isSelected ? weekScheduleSelectedRef : isToday ? weekScheduleTodayRef : null}
+                            onClick={() => {
+                              if (isPast) return;
+                              setWeekScheduleDate(d.date);
+                              if (weekScheduleError) setWeekScheduleError("");
+                            }}
+                            style={{
+                              ...styles.calendarDay,
+                              ...(isToday ? styles.calendarDayActive : {}),
+                              ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
+                              ...(isPast ? styles.calendarDayPast : {}),
+                            }}
+                            aria-current={isToday ? "date" : undefined}
+                            type="button"
+                          >
+                            <div style={styles.calendarDayDate}>{d.dateText}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div style={styles.clientScheduleFields}>
+                      <div style={styles.freeField}>
+                        <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
+                        <input
+                          type="time"
+                          value={weekScheduleStart}
+                          onChange={(e) => {
+                            setWeekScheduleStart(e.target.value);
+                            if (weekScheduleError) setWeekScheduleError("");
+                          }}
+                          step={300}
+                          style={styles.input}
+                        />
+                      </div>
+                      <div style={styles.freeField}>
+                        <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+                        <input
+                          type="time"
+                          value={weekScheduleEnd}
+                          onChange={(e) => {
+                            setWeekScheduleEnd(e.target.value);
+                            if (weekScheduleError) setWeekScheduleError("");
+                          }}
+                          step={300}
+                          style={styles.input}
+                        />
+                      </div>
+                      <div style={{ marginTop: 12 }}>
+                        <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                        <select
+                          value={weekScheduleClientId}
+                          onChange={(e) => {
+                            setWeekScheduleClientId(e.target.value);
+                            if (weekScheduleError) setWeekScheduleError("");
+                          }}
+                          style={styles.trainerSelect}
+                        >
+                          {activeClients.length === 0 ? (
+                            <option value="">{tr("Нет клиентов", "No clients")}</option>
+                          ) : (
+                            activeClients.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {getClientLabel(activeClients, c.username)}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                      {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
+                      <button
+                        type="button"
+                        style={styles.saveBtn}
+                        onClick={async () => {
+                          const dateKey = formatDateKey(weekScheduleDate);
+                          const start = normalizeTimeInput(weekScheduleStart);
+                          const end = normalizeTimeInput(weekScheduleEnd);
+                          if (!start || !end) {
+                            setWeekScheduleError(
+                              tr("Укажите время в формате ЧЧ:ММ (например 10:00).", "Enter time in HH:MM (e.g., 10:00).")
+                            );
+                            return;
+                          }
+                          if (end <= start) {
+                            setWeekScheduleError(
+                              tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                            );
+                            return;
+                          }
+                          const selectedDay = startOfDay(weekScheduleDate);
+                          const todayDay = startOfDay(new Date());
+                          if (selectedDay.getTime() < todayDay.getTime()) {
+                            setWeekScheduleError(
+                              tr("Нельзя создавать тренировки в прошедших датах.", "You can't schedule sessions in past dates.")
+                            );
+                            return;
+                          }
+                          if (!weekScheduleClientId) {
+                            setWeekScheduleError(tr("Выберите клиента.", "Select a client."));
+                            return;
+                          }
+                          const existingSessions = sessionsByDate[dateKey] || [];
+                          const startMin = timeToMinutes(start);
+                          const endMin = timeToMinutes(end);
+                          const overlapsSession = existingSessions.some((s) => {
+                            const sStart = timeToMinutes(s.start);
+                            const sEnd = timeToMinutes(s.end);
+                            return startMin < sEnd && endMin > sStart;
+                          });
+                          if (overlapsSession) {
+                            setWeekScheduleError(
+                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                            );
+                            return;
+                          }
+                          const client = activeClients.find((c) => c.id === weekScheduleClientId);
+                          if (!client) {
+                            setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                            return;
+                          }
+                          const newSession: SessionItem = {
+                            id: cryptoId(),
+                            dateKey,
+                            start,
+                            end,
+                            clientUsername: client.username,
+                            trainerTgUserId,
+                            source: "trainer",
+                          };
+                          setSessionsByDate((prev) => {
+                            const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                            list.push(newSession);
+                            return { ...prev, [dateKey]: list };
+                          });
+                          setShowWeekSchedule(false);
+                        }}
+                      >
+                        {tr("Добавить", "Add")}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : null}
