@@ -4131,7 +4131,9 @@ function TrainerSchedule(props: {
                           {daySessions.map((s) => {
                             const startMin = timeToMinutes(s.start);
                             const endMin = timeToMinutes(s.end);
-                            const top = Math.max(0, (startMin - gridStartHour * 60) * (gridRowHeight / 60));
+                            const top =
+                              (startMin - gridStartHour * 60) * (gridRowHeight / 60) +
+                              gridRowHeight;
                             const height = Math.max(28, (endMin - startMin) * (gridRowHeight / 60));
                             return (
                               <button
