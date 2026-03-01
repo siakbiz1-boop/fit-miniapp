@@ -3531,7 +3531,7 @@ function TrainerSchedule(props: {
   const weekStart = useMemo(() => startOfWeekMonday(today), [today]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, idx) => addDays(weekStart, idx)), [weekStart]);
   const gridStartHour = 7;
-  const gridEndHour = 22;
+  const gridEndHour = 23;
   const gridRowHeight = 44;
   const gridRows = gridEndHour - gridStartHour + 1;
 
