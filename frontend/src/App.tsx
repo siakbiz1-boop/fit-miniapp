@@ -10624,8 +10624,8 @@ const styles: Record<string, any> = {
   },
   scheduleWeekSession: {
     position: "absolute",
-    left: 6,
-    right: 6,
+    left: 0,
+    right: 0,
     borderRadius: 10,
     border: "1px solid rgba(31, 107, 255, 0.2)",
     background: "rgba(31, 107, 255, 0.12)",
