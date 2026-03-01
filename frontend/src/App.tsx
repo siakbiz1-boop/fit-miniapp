@@ -3369,6 +3369,7 @@ function TrainerSchedule(props: {
   const [draftSessionType, setDraftSessionType] = useState("");
   const [draftSessionPrice, setDraftSessionPrice] = useState("");
   const [draftSessionComment, setDraftSessionComment] = useState("");
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3528,7 +3529,8 @@ function TrainerSchedule(props: {
   }, [draftSessionComment, sessionTab, scheduleScreen]);
 
   const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
-  const weekStart = useMemo(() => startOfWeekMonday(today), [today]);
+  const weekAnchor = useMemo(() => addDays(today, weekOffset * 7), [today, weekOffset]);
+  const weekStart = useMemo(() => startOfWeekMonday(weekAnchor), [weekAnchor]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, idx) => addDays(weekStart, idx)), [weekStart]);
   const gridStartHour = 7;
   const gridEndHour = 23;
@@ -3940,15 +3942,37 @@ function TrainerSchedule(props: {
   return (
     <div style={styles.pageContainer}>
       <div style={styles.scheduleHeaderRow}>
-        <div style={styles.pageTitle}>
-          {scheduleView === "grid"
-            ? (() => {
-                const raw = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", {
-                  month: "long",
-                }).format(today);
-                return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
-              })()
-            : tr("Расписание", "Schedule")}
+        <div style={styles.scheduleTitleRow}>
+          <div style={styles.pageTitle}>
+            {scheduleView === "grid"
+              ? (() => {
+                  const raw = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", {
+                    month: "long",
+                  }).format(weekStart);
+                  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
+                })()
+              : tr("Расписание", "Schedule")}
+          </div>
+          {scheduleView === "grid" ? (
+            <div style={styles.scheduleWeekNav}>
+              <button
+                type="button"
+                style={styles.scheduleWeekNavBtn}
+                onClick={() => setWeekOffset((v) => v - 1)}
+                aria-label={tr("Предыдущая неделя", "Previous week")}
+              >
+                ‹
+              </button>
+              <button
+                type="button"
+                style={styles.scheduleWeekNavBtn}
+                onClick={() => setWeekOffset((v) => v + 1)}
+                aria-label={tr("Следующая неделя", "Next week")}
+              >
+                ›
+              </button>
+            </div>
+          ) : null}
         </div>
         {section === "sessions" ? (
           <div style={styles.scheduleViewSwitch}>
@@ -10651,6 +10675,27 @@ const styles: Record<string, any> = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
+  },
+  scheduleTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  scheduleWeekNav: {
+    display: "flex",
+    gap: 6,
+  },
+  scheduleWeekNavBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    cursor: "pointer",
+    fontSize: 16,
+    fontWeight: 700,
+    color: "var(--text)",
+    lineHeight: 1,
   },
   trainerSelectWrap: {
     display: "flex",
