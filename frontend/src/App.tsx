@@ -3374,6 +3374,7 @@ function TrainerSchedule(props: {
   const [draftSessionComment, setDraftSessionComment] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
   const weekSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [showWeekAddMenu, setShowWeekAddMenu] = useState(false);
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -4216,9 +4217,29 @@ function TrainerSchedule(props: {
                 type="button"
                 style={styles.scheduleWeekFabFixed}
                 aria-label={tr("Добавить", "Add")}
+                onClick={() => setShowWeekAddMenu(true)}
               >
                 <span style={styles.scheduleWeekFabIcon}>+</span>
               </button>
+              {showWeekAddMenu ? (
+                <div
+                  style={styles.scheduleWeekAddOverlay}
+                  onClick={() => setShowWeekAddMenu(false)}
+                >
+                  <div
+                    style={styles.scheduleWeekAddSheet}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div style={styles.scheduleWeekAddTitle}>{tr("Добавить", "Add")}</div>
+                    <button type="button" style={styles.scheduleWeekAddBtn}>
+                      {tr("Тренировку клиента", "Client session")}
+                    </button>
+                    <button type="button" style={styles.scheduleWeekAddBtn}>
+                      {tr("Разовую тренировку", "One-time session")}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </>
           )}
         </div>
@@ -10761,6 +10782,43 @@ const styles: Record<string, any> = {
     fontSize: 28,
     lineHeight: 1,
     fontWeight: 700,
+  },
+  scheduleWeekAddOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.9)",
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    padding: "0 18px 24px",
+    zIndex: 60,
+  },
+  scheduleWeekAddSheet: {
+    width: "100%",
+    maxWidth: 360,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  scheduleWeekAddTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: 700,
+    marginBottom: 2,
+  },
+  scheduleWeekAddBtn: {
+    width: "100%",
+    height: 48,
+    borderRadius: 14,
+    border: "none",
+    background: "rgba(255,255,255,0.12)",
+    color: "#fff",
+    fontWeight: 700,
+    fontSize: 15,
+    textAlign: "left",
+    padding: "0 18px",
+    cursor: "pointer",
   },
   trainerSelectWrap: {
     display: "flex",
