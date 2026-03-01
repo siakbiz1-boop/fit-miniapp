@@ -1430,6 +1430,7 @@ export default function App() {
                   token={token}
                   apiBase={apiBase}
                   trainerTgUserId={tgUserId}
+                  theme={theme}
                   pendingSession={pendingSession}
                   onConsumePendingSession={() => setPendingSession(null)}
                   onSaveExercises={saveClientExercises}
@@ -3336,6 +3337,7 @@ function TrainerSchedule(props: {
   token: string;
   apiBase: string;
   trainerTgUserId: string;
+  theme: "light" | "dark";
   pendingSession?: SessionItem | null;
   onConsumePendingSession?: () => void;
   onSaveExercises?: (
@@ -3352,6 +3354,7 @@ function TrainerSchedule(props: {
     token,
     apiBase,
     trainerTgUserId,
+    theme,
     pendingSession,
     onConsumePendingSession,
     onSaveExercises,
@@ -4178,16 +4181,21 @@ function TrainerSchedule(props: {
                                 (startMin - gridStartHour * 60) * (gridRowHeight / 60) +
                                 gridRowHeight;
                               const height = Math.max(28, (endMin - startMin) * (gridRowHeight / 60));
-                              return (
-                                <button
-                                  key={s.id}
-                                  type="button"
-                                  style={{ ...styles.scheduleWeekSession, top, height }}
-                                  onClick={() => {
-                                    setActiveSession(s);
-                                    setScheduleScreen("session");
-                                  }}
-                                >
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                style={{
+                                  ...styles.scheduleWeekSession,
+                                  ...(theme === "dark" ? styles.scheduleWeekSessionDark : null),
+                                  top,
+                                  height,
+                                }}
+                                onClick={() => {
+                                  setActiveSession(s);
+                                  setScheduleScreen("session");
+                                }}
+                              >
                                   <div style={styles.scheduleWeekSessionTitle}>
                                     {getClientLabel(clients, s.clientUsername)}
                                   </div>
@@ -10687,6 +10695,10 @@ const styles: Record<string, any> = {
     padding: "6px 6px",
     textAlign: "left",
     cursor: "pointer",
+  },
+  scheduleWeekSessionDark: {
+    border: "1px solid rgba(31, 107, 255, 0.35)",
+    background: "rgba(31, 107, 255, 0.24)",
   },
   scheduleWeekSessionTitle: {
     fontSize: 11,
