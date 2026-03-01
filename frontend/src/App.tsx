@@ -4123,9 +4123,6 @@ function TrainerSchedule(props: {
                 weekSwipeStartRef.current = null;
               }}
             >
-              <button type="button" style={styles.scheduleWeekFab} aria-label={tr("Добавить", "Add")}>
-                <span style={styles.scheduleWeekFabIcon}>+</span>
-              </button>
               <div style={styles.scheduleWeekHeader}>
                 <div style={styles.scheduleWeekTimeSpacer} />
                 {weekDays.map((d) => (
@@ -4206,6 +4203,13 @@ function TrainerSchedule(props: {
                 </div>
               </div>
             </div>
+            <button
+              type="button"
+              style={styles.scheduleWeekFabFixed}
+              aria-label={tr("Добавить", "Add")}
+            >
+              <span style={styles.scheduleWeekFabIcon}>+</span>
+            </button>
           )}
         </div>
       ) : (
@@ -10722,10 +10726,10 @@ const styles: Record<string, any> = {
     alignItems: "center",
     justifyContent: "center",
   },
-  scheduleWeekFab: {
-    position: "absolute",
-    right: 14,
-    bottom: 14,
+  scheduleWeekFabFixed: {
+    position: "fixed",
+    right: 18,
+    bottom: 92,
     width: 56,
     height: 56,
     borderRadius: "50%",
@@ -10733,7 +10737,7 @@ const styles: Record<string, any> = {
     background: "var(--text)",
     color: "var(--surface)",
     cursor: "pointer",
-    zIndex: 4,
+    zIndex: 50,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
