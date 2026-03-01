@@ -4105,111 +4105,113 @@ function TrainerSchedule(props: {
               );
             })()
           ) : (
-            <div
-              style={styles.scheduleWeekWrap}
-              onPointerDown={(event) => {
-                weekSwipeStartRef.current = { x: event.clientX, y: event.clientY };
-              }}
-              onPointerUp={(event) => {
-                const start = weekSwipeStartRef.current;
-                weekSwipeStartRef.current = null;
-                if (!start) return;
-                const dx = event.clientX - start.x;
-                const dy = event.clientY - start.y;
-                if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
-                setWeekOffset((v) => v + (dx < 0 ? 1 : -1));
-              }}
-              onPointerCancel={() => {
-                weekSwipeStartRef.current = null;
-              }}
-            >
-              <div style={styles.scheduleWeekHeader}>
-                <div style={styles.scheduleWeekTimeSpacer} />
-                {weekDays.map((d) => (
-                  <div
-                    key={formatDateKey(d)}
-                    style={{
-                      ...styles.scheduleWeekDayHeader,
-                      ...(isSameDay(d, today) ? styles.scheduleWeekDayHeaderToday : null),
-                    }}
-                  >
-                    <div style={styles.scheduleWeekDayName}>{formatWeekdayShort(d, language)}</div>
-                    <div style={styles.scheduleWeekDayTitle}>{d.getDate()}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={styles.scheduleWeekGrid}>
-                <div style={styles.scheduleWeekTimeCol}>
-                  {Array.from({ length: gridRows - 1 }, (_, idx) => {
-                    const hour = gridStartHour + idx;
-                    return (
-                      <div
-                        key={hour}
-                        style={{
-                          ...styles.scheduleWeekTimeLabel,
-                          top: (idx + 1) * gridRowHeight,
-                        }}
-                      >
-                        {String(hour).padStart(2, "0")}:00
-                      </div>
-                    );
-                  })}
+            <>
+              <div
+                style={styles.scheduleWeekWrap}
+                onPointerDown={(event) => {
+                  weekSwipeStartRef.current = { x: event.clientX, y: event.clientY };
+                }}
+                onPointerUp={(event) => {
+                  const start = weekSwipeStartRef.current;
+                  weekSwipeStartRef.current = null;
+                  if (!start) return;
+                  const dx = event.clientX - start.x;
+                  const dy = event.clientY - start.y;
+                  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+                  setWeekOffset((v) => v + (dx < 0 ? 1 : -1));
+                }}
+                onPointerCancel={() => {
+                  weekSwipeStartRef.current = null;
+                }}
+              >
+                <div style={styles.scheduleWeekHeader}>
+                  <div style={styles.scheduleWeekTimeSpacer} />
+                  {weekDays.map((d) => (
+                    <div
+                      key={formatDateKey(d)}
+                      style={{
+                        ...styles.scheduleWeekDayHeader,
+                        ...(isSameDay(d, today) ? styles.scheduleWeekDayHeaderToday : null),
+                      }}
+                    >
+                      <div style={styles.scheduleWeekDayName}>{formatWeekdayShort(d, language)}</div>
+                      <div style={styles.scheduleWeekDayTitle}>{d.getDate()}</div>
+                    </div>
+                  ))}
                 </div>
-                <div style={styles.scheduleWeekDays}>
-                  {weekDays.map((d) => {
-                    const dateKey = formatDateKey(d);
-                    const daySessions = (sessionsByDate[dateKey] || [])
-                      .slice()
-                      .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
-                    return (
-                      <div key={dateKey} style={styles.scheduleWeekDayCol}>
-                        <div style={{ ...styles.scheduleWeekDayBody, height: gridRowHeight * gridRows }}>
-                          {Array.from({ length: gridRows + 1 }, (_, idx) => (
-                            <div
-                              key={idx}
-                              style={{ ...styles.scheduleWeekHourLineTick, top: idx * gridRowHeight }}
-                            />
-                          ))}
-                          {daySessions.map((s) => {
-                            const startMin = timeToMinutes(s.start);
-                            const endMin = timeToMinutes(s.end);
-                            const top =
-                              (startMin - gridStartHour * 60) * (gridRowHeight / 60) +
-                              gridRowHeight;
-                            const height = Math.max(28, (endMin - startMin) * (gridRowHeight / 60));
-                            return (
-                              <button
-                                key={s.id}
-                                type="button"
-                                style={{ ...styles.scheduleWeekSession, top, height }}
-                                onClick={() => {
-                                  setActiveSession(s);
-                                  setScheduleScreen("session");
-                                }}
-                              >
-                                <div style={styles.scheduleWeekSessionTitle}>
-                                  {getClientLabel(clients, s.clientUsername)}
-                                </div>
-                                <div style={styles.scheduleWeekSessionTime}>
-                                  {s.start}–{s.end}
-                                </div>
-                              </button>
-                            );
-                          })}
+                <div style={styles.scheduleWeekGrid}>
+                  <div style={styles.scheduleWeekTimeCol}>
+                    {Array.from({ length: gridRows - 1 }, (_, idx) => {
+                      const hour = gridStartHour + idx;
+                      return (
+                        <div
+                          key={hour}
+                          style={{
+                            ...styles.scheduleWeekTimeLabel,
+                            top: (idx + 1) * gridRowHeight,
+                          }}
+                        >
+                          {String(hour).padStart(2, "0")}:00
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  <div style={styles.scheduleWeekDays}>
+                    {weekDays.map((d) => {
+                      const dateKey = formatDateKey(d);
+                      const daySessions = (sessionsByDate[dateKey] || [])
+                        .slice()
+                        .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+                      return (
+                        <div key={dateKey} style={styles.scheduleWeekDayCol}>
+                          <div style={{ ...styles.scheduleWeekDayBody, height: gridRowHeight * gridRows }}>
+                            {Array.from({ length: gridRows + 1 }, (_, idx) => (
+                              <div
+                                key={idx}
+                                style={{ ...styles.scheduleWeekHourLineTick, top: idx * gridRowHeight }}
+                              />
+                            ))}
+                            {daySessions.map((s) => {
+                              const startMin = timeToMinutes(s.start);
+                              const endMin = timeToMinutes(s.end);
+                              const top =
+                                (startMin - gridStartHour * 60) * (gridRowHeight / 60) +
+                                gridRowHeight;
+                              const height = Math.max(28, (endMin - startMin) * (gridRowHeight / 60));
+                              return (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  style={{ ...styles.scheduleWeekSession, top, height }}
+                                  onClick={() => {
+                                    setActiveSession(s);
+                                    setScheduleScreen("session");
+                                  }}
+                                >
+                                  <div style={styles.scheduleWeekSessionTitle}>
+                                    {getClientLabel(clients, s.clientUsername)}
+                                  </div>
+                                  <div style={styles.scheduleWeekSessionTime}>
+                                    {s.start}–{s.end}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-            <button
-              type="button"
-              style={styles.scheduleWeekFabFixed}
-              aria-label={tr("Добавить", "Add")}
-            >
-              <span style={styles.scheduleWeekFabIcon}>+</span>
-            </button>
+              <button
+                type="button"
+                style={styles.scheduleWeekFabFixed}
+                aria-label={tr("Добавить", "Add")}
+              >
+                <span style={styles.scheduleWeekFabIcon}>+</span>
+              </button>
+            </>
           )}
         </div>
       ) : (
