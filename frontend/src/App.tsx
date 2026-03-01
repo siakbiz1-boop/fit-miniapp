@@ -4449,21 +4449,51 @@ function TrainerSchedule(props: {
                             setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
                             return;
                           }
-                          const newSession: SessionItem = {
-                            id: cryptoId(),
-                            dateKey,
-                            start,
-                            end,
-                            clientUsername: client.username,
-                            trainerTgUserId,
-                            source: "trainer",
-                          };
-                          setSessionsByDate((prev) => {
-                            const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                            list.push(newSession);
-                            return { ...prev, [dateKey]: list };
-                          });
-                          setShowWeekSchedule(false);
+                          if (!token) {
+                            setWeekScheduleError(tr("Сначала войдите в аккаунт.", "Please login first."));
+                            return;
+                          }
+                          try {
+                            const res = await fetch(`${apiBase}/sessions`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({
+                                dateKey,
+                                start,
+                                end,
+                                clientId: client.id,
+                              }),
+                            });
+                            if (!res.ok) {
+                              if (res.status === 409) {
+                                setWeekScheduleError(
+                                  tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                                );
+                              } else if (res.status === 404) {
+                                setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                              } else if (res.status === 403) {
+                                setWeekScheduleError(
+                                  tr("Нельзя создать тренировку для этого клиента.", "You can't schedule this client.")
+                                );
+                              } else {
+                                setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                              }
+                              return;
+                            }
+                            const data = (await res.json()) as { ok: boolean; session?: any };
+                            if (!data?.session) {
+                              throw new Error("session missing");
+                            }
+                            const mapped = mapSessionFromApi(data.session);
+                            setSessionsByDate((prev) => {
+                              const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                              list.push(mapped);
+                              return { ...prev, [mapped.dateKey]: list };
+                            });
+                            setShowWeekSchedule(false);
+                          } catch {
+                            setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                          }
                         }}
                       >
                         {tr("Добавить", "Add")}
@@ -5814,7 +5844,7 @@ function ClientDetailScreen(props: {
   ) => Promise<TrainerClientInvite | null> | void;
 }) {
   const { client, onBack, onUpdateClient, onToggleArchive, onDeleteClient, history, onSaveExercises } = props;
-  const { sessionsByDate, setSessionsByDate, token, apiBase, trainerTgUserId } = props;
+  const { sessionsByDate, setSessionsByDate, token, apiBase } = props;
   const tr = useTr();
   const [tab, setTab] = useState<"info" | "subscription" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
@@ -6195,54 +6225,48 @@ function ClientDetailScreen(props: {
                     return;
                   }
 
-                  const newSession: SessionItem = {
-                    id: cryptoId(),
-                    dateKey,
-                    start,
-                    end,
-                    clientUsername: client.username,
-                    trainerTgUserId,
-                    source: "trainer",
-                  };
-
-                  setSessionsByDate((prev) => {
-                    const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                    list.push(newSession);
-                    return { ...prev, [dateKey]: list };
-                  });
-
-                  if (token) {
-                    try {
-                      const res = await fetch(
-                        `${apiBase}/slots?trainerTgUserId=${encodeURIComponent(trainerTgUserId)}&dateKey=${encodeURIComponent(
-                          dateKey
-                        )}`,
-                        { headers: { Authorization: `Bearer ${token}` } }
-                      );
-                      if (res.ok) {
-                        const data = (await res.json()) as { ok: boolean; slots?: TrainingSlot[] };
-                        const slots = data.slots || [];
-                        const toDelete = slots.filter((w) => {
-                          const wStart = timeToMinutes(w.start);
-                          const wEnd = timeToMinutes(w.end);
-                          return startMin < wEnd && endMin > wStart;
-                        });
-                        await Promise.all(
-                          toDelete.map((w) =>
-                            fetch(`${apiBase}/slots/${encodeURIComponent(w.id)}`, {
-                              method: "DELETE",
-                              headers: { Authorization: `Bearer ${token}` },
-                            })
-                          )
+                  try {
+                    const res = await fetch(`${apiBase}/sessions`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({
+                        dateKey,
+                        start,
+                        end,
+                        clientId: client.id,
+                      }),
+                    });
+                    if (!res.ok) {
+                      if (res.status === 409) {
+                        setScheduleError(
+                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
                         );
+                      } else if (res.status === 404) {
+                        setScheduleError(tr("Клиент не найден.", "Client not found."));
+                      } else if (res.status === 403) {
+                        setScheduleError(tr("Нельзя создать тренировку для этого клиента.", "You can't schedule this client."));
+                      } else {
+                        setScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
                       }
-                    } catch {
-                      // ignore slot cleanup errors
+                      setScheduleSaving(false);
+                      return;
                     }
+                    const data = (await res.json()) as { ok: boolean; session?: any };
+                    if (!data?.session) {
+                      throw new Error("session missing");
+                    }
+                    const mapped = mapSessionFromApi(data.session);
+                    setSessionsByDate((prev) => {
+                      const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                      list.push(mapped);
+                      return { ...prev, [mapped.dateKey]: list };
+                    });
+                    setScheduleSaving(false);
+                    maybeCloseSchedule(true);
+                  } catch {
+                    setScheduleSaving(false);
+                    setScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
                   }
-
-                  setScheduleSaving(false);
-                  maybeCloseSchedule(true);
                 }}
               >
                 {tr("Добавить", "Add")}

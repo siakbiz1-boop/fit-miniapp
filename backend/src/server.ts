@@ -1477,6 +1477,109 @@ app.get("/sessions", async (req, reply) => {
   return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
 });
 
+// Create trainer session
+app.post("/sessions", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const dateKey = String(body?.dateKey || "");
+  const start = String(body?.start || "");
+  const end = String(body?.end || "");
+  const clientId = body?.clientId ? String(body.clientId) : "";
+  const clientUsernameRaw = body?.clientUsername ? String(body.clientUsername) : "";
+  if (!dateKey || !start || !end || (!clientId && !clientUsernameRaw)) {
+    return reply.code(400).send({ message: "dateKey/start/end/client required" });
+  }
+
+  const day = parseDateKey(dateKey);
+  if (!day) return reply.code(400).send({ message: "dateKey invalid" });
+  const [sh, sm] = start.split(":").map((x) => parseInt(x, 10));
+  const [eh, em] = end.split(":").map((x) => parseInt(x, 10));
+  if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
+    return reply.code(400).send({ message: "time invalid" });
+  }
+  const startAt = new Date(day);
+  startAt.setHours(sh, sm, 0, 0);
+  const endAt = new Date(day);
+  endAt.setHours(eh, em, 0, 0);
+  if (endAt.getTime() <= startAt.getTime()) {
+    return reply.code(400).send({ message: "time range invalid" });
+  }
+  if (Date.now() >= startAt.getTime()) {
+    return reply.code(403).send({ message: "session already started" });
+  }
+
+  let relation = null as any;
+  if (clientId) {
+    relation = await prismaAny.trainerClient.findUnique({ where: { id: clientId } });
+    if (relation && relation.trainerTgUserId !== dbUser.tgUserId) relation = null;
+  }
+  if (!relation && clientUsernameRaw) {
+    const normalized = clientUsernameRaw.replace(/^@/, "");
+    relation = await prismaAny.trainerClient.findFirst({
+      where: { trainerTgUserId: dbUser.tgUserId, clientUsername: normalized },
+    });
+  }
+  if (!relation) return reply.code(404).send({ message: "client not found" });
+  if (relation.status !== "active" || relation.archived) {
+    return reply.code(403).send({ message: "client inactive" });
+  }
+
+  const overlap = await prismaAny.trainingSession.findFirst({
+    where: {
+      trainerTgUserId: dbUser.tgUserId,
+      startAt: { lt: endAt },
+      endAt: { gt: startAt },
+    },
+  });
+  if (overlap) return reply.code(409).send({ message: "session overlaps" });
+
+  const reminderHours = (dbUser as any)?.reminderHours ?? 1;
+  const remindAt = computeRemindAt(startAt, reminderHours);
+  const id = `${dbUser.tgUserId.toString()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const session = await prismaAny.trainingSession.create({
+    data: {
+      id,
+      trainerTgUserId: dbUser.tgUserId,
+      clientUsername: relation.clientUsername,
+      clientName: relation.fullName || null,
+      startAt,
+      endAt,
+      startTime: start,
+      endTime: end,
+      type: null,
+      source: "trainer",
+      remindAt,
+    },
+  });
+
+  const slots = await prismaAny.trainingSlot.findMany({
+    where: { trainerTgUserId: dbUser.tgUserId, dateKey },
+  });
+  if (slots.length) {
+    const toDelete = slots.filter((w: any) => {
+      const [wsh, wsm] = String(w.start || "").split(":").map((x) => parseInt(x, 10));
+      const [weh, wem] = String(w.end || "").split(":").map((x) => parseInt(x, 10));
+      if (Number.isNaN(wsh) || Number.isNaN(wsm) || Number.isNaN(weh) || Number.isNaN(wem)) return false;
+      const wStart = wsh * 60 + wsm;
+      const wEnd = weh * 60 + wem;
+      const sStart = sh * 60 + sm;
+      const sEnd = eh * 60 + em;
+      return sStart < wEnd && sEnd > wStart;
+    });
+    if (toDelete.length) {
+      await prismaAny.trainingSlot.deleteMany({ where: { id: { in: toDelete.map((w: any) => w.id) } } });
+    }
+  }
+
+  if (startAt.getTime() > Date.now()) {
+    await adjustSubscriptionLeft(dbUser.tgUserId, relation.clientUsername, -1);
+  }
+
+  return { ok: true, session: serializeSession(session) };
+});
+
 // Delete trainer session (including client-created)
 app.delete("/sessions/:id", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
