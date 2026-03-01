@@ -3370,6 +3370,7 @@ function TrainerSchedule(props: {
   const [draftSessionPrice, setDraftSessionPrice] = useState("");
   const [draftSessionComment, setDraftSessionComment] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
+  const weekSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3948,7 +3949,7 @@ function TrainerSchedule(props: {
               ? (() => {
                   const raw = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", {
                     month: "long",
-                  }).format(weekStart);
+                  }).format(today);
                   return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
                 })()
               : tr("Расписание", "Schedule")}
@@ -4104,7 +4105,24 @@ function TrainerSchedule(props: {
               );
             })()
           ) : (
-            <div style={styles.scheduleWeekWrap}>
+            <div
+              style={styles.scheduleWeekWrap}
+              onPointerDown={(event) => {
+                weekSwipeStartRef.current = { x: event.clientX, y: event.clientY };
+              }}
+              onPointerUp={(event) => {
+                const start = weekSwipeStartRef.current;
+                weekSwipeStartRef.current = null;
+                if (!start) return;
+                const dx = event.clientX - start.x;
+                const dy = event.clientY - start.y;
+                if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+                setWeekOffset((v) => v + (dx < 0 ? 1 : -1));
+              }}
+              onPointerCancel={() => {
+                weekSwipeStartRef.current = null;
+              }}
+            >
               <div style={styles.scheduleWeekHeader}>
                 <div style={styles.scheduleWeekTimeSpacer} />
                 {weekDays.map((d) => (
@@ -10696,6 +10714,9 @@ const styles: Record<string, any> = {
     fontWeight: 700,
     color: "var(--text)",
     lineHeight: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   trainerSelectWrap: {
     display: "flex",
