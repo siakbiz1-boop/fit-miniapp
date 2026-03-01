@@ -4098,7 +4098,7 @@ function TrainerSchedule(props: {
               </div>
               <div style={styles.scheduleWeekGrid}>
                 <div style={styles.scheduleWeekTimeCol}>
-                  {Array.from({ length: gridRows }, (_, idx) => {
+                  {Array.from({ length: gridRows - 1 }, (_, idx) => {
                     const hour = gridStartHour + idx;
                     return (
                       <div
