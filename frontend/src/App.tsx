@@ -4223,18 +4223,40 @@ function TrainerSchedule(props: {
               </button>
               {showWeekAddMenu ? (
                 <div
-                  style={styles.scheduleWeekAddOverlay}
+                  style={{
+                    ...styles.scheduleWeekAddOverlay,
+                    ...(theme === "dark" ? styles.scheduleWeekAddOverlayDark : styles.scheduleWeekAddOverlayLight),
+                  }}
                   onClick={() => setShowWeekAddMenu(false)}
                 >
                   <div
                     style={styles.scheduleWeekAddSheet}
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div style={styles.scheduleWeekAddTitle}>{tr("Добавить", "Add")}</div>
-                    <button type="button" style={styles.scheduleWeekAddBtn}>
+                    <div
+                      style={{
+                        ...styles.scheduleWeekAddTitle,
+                        ...(theme === "dark" ? styles.scheduleWeekAddTitleDark : styles.scheduleWeekAddTitleLight),
+                      }}
+                    >
+                      {tr("Добавить", "Add")}
+                    </div>
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.scheduleWeekAddBtn,
+                        ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
+                      }}
+                    >
                       {tr("Тренировку клиента", "Client session")}
                     </button>
-                    <button type="button" style={styles.scheduleWeekAddBtn}>
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.scheduleWeekAddBtn,
+                        ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
+                      }}
+                    >
                       {tr("Разовую тренировку", "One-time session")}
                     </button>
                   </div>
@@ -10786,12 +10808,17 @@ const styles: Record<string, any> = {
   scheduleWeekAddOverlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(15, 23, 42, 0.9)",
     display: "flex",
     alignItems: "flex-end",
     justifyContent: "center",
     padding: "0 18px 24px",
     zIndex: 60,
+  },
+  scheduleWeekAddOverlayLight: {
+    background: "rgba(255, 255, 255, 0.9)",
+  },
+  scheduleWeekAddOverlayDark: {
+    background: "rgba(15, 23, 42, 0.9)",
   },
   scheduleWeekAddSheet: {
     width: "100%",
@@ -10802,23 +10829,34 @@ const styles: Record<string, any> = {
     alignItems: "flex-start",
   },
   scheduleWeekAddTitle: {
-    color: "#fff",
     fontSize: 18,
     fontWeight: 700,
     marginBottom: 2,
+  },
+  scheduleWeekAddTitleLight: {
+    color: "#0f172a",
+  },
+  scheduleWeekAddTitleDark: {
+    color: "#fff",
   },
   scheduleWeekAddBtn: {
     width: "100%",
     height: 48,
     borderRadius: 14,
     border: "none",
-    background: "rgba(255,255,255,0.12)",
-    color: "#fff",
     fontWeight: 700,
     fontSize: 15,
     textAlign: "left",
     padding: "0 18px",
     cursor: "pointer",
+  },
+  scheduleWeekAddBtnLight: {
+    background: "rgba(15, 23, 42, 0.08)",
+    color: "#0f172a",
+  },
+  scheduleWeekAddBtnDark: {
+    background: "rgba(255,255,255,0.12)",
+    color: "#fff",
   },
   trainerSelectWrap: {
     display: "flex",
