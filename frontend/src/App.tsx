@@ -4241,14 +4241,16 @@ function TrainerSchedule(props: {
                   </div>
                 </div>
               </div>
-              <button
-                type="button"
-                style={styles.scheduleWeekFabFixed}
-                aria-label={tr("Добавить", "Add")}
-                onClick={() => setShowWeekAddMenu(true)}
-              >
-                <span style={styles.scheduleWeekFabIcon}>+</span>
-              </button>
+              {!showWeekSchedule ? (
+                <button
+                  type="button"
+                  style={styles.scheduleWeekFabFixed}
+                  aria-label={tr("Добавить", "Add")}
+                  onClick={() => setShowWeekAddMenu(true)}
+                >
+                  <span style={styles.scheduleWeekFabIcon}>+</span>
+                </button>
+              ) : null}
               {showWeekAddMenu ? (
                 <div
                   style={{
