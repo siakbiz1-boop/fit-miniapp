@@ -4184,6 +4184,260 @@ function TrainerSchedule(props: {
               </button>
             )}
           </div>
+          {showWeekSchedule && scheduleView === "list" ? (
+            <div
+              style={styles.clientScheduleOverlay}
+              onClick={() => setShowWeekSchedule(false)}
+            >
+              <button
+                type="button"
+                aria-label="close schedule"
+                style={styles.clientScheduleBackdrop}
+                onClick={() => setShowWeekSchedule(false)}
+              />
+              <div
+                style={styles.clientScheduleSheet}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div style={styles.clientScheduleHandle} />
+                <div style={styles.clientScheduleTitleRow}>
+                  <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
+                  <button
+                    type="button"
+                    onClick={() => setShowWeekSchedule(false)}
+                    style={styles.clientScheduleCloseBtn}
+                  >
+                    {tr("Закрыть", "Close")}
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setWeekScheduleMode("client")}
+                    style={{
+                      ...styles.scheduleTab,
+                      ...(weekScheduleMode === "client" ? styles.scheduleTabActive : null),
+                    }}
+                  >
+                    {tr("Тренировка клиента", "Client session")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWeekScheduleMode("one_time")}
+                    style={{
+                      ...styles.scheduleTab,
+                      ...(weekScheduleMode === "one_time" ? styles.scheduleTabActive : null),
+                    }}
+                  >
+                    {tr("Разовая тренировка", "One-time session")}
+                  </button>
+                </div>
+
+                <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
+                  {weekScheduleDays.map((d) => {
+                    const isToday = isSameDay(d.date, today);
+                    const isSelected = isSameDay(d.date, weekScheduleDate);
+                    const isPast = d.date.getTime() < today.getTime();
+                    return (
+                      <button
+                        key={d.key}
+                        ref={isSelected ? weekScheduleSelectedRef : isToday ? weekScheduleTodayRef : null}
+                        onClick={() => {
+                          if (isPast) return;
+                          setWeekScheduleDate(d.date);
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        style={{
+                          ...styles.calendarDay,
+                          ...(isToday ? styles.calendarDayActive : {}),
+                          ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
+                          ...(isPast ? styles.calendarDayPast : {}),
+                        }}
+                        aria-current={isToday ? "date" : undefined}
+                        type="button"
+                      >
+                        <div style={styles.calendarDayDate}>{d.dateText}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={styles.clientScheduleFields}>
+                  <div style={styles.freeField}>
+                    <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
+                    <input
+                      type="time"
+                      value={weekScheduleStart}
+                      onChange={(e) => {
+                        setWeekScheduleStart(e.target.value);
+                        if (weekScheduleError) setWeekScheduleError("");
+                      }}
+                      step={300}
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.freeField}>
+                    <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+                    <input
+                      type="time"
+                      value={weekScheduleEnd}
+                      onChange={(e) => {
+                        setWeekScheduleEnd(e.target.value);
+                        if (weekScheduleError) setWeekScheduleError("");
+                      }}
+                      step={300}
+                      style={styles.input}
+                    />
+                  </div>
+                  {weekScheduleMode === "client" ? (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                      <select
+                        value={weekScheduleClientId}
+                        onChange={(e) => {
+                          setWeekScheduleClientId(e.target.value);
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        style={styles.trainerSelect}
+                      >
+                        {activeClients.length === 0 ? (
+                          <option value="">{tr("Нет клиентов", "No clients")}</option>
+                        ) : (
+                          activeClients.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {getClientLabel(activeClients, c.username)}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                      <input
+                        value={weekScheduleClientName}
+                        onChange={(e) => {
+                          setWeekScheduleClientName(e.target.value);
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        placeholder={tr("Введите имя клиента", "Enter client name")}
+                        style={styles.input}
+                      />
+                    </div>
+                  )}
+                  {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
+                  <button
+                    type="button"
+                    style={styles.saveBtn}
+                    onClick={async () => {
+                      const dateKey = formatDateKey(weekScheduleDate);
+                      const start = normalizeTimeInput(weekScheduleStart);
+                      const end = normalizeTimeInput(weekScheduleEnd);
+                      if (!start || !end) {
+                        setWeekScheduleError(
+                          tr("Укажите время в формате ЧЧ:ММ (например 10:00).", "Enter time in HH:MM (e.g., 10:00).")
+                        );
+                        return;
+                      }
+                      if (end <= start) {
+                        setWeekScheduleError(
+                          tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                        );
+                        return;
+                      }
+                      const selectedDay = startOfDay(weekScheduleDate);
+                      const todayDay = startOfDay(new Date());
+                      if (selectedDay.getTime() < todayDay.getTime()) {
+                        setWeekScheduleError(
+                          tr("Нельзя создавать тренировки в прошедших датах.", "You can't schedule sessions in past dates.")
+                        );
+                        return;
+                      }
+                      const existingSessions = sessionsByDate[dateKey] || [];
+                      const startMin = timeToMinutes(start);
+                      const endMin = timeToMinutes(end);
+                      const overlapsSession = existingSessions.some((s) => {
+                        const sStart = timeToMinutes(s.start);
+                        const sEnd = timeToMinutes(s.end);
+                        return startMin < sEnd && endMin > sStart;
+                      });
+                      if (overlapsSession) {
+                        setWeekScheduleError(
+                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                        );
+                        return;
+                      }
+                      let client: TrainerClientInvite | null = null;
+                      if (weekScheduleMode === "client") {
+                        if (!weekScheduleClientId) {
+                          setWeekScheduleError(tr("Выберите клиента.", "Select a client."));
+                          return;
+                        }
+                        client = activeClients.find((c) => c.id === weekScheduleClientId) || null;
+                        if (!client) {
+                          setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                          return;
+                        }
+                      } else if (!weekScheduleClientName.trim()) {
+                        setWeekScheduleError(tr("Введите имя клиента.", "Enter client name."));
+                        return;
+                      }
+                      if (!token) {
+                        setWeekScheduleError(tr("Сначала войдите в аккаунт.", "Please login first."));
+                        return;
+                      }
+                      try {
+                        const res = await fetch(`${apiBase}/sessions`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({
+                            dateKey,
+                            start,
+                            end,
+                            ...(weekScheduleMode === "client" && client
+                              ? { clientId: client.id }
+                              : { oneTime: true, clientName: weekScheduleClientName.trim() }),
+                          }),
+                        });
+                        if (!res.ok) {
+                          if (res.status === 409) {
+                            setWeekScheduleError(
+                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                            );
+                          } else if (res.status === 404) {
+                            setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                          } else if (res.status === 403) {
+                            setWeekScheduleError(
+                              tr("Нельзя создать тренировку для этого клиента.", "You can't schedule this client.")
+                            );
+                          } else {
+                            setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                          }
+                          return;
+                        }
+                        const data = (await res.json()) as { ok: boolean; session?: any };
+                        if (!data?.session) {
+                          throw new Error("session missing");
+                        }
+                        const mapped = mapSessionFromApi(data.session);
+                        setSessionsByDate((prev) => {
+                          const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                          list.push(mapped);
+                          return { ...prev, [mapped.dateKey]: list };
+                        });
+                        setShowWeekSchedule(false);
+                      } catch {
+                        setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                      }
+                    }}
+                  >
+                    {tr("Добавить", "Add")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : null}
 
@@ -4412,7 +4666,7 @@ function TrainerSchedule(props: {
                   </div>
                 </div>
               ) : null}
-              {showWeekSchedule ? (
+              {showWeekSchedule && scheduleView === "grid" ? (
                 <div
                   style={styles.clientScheduleOverlay}
                   onClick={() => setShowWeekSchedule(false)}
