@@ -1789,6 +1789,7 @@ function TrainerHome({
     const id = window.setInterval(() => setNow(new Date()), 60 * 1000);
     return () => window.clearInterval(id);
   }, []);
+  const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   useEffect(() => {
     try {
       localStorage.setItem("trainerNotesLists", JSON.stringify(notesLists));
@@ -1799,6 +1800,23 @@ function TrainerHome({
   useEffect(() => {
     if (homeTab !== "work" && notesOpen) setNotesOpen(false);
   }, [homeTab, notesOpen]);
+  useEffect(() => {
+    if (!hasTgBack) return;
+    if (!notesOpen) {
+      WebApp.BackButton.hide();
+      return;
+    }
+    const handler = () => setNotesOpen(false);
+    WebApp.BackButton.show();
+    WebApp.BackButton.onClick(handler);
+    return () => {
+      try {
+        WebApp.BackButton.offClick(handler);
+      } catch {
+        // ignore
+      }
+    };
+  }, [hasTgBack, notesOpen]);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const doneSessions = allSessions.filter((s) => sessionEndTime(s).getTime() <= now.getTime());
@@ -1984,14 +2002,7 @@ function TrainerHome({
       <div style={styles.pageContainer}>
         <div style={styles.notesScreen}>
           <div style={styles.topBar}>
-          <button
-            type="button"
-            onClick={() => setNotesOpen(false)}
-            style={styles.backBtnInline}
-            aria-label={tr("назад", "back")}
-          >
-            <IconArrowLeft />
-          </button>
+            <div style={styles.backBtnSpacer} />
             <div style={styles.topBarTitle}>{tr("Заметки", "Notes")}</div>
           </div>
           <div style={styles.topBarDivider} />
@@ -10021,6 +10032,10 @@ const styles: Record<string, any> = {
     color: "var(--text)",
     position: "absolute",
     left: 0,
+  },
+  backBtnSpacer: {
+    width: 36,
+    height: 36,
   },
   topBarDivider: {
     height: 1,
