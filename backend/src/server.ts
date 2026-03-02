@@ -1180,6 +1180,86 @@ app.post("/notes/lists", async (req, reply) => {
   }
 });
 
+app.patch("/notes/lists/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+  if (dbUser.role !== "trainer") {
+    return reply.code(403).send({ message: "Only trainers can update notes lists" });
+  }
+  const id = String((req.params as any)?.id || "");
+  const body = req.body as any;
+  const title = String(body?.title || "").trim();
+  if (!id) {
+    return reply.code(400).send({ message: "id is required" });
+  }
+  if (!title) {
+    return reply.code(400).send({ message: "title is required" });
+  }
+  if (title.length > 120) {
+    return reply.code(400).send({ message: "title is too long" });
+  }
+  try {
+    const updated = await prismaAny.trainerNoteList.updateMany({
+      where: { id, trainerTgUserId: dbUser.tgUserId },
+      data: { title },
+    });
+    if (!updated.count) {
+      return reply.code(404).send({ message: "not found" });
+    }
+    const list = await prismaAny.trainerNoteList.findUnique({
+      where: { id },
+      select: { id: true, title: true, createdAt: true },
+    });
+    return { ok: true, list };
+  } catch (err: any) {
+    if (!isMissingNotesTableError(err)) throw err;
+    await ensureTrainerNotesTable();
+    const updated = await prismaAny.trainerNoteList.updateMany({
+      where: { id, trainerTgUserId: dbUser.tgUserId },
+      data: { title },
+    });
+    if (!updated.count) {
+      return reply.code(404).send({ message: "not found" });
+    }
+    const list = await prismaAny.trainerNoteList.findUnique({
+      where: { id },
+      select: { id: true, title: true, createdAt: true },
+    });
+    return { ok: true, list };
+  }
+});
+
+app.delete("/notes/lists/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+  if (dbUser.role !== "trainer") {
+    return reply.code(403).send({ message: "Only trainers can delete notes lists" });
+  }
+  const id = String((req.params as any)?.id || "");
+  if (!id) {
+    return reply.code(400).send({ message: "id is required" });
+  }
+  try {
+    const removed = await prismaAny.trainerNoteList.deleteMany({
+      where: { id, trainerTgUserId: dbUser.tgUserId },
+    });
+    if (!removed.count) {
+      return reply.code(404).send({ message: "not found" });
+    }
+    return { ok: true };
+  } catch (err: any) {
+    if (!isMissingNotesTableError(err)) throw err;
+    await ensureTrainerNotesTable();
+    const removed = await prismaAny.trainerNoteList.deleteMany({
+      where: { id, trainerTgUserId: dbUser.tgUserId },
+    });
+    if (!removed.count) {
+      return reply.code(404).send({ message: "not found" });
+    }
+    return { ok: true };
+  }
+});
+
 // --------------------
 // Client activation & booking
 // --------------------

@@ -1778,7 +1778,18 @@ function TrainerHome({
   const [notesCreating, setNotesCreating] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
+  const [notesEditingId, setNotesEditingId] = useState<string | null>(null);
+  const [notesEditDraft, setNotesEditDraft] = useState("");
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [notesSwipeId, setNotesSwipeId] = useState<string | null>(null);
+  const [notesSwipeOffset, setNotesSwipeOffset] = useState(0);
   const notesInputRef = useRef<HTMLInputElement | null>(null);
+  const notesEditInputRef = useRef<HTMLInputElement | null>(null);
+  const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
+    id: null,
+    startX: 0,
+    dragging: false,
+  });
   const [statsMode, setStatsMode] = useState<"money" | "count">("money");
   const [statsDate, setStatsDate] = useState<Date>(() => startOfDay(new Date()));
   const [statsSelectedDate, setStatsSelectedDate] = useState<Date>(() => startOfDay(new Date()));
@@ -1827,6 +1838,11 @@ function TrainerHome({
       window.setTimeout(() => notesInputRef.current?.focus(), 0);
     }
   }, [notesCreating]);
+  useEffect(() => {
+    if (notesEditingId) {
+      window.setTimeout(() => notesEditInputRef.current?.focus(), 0);
+    }
+  }, [notesEditingId]);
   useEffect(() => {
     if (!hasTgBack) return;
     if (!notesOpen) {
@@ -2058,6 +2074,67 @@ function TrainerHome({
       setNotesSaving(false);
     }
   };
+  const submitNotesEdit = async () => {
+    if (!notesEditingId) return;
+    const title = notesEditDraft.trim();
+    if (!title) return;
+    if (!token) return;
+    setNotesEditing(true);
+    setNotesError(null);
+    try {
+      const res = await fetch(`${apiBase}/notes/lists/${encodeURIComponent(notesEditingId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        setNotesError(tr("Не удалось сохранить список.", "Failed to save list."));
+        return;
+      }
+      const data = (await res.json()) as { ok: boolean; list?: NotesListItem };
+      if (data?.list) {
+        setNotesLists((prev) =>
+          prev.map((item) => (item.id === data.list?.id ? (data.list as NotesListItem) : item))
+        );
+      }
+      setNotesEditingId(null);
+      setNotesEditDraft("");
+    } catch {
+      setNotesError(tr("Проверьте соединение.", "Check your connection."));
+    } finally {
+      setNotesEditing(false);
+    }
+  };
+  const handleDeleteNote = async (id: string) => {
+    const message = tr("Вы действительно хотите удалить список?", "Delete this list?");
+    const confirmDelete = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${apiBase}/notes/lists/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setNotesError(tr("Не удалось удалить список.", "Failed to delete list."));
+          return;
+        }
+        setNotesLists((prev) => prev.filter((item) => item.id !== id));
+        if (notesSwipeId === id) {
+          setNotesSwipeId(null);
+          setNotesSwipeOffset(0);
+        }
+      } catch {
+        setNotesError(tr("Проверьте соединение.", "Check your connection."));
+      }
+    };
+    if (typeof WebApp?.showConfirm === "function") {
+      WebApp.showConfirm(message, (ok) => {
+        if (ok) void confirmDelete();
+      });
+      return;
+    }
+    if (window.confirm(message)) void confirmDelete();
+  };
 
   if (notesOpen) {
     return (
@@ -2121,8 +2198,92 @@ function TrainerHome({
               </div>
             ) : (
               notesLists.map((item) => (
-                <div key={item.id} style={styles.notesRow}>
-                  <span style={styles.notesRowTitle}>{item.title}</span>
+                <div key={item.id} style={styles.notesSwipeWrap}>
+                  <div style={styles.notesSwipeActions}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotesSwipeId(null);
+                        setNotesSwipeOffset(0);
+                        setNotesEditingId(item.id);
+                        setNotesEditDraft(item.title);
+                      }}
+                      style={{ ...styles.notesSwipeBtn, ...styles.notesSwipeEdit }}
+                      aria-label={tr("редактировать", "edit")}
+                    >
+                      <IconPencil />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNote(item.id)}
+                      style={{ ...styles.notesSwipeBtn, ...styles.notesSwipeDelete }}
+                      aria-label={tr("удалить", "delete")}
+                    >
+                      <IconTrash size={20} strokeWidth={2} />
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      ...styles.notesRow,
+                      ...styles.notesSwipeRow,
+                      transform:
+                        notesSwipeId === item.id ? `translateX(${notesSwipeOffset}px)` : "translateX(0px)",
+                    }}
+                    onPointerDown={(e) => {
+                      if (notesEditingId) return;
+                      swipeStateRef.current = { id: item.id, startX: e.clientX, dragging: true };
+                    }}
+                    onPointerMove={(e) => {
+                      if (!swipeStateRef.current.dragging) return;
+                      if (swipeStateRef.current.id !== item.id) return;
+                      const delta = e.clientX - swipeStateRef.current.startX;
+                      const clamped = Math.max(-120, Math.min(0, delta));
+                      setNotesSwipeId(item.id);
+                      setNotesSwipeOffset(clamped);
+                    }}
+                    onPointerUp={() => {
+                      if (!swipeStateRef.current.dragging) return;
+                      swipeStateRef.current.dragging = false;
+                      const shouldOpen = notesSwipeOffset <= -60;
+                      setNotesSwipeId(shouldOpen ? item.id : null);
+                      setNotesSwipeOffset(shouldOpen ? -120 : 0);
+                    }}
+                    onPointerLeave={() => {
+                      if (!swipeStateRef.current.dragging) return;
+                      swipeStateRef.current.dragging = false;
+                      const shouldOpen = notesSwipeOffset <= -60;
+                      setNotesSwipeId(shouldOpen ? item.id : null);
+                      setNotesSwipeOffset(shouldOpen ? -120 : 0);
+                    }}
+                  >
+                    {notesEditingId === item.id ? (
+                      <input
+                        ref={notesEditInputRef}
+                        value={notesEditDraft}
+                        onChange={(e) => setNotesEditDraft(e.target.value)}
+                        placeholder={tr("Новый список", "New list")}
+                        style={styles.notesInput}
+                        disabled={notesEditing}
+                        onKeyDown={(e) => {
+                          if (notesEditing) return;
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            submitNotesEdit();
+                          }
+                          if (e.key === "Escape") {
+                            setNotesEditingId(null);
+                            setNotesEditDraft("");
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!notesEditDraft.trim()) return;
+                          submitNotesEdit();
+                        }}
+                      />
+                    ) : (
+                      <span style={styles.notesRowTitle}>{item.title}</span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -9529,6 +9690,20 @@ function IconTrash({ size = 22, strokeWidth = 2.1 }: IconProps) {
   );
 }
 
+function IconPencil({ size = 22, strokeWidth = 2.1 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12.7 4.6l6.7 6.7M4 20l4.9-1.1 9.7-9.7a2 2 0 0 0 0-2.8l-1-1a2 2 0 0 0-2.8 0L5.1 15.1 4 20z"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 // -----------------------
 // Styles
 // -----------------------
@@ -10200,6 +10375,42 @@ const styles: Record<string, any> = {
     textAlign: "left",
     width: "100%",
     boxSizing: "border-box",
+  },
+  notesSwipeWrap: {
+    position: "relative",
+    width: "100%",
+  },
+  notesSwipeActions: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    display: "flex",
+    alignItems: "stretch",
+    gap: 0,
+    overflow: "hidden",
+    borderRadius: 14,
+  },
+  notesSwipeBtn: {
+    width: 60,
+    border: "none",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#fff",
+  },
+  notesSwipeEdit: {
+    background: "#54c0c6",
+  },
+  notesSwipeDelete: {
+    background: "#e45656",
+  },
+  notesSwipeRow: {
+    position: "relative",
+    zIndex: 1,
+    transition: "transform 0.12s ease",
+    touchAction: "pan-y",
   },
   notesRowButton: {
     cursor: "pointer",
