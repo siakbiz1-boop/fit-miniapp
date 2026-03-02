@@ -1435,6 +1435,7 @@ export default function App() {
                   apiBase={apiBase}
                   trainerTgUserId={tgUserId}
                   theme={theme}
+                  trainerProfile={trainerProfile}
                   pendingSession={pendingSession}
                   onConsumePendingSession={() => setPendingSession(null)}
                   onSaveExercises={saveClientExercises}
@@ -3359,6 +3360,7 @@ function TrainerSchedule(props: {
   apiBase: string;
   trainerTgUserId: string;
   theme: "light" | "dark";
+  trainerProfile?: TrainerProfile | null;
   pendingSession?: SessionItem | null;
   onConsumePendingSession?: () => void;
   onSaveExercises?: (
@@ -3376,6 +3378,7 @@ function TrainerSchedule(props: {
     apiBase,
     trainerTgUserId,
     theme,
+    trainerProfile,
     pendingSession,
     onConsumePendingSession,
     onSaveExercises,
@@ -3409,6 +3412,7 @@ function TrainerSchedule(props: {
   const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
   const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
   const weekScheduleTodayRef = useRef<HTMLButtonElement | null>(null);
+  const bookingMode = trainerProfile?.bookingMode === "both" ? "both" : "trainer";
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -3621,6 +3625,12 @@ function TrainerSchedule(props: {
     const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [showWeekSchedule, weekScheduleDate, activeClients, weekScheduleClientId, weekScheduleMode]);
+
+  useEffect(() => {
+    if (bookingMode !== "both" && section === "free") {
+      setSection("sessions");
+    }
+  }, [bookingMode, section]);
 
   useEffect(() => {
     if (!token || !trainerTgUserId) return;
@@ -4149,16 +4159,30 @@ function TrainerSchedule(props: {
             >
               {tr("Занятия сегодня", "Today's sessions")}
             </button>
-            <button
-              type="button"
-              onClick={() => setSection("free")}
-              style={{
-                ...styles.scheduleTab,
-                ...(section === "free" ? styles.scheduleTabActive : null),
-              }}
-            >
-              {tr("Свободные окна", "Available slots")}
-            </button>
+            {bookingMode === "both" ? (
+              <button
+                type="button"
+                onClick={() => setSection("free")}
+                style={{
+                  ...styles.scheduleTab,
+                  ...(section === "free" ? styles.scheduleTabActive : null),
+                }}
+              >
+                {tr("Свободные окна", "Available slots")}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setWeekScheduleMode("client");
+                  setWeekScheduleDate(selected);
+                  setShowWeekSchedule(true);
+                }}
+                style={styles.scheduleTab}
+              >
+                {tr("Добавить тренировку", "Add session")}
+              </button>
+            )}
           </div>
         </>
       ) : null}
@@ -4412,6 +4436,29 @@ function TrainerSchedule(props: {
                         style={styles.clientScheduleCloseBtn}
                       >
                         {tr("Закрыть", "Close")}
+                      </button>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMode("client")}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMode === "client" ? styles.scheduleTabActive : null),
+                        }}
+                      >
+                        {tr("Тренировка клиента", "Client session")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMode("one_time")}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMode === "one_time" ? styles.scheduleTabActive : null),
+                        }}
+                      >
+                        {tr("Разовая тренировка", "One-time session")}
                       </button>
                     </div>
 
