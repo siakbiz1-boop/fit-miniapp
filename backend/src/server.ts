@@ -1488,7 +1488,9 @@ app.post("/sessions", async (req, reply) => {
   const end = String(body?.end || "");
   const clientId = body?.clientId ? String(body.clientId) : "";
   const clientUsernameRaw = body?.clientUsername ? String(body.clientUsername) : "";
-  if (!dateKey || !start || !end || (!clientId && !clientUsernameRaw)) {
+  const oneTime = body?.oneTime === true;
+  const clientNameRaw = body?.clientName ? String(body.clientName) : "";
+  if (!dateKey || !start || !end || (!oneTime && !clientId && !clientUsernameRaw)) {
     return reply.code(400).send({ message: "dateKey/start/end/client required" });
   }
 
@@ -1511,19 +1513,21 @@ app.post("/sessions", async (req, reply) => {
   }
 
   let relation = null as any;
-  if (clientId) {
-    relation = await prismaAny.trainerClient.findUnique({ where: { id: clientId } });
-    if (relation && relation.trainerTgUserId !== dbUser.tgUserId) relation = null;
-  }
-  if (!relation && clientUsernameRaw) {
-    const normalized = clientUsernameRaw.replace(/^@/, "");
-    relation = await prismaAny.trainerClient.findFirst({
-      where: { trainerTgUserId: dbUser.tgUserId, clientUsername: normalized },
-    });
-  }
-  if (!relation) return reply.code(404).send({ message: "client not found" });
-  if (relation.status !== "active" || relation.archived) {
-    return reply.code(403).send({ message: "client inactive" });
+  if (!oneTime) {
+    if (clientId) {
+      relation = await prismaAny.trainerClient.findUnique({ where: { id: clientId } });
+      if (relation && relation.trainerTgUserId !== dbUser.tgUserId) relation = null;
+    }
+    if (!relation && clientUsernameRaw) {
+      const normalized = clientUsernameRaw.replace(/^@/, "");
+      relation = await prismaAny.trainerClient.findFirst({
+        where: { trainerTgUserId: dbUser.tgUserId, clientUsername: normalized },
+      });
+    }
+    if (!relation) return reply.code(404).send({ message: "client not found" });
+    if (relation.status !== "active" || relation.archived) {
+      return reply.code(403).send({ message: "client inactive" });
+    }
   }
 
   const overlap = await prismaAny.trainingSession.findFirst({
@@ -1542,13 +1546,13 @@ app.post("/sessions", async (req, reply) => {
     data: {
       id,
       trainerTgUserId: dbUser.tgUserId,
-      clientUsername: relation.clientUsername,
-      clientName: relation.fullName || null,
+      clientUsername: oneTime ? "one_time" : relation.clientUsername,
+      clientName: oneTime ? (clientNameRaw.trim() || null) : relation.fullName || null,
       startAt,
       endAt,
       startTime: start,
       endTime: end,
-      type: null,
+      type: oneTime ? "one_time" : null,
       source: "trainer",
       remindAt,
     },
@@ -1573,7 +1577,7 @@ app.post("/sessions", async (req, reply) => {
     }
   }
 
-  if (startAt.getTime() > Date.now()) {
+  if (!oneTime && startAt.getTime() > Date.now()) {
     await adjustSubscriptionLeft(dbUser.tgUserId, relation.clientUsername, -1);
   }
 
@@ -1638,6 +1642,7 @@ app.patch("/sessions/:id", async (req, reply) => {
   if (body?.type !== undefined) data.type = body.type;
   if (body?.price !== undefined) data.price = body.price;
   if (body?.comment !== undefined) data.comment = body.comment;
+  if (body?.clientName !== undefined) data.clientName = body.clientName;
 
   if (Object.keys(data).length === 0) {
     return reply.code(400).send({ message: "Nothing to update" });

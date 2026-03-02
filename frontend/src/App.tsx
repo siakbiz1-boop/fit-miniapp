@@ -177,6 +177,7 @@ type SessionItem = {
   start: string; // HH:MM
   end: string; // HH:MM
   clientUsername: string; // without @
+  clientName?: string;
   trainerTgUserId?: string;
   source?: "trainer" | "client";
   type?: string;
@@ -3372,6 +3373,9 @@ function TrainerSchedule(props: {
   const [draftSessionType, setDraftSessionType] = useState("");
   const [draftSessionPrice, setDraftSessionPrice] = useState("");
   const [draftSessionComment, setDraftSessionComment] = useState("");
+  const [draftSessionClientName, setDraftSessionClientName] = useState("");
+  const [weekScheduleMode, setWeekScheduleMode] = useState<"client" | "one_time">("client");
+  const [weekScheduleClientName, setWeekScheduleClientName] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
   const weekSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [showWeekAddMenu, setShowWeekAddMenu] = useState(false);
@@ -3396,19 +3400,33 @@ function TrainerSchedule(props: {
 
   useEffect(() => {
     if (!activeSession) return;
+    const isOneTime = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
     setDraftSessionType(activeSession.type ?? "");
     const fallbackPrice =
       clients.find((c) => c.username === activeSession.clientUsername)?.subscriptionPrice ?? "";
     setDraftSessionPrice(activeSession.price ?? fallbackPrice ?? "");
     setDraftSessionComment(activeSession.comment ?? "");
-  }, [activeSession?.id, activeSession?.type, activeSession?.price, activeSession?.comment, clients]);
+    setDraftSessionClientName(activeSession.clientName ?? "");
+    if (isOneTime) setSessionTab("info");
+  }, [
+    activeSession?.id,
+    activeSession?.type,
+    activeSession?.price,
+    activeSession?.comment,
+    activeSession?.clientName,
+    activeSession?.clientUsername,
+    clients,
+  ]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 30000);
     return () => window.clearInterval(id);
   }, []);
 
-  const saveSessionPatch = async (sessionId: string, patch: { type?: string; price?: string; comment?: string }) => {
+  const saveSessionPatch = async (
+    sessionId: string,
+    patch: { type?: string; price?: string; comment?: string; clientName?: string }
+  ) => {
     if (!token) return;
     try {
       let res = await fetch(`${apiBase}/sessions/${encodeURIComponent(sessionId)}`, {
@@ -3570,7 +3588,7 @@ function TrainerSchedule(props: {
   useEffect(() => {
     if (!showWeekSchedule) return;
     setWeekScheduleError("");
-    if (!weekScheduleClientId) {
+    if (weekScheduleMode === "client" && !weekScheduleClientId) {
       const first = activeClients[0];
       if (first?.id) setWeekScheduleClientId(first.id);
     }
@@ -3579,7 +3597,7 @@ function TrainerSchedule(props: {
     if (!scroller || !target) return;
     const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [showWeekSchedule, weekScheduleDate, activeClients, weekScheduleClientId]);
+  }, [showWeekSchedule, weekScheduleDate, activeClients, weekScheduleClientId, weekScheduleMode]);
 
   useEffect(() => {
     if (!token || !trainerTgUserId) return;
@@ -3673,6 +3691,7 @@ function TrainerSchedule(props: {
   if (scheduleScreen === "session" && activeSession) {
     const sessionClient = clients.find((c) => c.username === activeSession.clientUsername) || null;
     const canDeleteByTime = sessionStartTime(activeSession).getTime() > nowTs;
+    const isOneTimeSession = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
     return (
       <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -3705,26 +3724,30 @@ function TrainerSchedule(props: {
             >
               {tr("Информация о тренировке", "Session info")}
             </button>
-            <button
-              type="button"
-              onClick={() => setSessionTab("weights")}
-              style={{
-                ...styles.clientTab,
-                ...(sessionTab === "weights" ? styles.clientTabActive : null),
-              }}
-            >
-              {tr("Статистика упражнений", "Exercise stats")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSessionTab("history")}
-              style={{
-                ...styles.clientTab,
-                ...(sessionTab === "history" ? styles.clientTabActive : null),
-              }}
-            >
-              {tr("История тренировок клиента", "Client history")}
-            </button>
+            {!isOneTimeSession ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSessionTab("weights")}
+                  style={{
+                    ...styles.clientTab,
+                    ...(sessionTab === "weights" ? styles.clientTabActive : null),
+                  }}
+                >
+                  {tr("Статистика упражнений", "Exercise stats")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSessionTab("history")}
+                  style={{
+                    ...styles.clientTab,
+                    ...(sessionTab === "history" ? styles.clientTabActive : null),
+                  }}
+                >
+                  {tr("История тренировок клиента", "Client history")}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
         <div style={styles.clientTabsDivider} />
@@ -3732,9 +3755,32 @@ function TrainerSchedule(props: {
           {sessionTab === "info" ? (
             <div>
               <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
-              <div style={styles.readOnlyValue}>
-                {getClientLabel(clients, activeSession.clientUsername)}
-              </div>
+              {isOneTimeSession ? (
+                <input
+                  value={draftSessionClientName}
+                  onChange={(e) => setDraftSessionClientName(e.target.value)}
+                  onBlur={() => {
+                    if (!activeSession) return;
+                    const value = draftSessionClientName.trim();
+                    setActiveSession((prev) => (prev ? { ...prev, clientName: value } : prev));
+                    setSessionsByDate((prev) => {
+                      const dateKey = activeSession.dateKey;
+                      const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                      const nextList = list.map((item) =>
+                        item.id === activeSession.id ? { ...item, clientName: value } : item
+                      );
+                      return { ...prev, [dateKey]: nextList };
+                    });
+                    saveSessionPatch(activeSession.id, { clientName: value });
+                  }}
+                  placeholder={tr("Введите имя клиента", "Enter client name")}
+                  style={styles.input}
+                />
+              ) : (
+                <div style={styles.readOnlyValue}>
+                  {getClientLabel(clients, activeSession.clientUsername)}
+                </div>
+              )}
               <div style={{ marginTop: 16 }} />
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
@@ -3748,28 +3794,36 @@ function TrainerSchedule(props: {
               </div>
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
-                <input
-                  value={draftSessionType}
-                  onChange={(e) => {
-                    setDraftSessionType(e.target.value);
-                  }}
-                  onBlur={() => {
-                    if (!activeSession) return;
-                    const value = draftSessionType.trim();
-                    setActiveSession((prev) => (prev ? { ...prev, type: value } : prev));
-                    setSessionsByDate((prev) => {
-                      const dateKey = activeSession.dateKey;
-                      const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                      const nextList = list.map((item) =>
-                        item.id === activeSession.id ? { ...item, type: value } : item
-                      );
-                      return { ...prev, [dateKey]: nextList };
-                    });
-                    saveSessionPatch(activeSession.id, { type: value });
-                  }}
-                  placeholder={tr("Введите тип тренировки", "Enter session type")}
-                  style={styles.input}
-                />
+                {isOneTimeSession ? (
+                  <input
+                    value={tr("Разовая тренировка", "One-time session")}
+                    readOnly
+                    style={{ ...styles.input, opacity: 0.8 }}
+                  />
+                ) : (
+                  <input
+                    value={draftSessionType}
+                    onChange={(e) => {
+                      setDraftSessionType(e.target.value);
+                    }}
+                    onBlur={() => {
+                      if (!activeSession) return;
+                      const value = draftSessionType.trim();
+                      setActiveSession((prev) => (prev ? { ...prev, type: value } : prev));
+                      setSessionsByDate((prev) => {
+                        const dateKey = activeSession.dateKey;
+                        const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                        const nextList = list.map((item) =>
+                          item.id === activeSession.id ? { ...item, type: value } : item
+                        );
+                        return { ...prev, [dateKey]: nextList };
+                      });
+                      saveSessionPatch(activeSession.id, { type: value });
+                    }}
+                    placeholder={tr("Введите тип тренировки", "Enter session type")}
+                    style={styles.input}
+                  />
+                )}
               </div>
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
@@ -3912,7 +3966,7 @@ function TrainerSchedule(props: {
                 </button>
               ) : null}
             </div>
-          ) : sessionTab === "weights" ? (
+          ) : sessionTab === "weights" && !isOneTimeSession ? (
             <ExerciseStatsPanel
               clientId={sessionClient?.id ?? null}
               exercises={sessionClient?.exercises || []}
@@ -3927,7 +3981,7 @@ function TrainerSchedule(props: {
               apiBase={apiBase}
               embedded
             />
-          ) : sessionTab === "history" ? (
+          ) : sessionTab === "history" && !isOneTimeSession ? (
             <div>
               {(historyByClient[activeSession.clientUsername] || []).some((s) => isSessionEnded(s, new Date())) ? (
                 <div style={styles.listBlock}>
@@ -4102,37 +4156,44 @@ function TrainerSchedule(props: {
               }
               return (
                 <div style={styles.sessionList}>
-                  {list.map((s) => (
-                    <div
-                      key={s.id}
-                      style={styles.sessionBanner}
-                      onClick={() => {
-                        setActiveSession(s);
-                        setScheduleScreen("session");
-                      }}
-                    >
-                      <div style={styles.sessionBannerLeft}>
-                        <div style={styles.sessionBannerTitle}>
-                          {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
+                  {list.map((s) => {
+                    const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
+                    const title = isOneTime
+                      ? tr("Разовая тренировка", "One-time session")
+                      : s.type?.trim()
+                        ? s.type
+                        : tr("Тренировка", "Session");
+                    const clientLabel = isOneTime ? s.clientName?.trim() || "" : getClientLabel(clients, s.clientUsername);
+                    return (
+                      <div
+                        key={s.id}
+                        style={styles.sessionBanner}
+                        onClick={() => {
+                          setActiveSession(s);
+                          setScheduleScreen("session");
+                        }}
+                      >
+                        <div style={styles.sessionBannerLeft}>
+                          <div style={styles.sessionBannerTitle}>{title}</div>
+                          <div style={styles.sessionBannerTime}>
+                            {s.start} — {s.end}
+                          </div>
+                          {clientLabel ? (
+                            <div style={styles.sessionBannerClient}>{clientLabel}</div>
+                          ) : null}
+                          <div
+                            style={{
+                              ...styles.sessionBannerStatus,
+                              color: sessionStatusColor(s),
+                            }}
+                          >
+                            {sessionStatusLabel(s)}
+                          </div>
                         </div>
-                        <div style={styles.sessionBannerTime}>
-                          {s.start} — {s.end}
-                        </div>
-                        <div style={styles.sessionBannerClient}>
-                          {getClientLabel(clients, s.clientUsername)}
-                        </div>
-                        <div
-                          style={{
-                            ...styles.sessionBannerStatus,
-                            color: sessionStatusColor(s),
-                          }}
-                        >
-                          {sessionStatusLabel(s)}
-                        </div>
+                        <div style={styles.sessionBannerActions} />
                       </div>
-                      <div style={styles.sessionBannerActions} />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()
@@ -4204,6 +4265,7 @@ function TrainerSchedule(props: {
                               />
                             ))}
                             {daySessions.map((s) => {
+                              const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
                               const startMin = timeToMinutes(s.start);
                               const endMin = timeToMinutes(s.end);
                               const top =
@@ -4226,7 +4288,7 @@ function TrainerSchedule(props: {
                                 }}
                               >
                                   <div style={styles.scheduleWeekSessionTitle}>
-                                    {getClientLabel(clients, s.clientUsername)}
+                                    {isOneTime ? s.clientName?.trim() || "" : getClientLabel(clients, s.clientUsername)}
                                   </div>
                                   <div style={styles.scheduleWeekSessionTime}>
                                     {s.start}–{s.end}
@@ -4279,6 +4341,7 @@ function TrainerSchedule(props: {
                       }}
                       onClick={() => {
                         setShowWeekAddMenu(false);
+                        setWeekScheduleMode("client");
                         setShowWeekSchedule(true);
                       }}
                     >
@@ -4289,6 +4352,12 @@ function TrainerSchedule(props: {
                       style={{
                         ...styles.scheduleWeekAddBtn,
                         ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
+                      }}
+                      onClick={() => {
+                        setShowWeekAddMenu(false);
+                        setWeekScheduleMode("one_time");
+                        setWeekScheduleClientName("");
+                        setShowWeekSchedule(true);
                       }}
                     >
                       {tr("Разовую тренировку", "One-time session")}
@@ -4379,27 +4448,42 @@ function TrainerSchedule(props: {
                           style={styles.input}
                         />
                       </div>
-                      <div style={{ marginTop: 12 }}>
-                        <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
-                        <select
-                          value={weekScheduleClientId}
-                          onChange={(e) => {
-                            setWeekScheduleClientId(e.target.value);
-                            if (weekScheduleError) setWeekScheduleError("");
-                          }}
-                          style={styles.trainerSelect}
-                        >
-                          {activeClients.length === 0 ? (
-                            <option value="">{tr("Нет клиентов", "No clients")}</option>
-                          ) : (
-                            activeClients.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {getClientLabel(activeClients, c.username)}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      </div>
+                      {weekScheduleMode === "client" ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                          <select
+                            value={weekScheduleClientId}
+                            onChange={(e) => {
+                              setWeekScheduleClientId(e.target.value);
+                              if (weekScheduleError) setWeekScheduleError("");
+                            }}
+                            style={styles.trainerSelect}
+                          >
+                            {activeClients.length === 0 ? (
+                              <option value="">{tr("Нет клиентов", "No clients")}</option>
+                            ) : (
+                              activeClients.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {getClientLabel(activeClients, c.username)}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                          <input
+                            value={weekScheduleClientName}
+                            onChange={(e) => {
+                              setWeekScheduleClientName(e.target.value);
+                              if (weekScheduleError) setWeekScheduleError("");
+                            }}
+                            placeholder={tr("Введите имя клиента", "Enter client name")}
+                            style={styles.input}
+                          />
+                        </div>
+                      )}
                       {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                       <button
                         type="button"
@@ -4428,10 +4512,6 @@ function TrainerSchedule(props: {
                             );
                             return;
                           }
-                          if (!weekScheduleClientId) {
-                            setWeekScheduleError(tr("Выберите клиента.", "Select a client."));
-                            return;
-                          }
                           const existingSessions = sessionsByDate[dateKey] || [];
                           const startMin = timeToMinutes(start);
                           const endMin = timeToMinutes(end);
@@ -4446,9 +4526,19 @@ function TrainerSchedule(props: {
                             );
                             return;
                           }
-                          const client = activeClients.find((c) => c.id === weekScheduleClientId);
-                          if (!client) {
-                            setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                          let client: TrainerClientInvite | null = null;
+                          if (weekScheduleMode === "client") {
+                            if (!weekScheduleClientId) {
+                              setWeekScheduleError(tr("Выберите клиента.", "Select a client."));
+                              return;
+                            }
+                            client = activeClients.find((c) => c.id === weekScheduleClientId) || null;
+                            if (!client) {
+                              setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                              return;
+                            }
+                          } else if (!weekScheduleClientName.trim()) {
+                            setWeekScheduleError(tr("Введите имя клиента.", "Enter client name."));
                             return;
                           }
                           if (!token) {
@@ -4456,16 +4546,18 @@ function TrainerSchedule(props: {
                             return;
                           }
                           try {
-                            const res = await fetch(`${apiBase}/sessions`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({
-                                dateKey,
-                                start,
-                                end,
-                                clientId: client.id,
-                              }),
-                            });
+                          const res = await fetch(`${apiBase}/sessions`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                              dateKey,
+                              start,
+                              end,
+                              ...(weekScheduleMode === "client" && client
+                                ? { clientId: client.id }
+                                : { oneTime: true, clientName: weekScheduleClientName.trim() }),
+                            }),
+                          });
                             if (!res.ok) {
                               if (res.status === 409) {
                                 setWeekScheduleError(
@@ -8471,6 +8563,7 @@ function mapSessionFromApi(s: any): SessionItem {
     start: String(s.startTime || ""),
     end: String(s.endTime || ""),
     clientUsername: String(s.clientUsername || ""),
+    clientName: s.clientName ? String(s.clientName) : undefined,
     trainerTgUserId: s.trainerTgUserId ? String(s.trainerTgUserId) : undefined,
     source: s.source === "client" ? "client" : "trainer",
     type: s.type ? String(s.type) : undefined,
