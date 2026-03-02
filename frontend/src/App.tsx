@@ -188,7 +188,7 @@ type SessionItem = {
 type NotesListItem = {
   id: string;
   title: string;
-  createdAt: number;
+  createdAt: string;
 };
 
 const LanguageContext = React.createContext<"ru" | "en">("ru");
@@ -1428,6 +1428,8 @@ export default function App() {
                     setActiveTab("schedule");
                   }}
                   onOpenSettings={() => setActiveTab("settings")}
+                  token={token}
+                  apiBase={apiBase}
                 />
               )}
               {activeTab === "schedule" && (
@@ -1755,6 +1757,8 @@ function TrainerHome({
   sessionsByDate,
   onOpenSession,
   onOpenSettings,
+  token,
+  apiBase,
 }: {
   name: string;
   photoUrl: string;
@@ -1762,21 +1766,19 @@ function TrainerHome({
   sessionsByDate: Record<string, SessionItem[]>;
   onOpenSession: (session: SessionItem) => void;
   onOpenSettings: () => void;
+  token: string;
+  apiBase: string;
 }) {
   const tr = useTr();
   const [homeTab, setHomeTab] = useState<"work" | "income" | "subscription">("work");
   const [notesOpen, setNotesOpen] = useState(false);
-  const [notesLists, setNotesLists] = useState<NotesListItem[]>(() => {
-    try {
-      const raw = localStorage.getItem("trainerNotesLists");
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as NotesListItem[];
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((item) => item && typeof item.title === "string");
-    } catch {
-      return [];
-    }
-  });
+  const [notesLists, setNotesLists] = useState<NotesListItem[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [notesCreating, setNotesCreating] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
+  const notesInputRef = useRef<HTMLInputElement | null>(null);
   const [statsMode, setStatsMode] = useState<"money" | "count">("money");
   const [statsDate, setStatsDate] = useState<Date>(() => startOfDay(new Date()));
   const [statsSelectedDate, setStatsSelectedDate] = useState<Date>(() => startOfDay(new Date()));
@@ -1791,15 +1793,40 @@ function TrainerHome({
   }, []);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   useEffect(() => {
-    try {
-      localStorage.setItem("trainerNotesLists", JSON.stringify(notesLists));
-    } catch {
-      // ignore
-    }
-  }, [notesLists]);
-  useEffect(() => {
     if (homeTab !== "work" && notesOpen) setNotesOpen(false);
   }, [homeTab, notesOpen]);
+  useEffect(() => {
+    if (!notesOpen || !token) return;
+    let cancelled = false;
+    const load = async () => {
+      setNotesLoading(true);
+      setNotesError(null);
+      try {
+        const res = await fetch(`${apiBase}/notes/lists`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          if (!cancelled) setNotesError(tr("Не удалось загрузить списки.", "Failed to load lists."));
+          return;
+        }
+        const data = (await res.json()) as { ok: boolean; lists?: NotesListItem[] };
+        if (!cancelled) setNotesLists(Array.isArray(data.lists) ? data.lists : []);
+      } catch {
+        if (!cancelled) setNotesError(tr("Проверьте соединение.", "Check your connection."));
+      } finally {
+        if (!cancelled) setNotesLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [notesOpen, token, apiBase, tr]);
+  useEffect(() => {
+    if (notesCreating) {
+      window.setTimeout(() => notesInputRef.current?.focus(), 0);
+    }
+  }, [notesCreating]);
   useEffect(() => {
     if (!hasTgBack) return;
     if (!notesOpen) {
@@ -1996,6 +2023,41 @@ function TrainerHome({
     else if (sessionDay.getTime() === tomorrow.getTime()) prefix = tr("Завтра", "Tomorrow");
     return `${prefix} ${s.start}—${s.end}`;
   };
+  const submitNotesDraft = async () => {
+    const title = notesDraft.trim();
+    if (!title) {
+      setNotesDraft("");
+      setNotesCreating(false);
+      return;
+    }
+    if (!token) return;
+    setNotesSaving(true);
+    setNotesError(null);
+    try {
+      const res = await fetch(`${apiBase}/notes/lists`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        setNotesError(tr("Не удалось сохранить список.", "Failed to save list."));
+        return;
+      }
+      const data = (await res.json()) as { ok: boolean; list?: NotesListItem };
+      if (data?.list) {
+        setNotesLists((prev) => {
+          const next = prev.filter((item) => item.id !== data.list?.id);
+          return [data.list as NotesListItem, ...next];
+        });
+      }
+      setNotesDraft("");
+      setNotesCreating(false);
+    } catch {
+      setNotesError(tr("Проверьте соединение.", "Check your connection."));
+    } finally {
+      setNotesSaving(false);
+    }
+  };
 
   if (notesOpen) {
     return (
@@ -2007,28 +2069,52 @@ function TrainerHome({
           </div>
           <div style={styles.topBarDivider} />
           <div style={styles.notesList}>
-            <button
-              type="button"
-              onClick={() => {
-                const title = window.prompt(tr("Название списка", "List name"));
-                if (!title) return;
-                const trimmed = title.trim();
-                if (!trimmed) return;
-                setNotesLists((prev) => [
-                  {
-                    id: `note_${Date.now()}`,
-                    title: trimmed,
-                    createdAt: Date.now(),
-                  },
-                  ...prev,
-                ]);
-              }}
-              style={{ ...styles.notesRow, ...styles.notesRowButton }}
-            >
-              <span style={styles.notesRowTitle}>{tr("Новый список", "New list")}</span>
-              <span style={styles.notesRowAction}>+</span>
-            </button>
-            {notesLists.length === 0 ? (
+            {notesCreating ? (
+              <div style={styles.notesRow}>
+                <input
+                  ref={notesInputRef}
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  placeholder={tr("Новый список", "New list")}
+                  style={styles.notesInput}
+                  disabled={notesSaving}
+                  onKeyDown={(e) => {
+                    if (notesSaving) return;
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitNotesDraft();
+                    }
+                    if (e.key === "Escape") {
+                      setNotesDraft("");
+                      setNotesCreating(false);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!notesDraft.trim()) {
+                      setNotesDraft("");
+                      setNotesCreating(false);
+                    }
+                  }}
+                />
+                <span style={{ ...styles.notesRowAction, ...styles.notesRowActionDisabled }}>+</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setNotesCreating(true);
+                  setNotesDraft("");
+                }}
+                style={{ ...styles.notesRow, ...styles.notesRowButton }}
+              >
+                <span style={styles.notesRowTitle}>{tr("Новый список", "New list")}</span>
+                <span style={styles.notesRowAction}>+</span>
+              </button>
+            )}
+            {notesError ? <div style={styles.notesError}>{notesError}</div> : null}
+            {notesLoading ? (
+              <div style={styles.notesEmpty}>{tr("Загрузка списков...", "Loading lists...")}</div>
+            ) : notesLists.length === 0 ? (
               <div style={styles.notesEmpty}>
                 {tr("Добавьте первый список заметок.", "Add your first notes list.")}
               </div>
@@ -10125,12 +10211,34 @@ const styles: Record<string, any> = {
     fontWeight: 700,
     color: "var(--muted)",
   },
+  notesRowActionDisabled: {
+    opacity: 0.5,
+  },
+  notesInput: {
+    flex: 1,
+    border: "none",
+    outline: "none",
+    background: "transparent",
+    fontSize: 15,
+    fontWeight: 600,
+    letterSpacing: -0.2,
+    color: "var(--text)",
+    opacity: 0.6,
+  },
   notesEmpty: {
     padding: "10px 12px",
     borderRadius: 12,
     border: "1px dashed var(--border)",
     color: "var(--muted)",
     fontSize: 14,
+  },
+  notesError: {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid rgba(239, 68, 68, 0.3)",
+    background: "rgba(239, 68, 68, 0.08)",
+    color: "#dc2626",
+    fontSize: 13,
   },
   homeGreeting: {
     padding: "12px 16px",

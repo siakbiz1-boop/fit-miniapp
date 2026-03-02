@@ -584,6 +584,9 @@ app.delete("/profile", async (req, reply) => {
     await prismaAny.trainingSlot.deleteMany({
       where: { trainerTgUserId: dbUser.tgUserId },
     });
+    await prismaAny.trainerNoteList.deleteMany({
+      where: { trainerTgUserId: dbUser.tgUserId },
+    });
     await prismaAny.trainerProfile.deleteMany({
       where: { userId: dbUser.id },
     });
@@ -1085,6 +1088,44 @@ app.patch("/profile/trainer", async (req, reply) => {
   });
 
   return { ok: true, profile };
+});
+
+// --------------------
+// Trainer notes lists
+// --------------------
+app.get("/notes/lists", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+  if (dbUser.role !== "trainer") {
+    return reply.code(403).send({ message: "Only trainers can access notes lists" });
+  }
+  const lists = await prismaAny.trainerNoteList.findMany({
+    where: { trainerTgUserId: dbUser.tgUserId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, title: true, createdAt: true },
+  });
+  return { ok: true, lists };
+});
+
+app.post("/notes/lists", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+  if (dbUser.role !== "trainer") {
+    return reply.code(403).send({ message: "Only trainers can create notes lists" });
+  }
+  const body = req.body as any;
+  const title = String(body?.title || "").trim();
+  if (!title) {
+    return reply.code(400).send({ message: "title is required" });
+  }
+  if (title.length > 120) {
+    return reply.code(400).send({ message: "title is too long" });
+  }
+  const list = await prismaAny.trainerNoteList.create({
+    data: { trainerTgUserId: dbUser.tgUserId, title },
+    select: { id: true, title: true, createdAt: true },
+  });
+  return { ok: true, list };
 });
 
 // --------------------

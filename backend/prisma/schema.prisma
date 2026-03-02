@@ -87,6 +87,16 @@ model TrainerProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model TrainerNoteList {
+  id              String   @id @default(cuid())
+  trainerTgUserId BigInt
+  title           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([trainerTgUserId])
+}
+
 model TrainerClient {
   id                 String        @id @default(cuid())
   trainerTgUserId    BigInt
