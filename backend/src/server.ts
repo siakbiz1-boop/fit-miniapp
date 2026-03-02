@@ -36,6 +36,29 @@ const prisma = new PrismaClient();
 const prismaAny = prisma as any;
 const app = Fastify({ logger: true });
 
+async function ensureTrainerNotesTable() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "TrainerNoteList" (
+      "id" TEXT PRIMARY KEY,
+      "trainerTgUserId" BIGINT NOT NULL,
+      "title" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE INDEX IF NOT EXISTS "TrainerNoteList_trainerTgUserId_idx"
+    ON "TrainerNoteList" ("trainerTgUserId");
+  `);
+}
+
+function isMissingNotesTableError(err: any) {
+  if (!err) return false;
+  if (err.code === "P2021") return true;
+  const message = String(err.message || "");
+  return message.includes("TrainerNoteList") && message.includes("does not exist");
+}
+
 await app.register(cors, {
   origin: "*",
   methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
@@ -1099,12 +1122,23 @@ app.get("/notes/lists", async (req, reply) => {
   if (dbUser.role !== "trainer") {
     return reply.code(403).send({ message: "Only trainers can access notes lists" });
   }
-  const lists = await prismaAny.trainerNoteList.findMany({
-    where: { trainerTgUserId: dbUser.tgUserId },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, title: true, createdAt: true },
-  });
-  return { ok: true, lists };
+  try {
+    const lists = await prismaAny.trainerNoteList.findMany({
+      where: { trainerTgUserId: dbUser.tgUserId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, createdAt: true },
+    });
+    return { ok: true, lists };
+  } catch (err: any) {
+    if (!isMissingNotesTableError(err)) throw err;
+    await ensureTrainerNotesTable();
+    const lists = await prismaAny.trainerNoteList.findMany({
+      where: { trainerTgUserId: dbUser.tgUserId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, createdAt: true },
+    });
+    return { ok: true, lists };
+  }
 });
 
 app.post("/notes/lists", async (req, reply) => {
@@ -1121,11 +1155,29 @@ app.post("/notes/lists", async (req, reply) => {
   if (title.length > 120) {
     return reply.code(400).send({ message: "title is too long" });
   }
-  const list = await prismaAny.trainerNoteList.create({
-    data: { trainerTgUserId: dbUser.tgUserId, title },
-    select: { id: true, title: true, createdAt: true },
-  });
-  return { ok: true, list };
+  try {
+    const list = await prismaAny.trainerNoteList.create({
+      data: {
+        id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        trainerTgUserId: dbUser.tgUserId,
+        title,
+      },
+      select: { id: true, title: true, createdAt: true },
+    });
+    return { ok: true, list };
+  } catch (err: any) {
+    if (!isMissingNotesTableError(err)) throw err;
+    await ensureTrainerNotesTable();
+    const list = await prismaAny.trainerNoteList.create({
+      data: {
+        id: `note_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        trainerTgUserId: dbUser.tgUserId,
+        title,
+      },
+      select: { id: true, title: true, createdAt: true },
+    });
+    return { ok: true, list };
+  }
 });
 
 // --------------------

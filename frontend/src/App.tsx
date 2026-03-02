@@ -2066,6 +2066,7 @@ function TrainerHome({
           <div style={styles.topBar}>
             <div style={styles.backBtnSpacer} />
             <div style={styles.topBarTitle}>{tr("Заметки", "Notes")}</div>
+            <div style={styles.backBtnSpacer} />
           </div>
           <div style={styles.topBarDivider} />
           <div style={styles.notesList}>
@@ -10223,7 +10224,7 @@ const styles: Record<string, any> = {
     fontWeight: 600,
     letterSpacing: -0.2,
     color: "var(--text)",
-    opacity: 0.6,
+    opacity: 1,
   },
   notesEmpty: {
     padding: "10px 12px",
