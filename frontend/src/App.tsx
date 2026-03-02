@@ -1963,9 +1963,11 @@ function TrainerHome({
           >
             <AvatarCircle name={name || tr("Пользователь", "User")} photoUrl={photoUrl} size={44} />
           </button>
-          <div style={styles.homeStatusChip}>
-            <span style={{ color: subscriptionStatusInfo.color }}>{subscriptionStatusInfo.label}</span>
-          </div>
+        <div style={styles.homeStatusChip}>
+          <span style={{ color: subscriptionStatusInfo.color }}>
+            {homeTab === "work" ? tr("Заметки", "Notes") : subscriptionStatusInfo.label}
+          </span>
+        </div>
         </div>
         <div style={styles.scheduleTabs}>
           <button
