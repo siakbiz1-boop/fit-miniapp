@@ -2020,9 +2020,16 @@ function TrainerHome({
                         {sessionStatusLabel(nearest, now)}
                       </div>
                     </div>
-                    <div style={styles.homeNextMeta}>{getClientLabel(clients, nearest.clientUsername)}</div>
+                    <div style={styles.homeNextMeta}>
+                      {nearest.clientUsername === "one_time" || nearest.type === "one_time"
+                        ? nearest.clientName?.trim()
+                          ? nearest.clientName
+                          : tr("Разовая тренировка", "One-time session")
+                        : getClientLabel(clients, nearest.clientUsername)}
+                    </div>
                   </button>
-                  {!isLocalClientUsername(nearest.clientUsername || "") ? (
+                  {!(nearest.clientUsername === "one_time" || nearest.type === "one_time") &&
+                  !isLocalClientUsername(nearest.clientUsername || "") ? (
                     <div style={styles.homeNextContactRow}>
                       <div style={styles.homeNextContactLabel}>
                         {tr("Связаться с клиентом:", "Contact the client:")}
