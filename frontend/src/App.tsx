@@ -2574,6 +2574,10 @@ function ClientSchedule(props: {
   const todayRef = useRef<HTMLButtonElement | null>(null);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
   const trainers = invites.filter((c) => !c.archived && c.status === "active");
+  const canBookAny = useMemo(
+    () => trainers.some((t) => t.bookingMode === "both"),
+    [trainers]
+  );
   const [slots, setSlots] = useState<TrainingSlot[]>([]);
   const [slotError, setSlotError] = useState("");
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
@@ -2657,9 +2661,13 @@ function ClientSchedule(props: {
       setSelectedTrainerId(null);
       return;
     }
+    if (!canBookAny) {
+      setSection("today");
+      return;
+    }
     if (selectedTrainerId && trainers.some((t) => t.id === selectedTrainerId)) return;
     setSelectedTrainerId(trainers[0].id);
-  }, [section, trainers, selectedTrainerId]);
+  }, [section, trainers, selectedTrainerId, canBookAny]);
 
   useEffect(() => {
     if (section !== "book") return;
@@ -2932,16 +2940,18 @@ function ClientSchedule(props: {
         >
           {t.scheduleToday}
         </button>
-        <button
-          type="button"
-          onClick={() => setSection("book")}
-          style={{
-            ...styles.scheduleTab,
-            ...(section === "book" ? styles.scheduleTabActive : null),
-          }}
-        >
-          {t.scheduleBook}
-        </button>
+        {canBookAny ? (
+          <button
+            type="button"
+            onClick={() => setSection("book")}
+            style={{
+              ...styles.scheduleTab,
+              ...(section === "book" ? styles.scheduleTabActive : null),
+            }}
+          >
+            {t.scheduleBook}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => setSection("history")}
