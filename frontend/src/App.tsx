@@ -4739,7 +4739,7 @@ function TrainerSchedule(props: {
                       <div style={styles.assignRow}>
                         <select
                           value={assignClientUsername}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const value = e.target.value || undefined;
                             setAssignClientUsername(e.target.value);
                             const dateKey = formatDateKey(selected);
@@ -4748,21 +4748,92 @@ function TrainerSchedule(props: {
                                 setFreeError(tr("Окно уже началось.", "The slot has already started."));
                                 return;
                               }
-                              if (!canScheduleClientOnDate(clients, value)) return;
-                              setAssignClientUsername("");
-                              setSessionsByDate((prev) => {
-                                const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                                list.push({
-                                  id: cryptoId(),
-                                  dateKey,
-                                  start: w.start,
-                                  end: w.end,
-                                  clientUsername: value,
-                                  source: "trainer",
+                              if (!token) {
+                                setFreeError(tr("Сначала войдите в аккаунт.", "Please login first."));
+                                return;
+                              }
+                              if (value === "__one_time__") {
+                                const name =
+                                  typeof WebApp?.showPopup === "function"
+                                    ? window.prompt(tr("Введите имя клиента", "Enter client name")) || ""
+                                    : window.prompt(tr("Введите имя клиента", "Enter client name")) || "";
+                                if (!name.trim()) {
+                                  setAssignClientUsername("");
+                                  setAssignForId(null);
+                                  return;
+                                }
+                                try {
+                                  const res = await fetch(`${apiBase}/sessions`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({
+                                      dateKey,
+                                      start: w.start,
+                                      end: w.end,
+                                      oneTime: true,
+                                      clientName: name.trim(),
+                                    }),
+                                  });
+                                  if (!res.ok) {
+                                    setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                                    return;
+                                  }
+                                  const data = (await res.json()) as { ok: boolean; session?: any };
+                                  if (!data?.session) {
+                                    setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                                    return;
+                                  }
+                                  const mapped = mapSessionFromApi(data.session);
+                                  setSessionsByDate((prev) => {
+                                    const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                                    list.push(mapped);
+                                    return { ...prev, [mapped.dateKey]: list };
+                                  });
+                                  void deleteSlot(w.id, dateKey);
+                                } catch {
+                                  setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                                  return;
+                                } finally {
+                                  setAssignClientUsername("");
+                                  setAssignForId(null);
+                                }
+                                return;
+                              }
+                              const client = clients.find((c) => c.username === value);
+                              if (!client || !canScheduleClientOnDate(clients, value)) return;
+                              try {
+                                const res = await fetch(`${apiBase}/sessions`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({
+                                    dateKey,
+                                    start: w.start,
+                                    end: w.end,
+                                    clientId: client.id,
+                                  }),
                                 });
-                                return { ...prev, [dateKey]: list };
-                              });
-                              void deleteSlot(w.id, dateKey);
+                                if (!res.ok) {
+                                  setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                                  return;
+                                }
+                                const data = (await res.json()) as { ok: boolean; session?: any };
+                                if (!data?.session) {
+                                  setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                                  return;
+                                }
+                                const mapped = mapSessionFromApi(data.session);
+                                setSessionsByDate((prev) => {
+                                  const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                                  list.push(mapped);
+                                  return { ...prev, [mapped.dateKey]: list };
+                                });
+                                void deleteSlot(w.id, dateKey);
+                              } catch {
+                                setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                                return;
+                              } finally {
+                                setAssignClientUsername("");
+                              }
                             }
                             setAssignForId(null);
                           }}
@@ -4777,6 +4848,7 @@ function TrainerSchedule(props: {
                                 {c.fullName?.trim() ? c.fullName : `@${c.username}`}
                               </option>
                             ))}
+                          <option value="__one_time__">{tr("Разовая тренировка", "One-time session")}</option>
                         </select>
                       </div>
                     ) : null}
@@ -4795,7 +4867,7 @@ function TrainerSchedule(props: {
                       style={styles.freeBannerAdd}
                       aria-label="assign client"
                       title={tr("Записать клиента", "Assign client")}
-                      disabled={clients.length === 0 || !canBookSlot(w.dateKey, w.start)}
+                      disabled={!canBookSlot(w.dateKey, w.start)}
                     >
                       <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
                         ➕
