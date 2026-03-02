@@ -185,6 +185,12 @@ type SessionItem = {
   comment?: string;
 };
 
+type NotesListItem = {
+  id: string;
+  title: string;
+  createdAt: number;
+};
+
 const LanguageContext = React.createContext<"ru" | "en">("ru");
 
 function useTr() {
@@ -1759,6 +1765,18 @@ function TrainerHome({
 }) {
   const tr = useTr();
   const [homeTab, setHomeTab] = useState<"work" | "income" | "subscription">("work");
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesLists, setNotesLists] = useState<NotesListItem[]>(() => {
+    try {
+      const raw = localStorage.getItem("trainerNotesLists");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as NotesListItem[];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((item) => item && typeof item.title === "string");
+    } catch {
+      return [];
+    }
+  });
   const [statsMode, setStatsMode] = useState<"money" | "count">("money");
   const [statsDate, setStatsDate] = useState<Date>(() => startOfDay(new Date()));
   const [statsSelectedDate, setStatsSelectedDate] = useState<Date>(() => startOfDay(new Date()));
@@ -1771,6 +1789,16 @@ function TrainerHome({
     const id = window.setInterval(() => setNow(new Date()), 60 * 1000);
     return () => window.clearInterval(id);
   }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("trainerNotesLists", JSON.stringify(notesLists));
+    } catch {
+      // ignore
+    }
+  }, [notesLists]);
+  useEffect(() => {
+    if (homeTab !== "work" && notesOpen) setNotesOpen(false);
+  }, [homeTab, notesOpen]);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const doneSessions = allSessions.filter((s) => sessionEndTime(s).getTime() <= now.getTime());
@@ -1951,6 +1979,61 @@ function TrainerHome({
     return `${prefix} ${s.start}—${s.end}`;
   };
 
+  if (notesOpen) {
+    return (
+      <div style={styles.pageContainer}>
+        <div style={styles.notesScreen}>
+          <div style={styles.topBar}>
+          <button
+            type="button"
+            onClick={() => setNotesOpen(false)}
+            style={styles.backBtnInline}
+            aria-label={tr("назад", "back")}
+          >
+            <IconArrowLeft />
+          </button>
+            <div style={styles.topBarTitle}>{tr("Заметки", "Notes")}</div>
+          </div>
+          <div style={styles.topBarDivider} />
+          <div style={styles.notesList}>
+            <button
+              type="button"
+              onClick={() => {
+                const title = window.prompt(tr("Название списка", "List name"));
+                if (!title) return;
+                const trimmed = title.trim();
+                if (!trimmed) return;
+                setNotesLists((prev) => [
+                  {
+                    id: `note_${Date.now()}`,
+                    title: trimmed,
+                    createdAt: Date.now(),
+                  },
+                  ...prev,
+                ]);
+              }}
+              style={{ ...styles.notesRow, ...styles.notesRowButton }}
+            >
+              <span style={styles.notesRowTitle}>{tr("Новый список", "New list")}</span>
+              <span style={styles.notesRowAction}>+</span>
+            </button>
+            {notesLists.length === 0 ? (
+              <div style={styles.notesEmpty}>
+                {tr("Добавьте первый список заметок.", "Add your first notes list.")}
+              </div>
+            ) : (
+              notesLists.map((item) => (
+                <div key={item.id} style={styles.notesRow}>
+                  <span style={styles.notesRowTitle}>{item.title}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.pageContainer}>
       <div style={styles.homeIntro}>
@@ -1963,11 +2046,20 @@ function TrainerHome({
           >
             <AvatarCircle name={name || tr("Пользователь", "User")} photoUrl={photoUrl} size={44} />
           </button>
-        <div style={styles.homeStatusChip}>
-          <span style={{ color: subscriptionStatusInfo.color }}>
-            {homeTab === "work" ? tr("Заметки", "Notes") : subscriptionStatusInfo.label}
-          </span>
-        </div>
+          {homeTab === "work" ? (
+            <button
+              type="button"
+              onClick={() => setNotesOpen(true)}
+              style={{ ...styles.homeStatusChip, ...styles.homeStatusChipButton }}
+              aria-label={tr("заметки", "notes")}
+            >
+              <span style={{ color: subscriptionStatusInfo.color }}>{tr("Заметки", "Notes")}</span>
+            </button>
+          ) : (
+            <div style={styles.homeStatusChip}>
+              <span style={{ color: subscriptionStatusInfo.color }}>{subscriptionStatusInfo.label}</span>
+            </div>
+          )}
         </div>
         <div style={styles.scheduleTabs}>
           <button
@@ -9973,6 +10065,57 @@ const styles: Record<string, any> = {
     background: "rgba(77, 163, 255, 0.08)",
     fontSize: 12,
     fontWeight: 700,
+  },
+  homeStatusChipButton: {
+    cursor: "pointer",
+    appearance: "none",
+    font: "inherit",
+    color: "inherit",
+  },
+  notesScreen: {
+    display: "flex",
+    flexDirection: "column",
+    width: "100%",
+  },
+  notesList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    paddingBottom: 20,
+  },
+  notesRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 16px",
+    borderRadius: 14,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text)",
+    fontSize: 15,
+    fontWeight: 600,
+    letterSpacing: -0.2,
+    textAlign: "left",
+    width: "100%",
+    boxSizing: "border-box",
+  },
+  notesRowButton: {
+    cursor: "pointer",
+  },
+  notesRowTitle: {
+    opacity: 0.92,
+  },
+  notesRowAction: {
+    fontSize: 20,
+    fontWeight: 700,
+    color: "var(--muted)",
+  },
+  notesEmpty: {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px dashed var(--border)",
+    color: "var(--muted)",
+    fontSize: 14,
   },
   homeGreeting: {
     padding: "12px 16px",
