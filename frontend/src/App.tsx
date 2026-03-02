@@ -627,7 +627,10 @@ export default function App() {
       const payload = allSessions.map((s) => ({
         id: s.id,
         clientUsername: s.clientUsername,
-        clientName: getClientLabel(invites, s.clientUsername),
+        clientName:
+          s.clientUsername === "one_time" || s.type === "one_time"
+            ? s.clientName?.trim() || null
+            : getClientLabel(invites, s.clientUsername),
         startAt: sessionStartTime(s).toISOString(),
         endAt: sessionEndTime(s).toISOString(),
         startTime: s.start,
@@ -3470,7 +3473,10 @@ function TrainerSchedule(props: {
     const payload = allSessions.map((s) => ({
       id: s.id,
       clientUsername: s.clientUsername,
-      clientName: getClientLabel(clients, s.clientUsername),
+      clientName:
+        s.clientUsername === "one_time" || s.type === "one_time"
+          ? s.clientName?.trim() || null
+          : getClientLabel(clients, s.clientUsername),
       startAt: sessionStartTime(s).toISOString(),
       endAt: sessionEndTime(s).toISOString(),
       startTime: s.start,
