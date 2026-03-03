@@ -4244,7 +4244,7 @@ function TrainerSchedule(props: {
 
   useEffect(() => {
     if (!hasTgBack) return;
-    if (scheduleScreen !== "session") {
+    if (scheduleScreen !== "session" && scheduleScreen !== "groupClient") {
       try {
         WebApp.BackButton.hide();
       } catch {
@@ -4254,6 +4254,10 @@ function TrainerSchedule(props: {
     }
 
     const handler = () => {
+      if (scheduleScreen === "groupClient") {
+        setScheduleScreen("session");
+        return;
+      }
       setScheduleScreen("list");
       setActiveSession(null);
     };
