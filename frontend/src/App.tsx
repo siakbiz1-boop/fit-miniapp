@@ -8637,12 +8637,13 @@ function PersonalDataScreen(props: {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <div style={styles.scheduleTabs}>
+        <div style={styles.personalTabsRow}>
           <button
             type="button"
             onClick={() => setPersonalTab("about")}
             style={{
               ...styles.scheduleTab,
+              ...styles.personalTabButton,
               ...(personalTab === "about" ? styles.scheduleTabActive : null),
             }}
           >
@@ -8653,6 +8654,7 @@ function PersonalDataScreen(props: {
             onClick={() => setPersonalTab("contacts")}
             style={{
               ...styles.scheduleTab,
+              ...styles.personalTabButton,
               ...(personalTab === "contacts" ? styles.scheduleTabActive : null),
             }}
           >
@@ -8664,6 +8666,7 @@ function PersonalDataScreen(props: {
               onClick={() => setPersonalTab("mySubscription")}
               style={{
                 ...styles.scheduleTab,
+                ...styles.personalTabButton,
                 ...(personalTab === "mySubscription" ? styles.scheduleTabActive : null),
               }}
             >
@@ -8676,6 +8679,7 @@ function PersonalDataScreen(props: {
               onClick={() => setPersonalTab("weights")}
               style={{
                 ...styles.scheduleTab,
+                ...styles.personalTabButton,
                 ...(personalTab === "weights" ? styles.scheduleTabActive : null),
               }}
             >
@@ -8688,6 +8692,7 @@ function PersonalDataScreen(props: {
               onClick={() => setPersonalTab("subscription")}
               style={{
                 ...styles.scheduleTab,
+                ...styles.personalTabButton,
                 ...(personalTab === "subscription" ? styles.scheduleTabActive : null),
               }}
             >
@@ -12173,6 +12178,17 @@ const styles: Record<string, any> = {
     gap: 10,
     width: "100%",
   },
+  personalTabsRow: {
+    marginTop: 14,
+    display: "flex",
+    gap: 10,
+    width: "100%",
+    overflowX: "auto",
+    overflowY: "hidden",
+    WebkitOverflowScrolling: "touch",
+    paddingBottom: 4,
+    scrollSnapType: "x proximity",
+  },
   scheduleViewTabs: {
     display: "flex",
     gap: 10,
@@ -12232,6 +12248,13 @@ const styles: Record<string, any> = {
     alignItems: "center",
     justifyContent: "center",
     minWidth: 0,
+  },
+  personalTabButton: {
+    flex: "0 0 auto",
+    padding: "0 14px",
+    minWidth: "max-content",
+    whiteSpace: "nowrap",
+    scrollSnapAlign: "start",
   },
   scheduleTabActive: {
     background: "var(--accent)",
