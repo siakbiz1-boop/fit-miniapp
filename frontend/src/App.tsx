@@ -4942,7 +4942,7 @@ function TrainerSchedule(props: {
                   </button>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                <div style={styles.scheduleModeScroll}>
                   <button
                     type="button"
                     onClick={() => setWeekScheduleMode("client")}
@@ -4962,6 +4962,13 @@ function TrainerSchedule(props: {
                     }}
                   >
                     {tr("Разовая тренировка", "One-time session")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {}}
+                    style={styles.scheduleTab}
+                  >
+                    {tr("Групповая тренировка", "Group session")}
                   </button>
                 </div>
 
@@ -5393,6 +5400,16 @@ function TrainerSchedule(props: {
                       }}
                     >
                       {tr("Разовую тренировку", "One-time session")}
+                    </button>
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.scheduleWeekAddBtn,
+                        ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
+                      }}
+                      onClick={() => setShowWeekAddMenu(false)}
+                    >
+                      {tr("Групповую тренировку", "Group session")}
                     </button>
                   </div>
                 </div>
@@ -12229,6 +12246,15 @@ const styles: Record<string, any> = {
     display: "flex",
     gap: 10,
     width: "100%",
+  },
+  scheduleModeScroll: {
+    display: "flex",
+    gap: 10,
+    marginBottom: 12,
+    overflowX: "auto",
+    overflowY: "hidden",
+    WebkitOverflowScrolling: "touch",
+    paddingBottom: 4,
   },
   personalTabsRow: {
     marginTop: 14,
