@@ -866,6 +866,7 @@ app.patch("/clients/:id", async (req, reply) => {
       status: body?.status,
       archived: body?.archived,
       fullName: body?.fullName,
+      gender: body?.gender,
       height: body?.height,
       weight: body?.weight,
       goal: body?.goal,
@@ -1544,6 +1545,7 @@ app.patch("/client/profile", async (req, reply) => {
   const body = req.body as any;
   const data: Record<string, any> = {};
   if (body?.fullName !== undefined) data.fullName = String(body.fullName || "");
+  if (body?.gender !== undefined) data.gender = String(body.gender || "");
   if (body?.height !== undefined) data.height = String(body.height || "");
   if (body?.weight !== undefined) data.weight = String(body.weight || "");
   if (body?.goal !== undefined) data.goal = String(body.goal || "");

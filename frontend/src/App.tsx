@@ -96,6 +96,7 @@ type TrainerClientInvite = {
   trainerPhotoUrl?: string;
   bookingMode?: "trainer" | "both";
   fullName?: string;
+  gender?: string;
   height?: string;
   weight?: string;
   goal?: string;
@@ -151,6 +152,7 @@ type TrainerProfile = {
 
 type ClientProfile = {
   fullName?: string;
+  gender?: string;
   height?: string;
   weight?: string;
   goal?: string;
@@ -4045,6 +4047,7 @@ function ClientSettings(props: {
     if (!active) return null;
     return {
       fullName: active.fullName || "",
+      gender: active.gender || "",
       height: active.height || "",
       weight: active.weight || "",
       goal: active.goal || "",
@@ -7104,7 +7107,7 @@ function ClientDetailScreen(props: {
     setDraftFullName(client?.fullName ?? "");
     setDraftHeight(client?.height ?? "");
     setDraftWeight(client?.weight ?? "");
-    setDraftGender("");
+    setDraftGender(client?.gender ?? "");
     setDraftGoal(client?.goal ?? "");
     setDraftComment(client?.comment ?? "");
     setDraftSubStart(client?.subscriptionStart ?? "");
@@ -7220,6 +7223,7 @@ function ClientDetailScreen(props: {
   const saveLocalClientField = (
     field:
       | "fullName"
+      | "gender"
       | "height"
       | "weight"
       | "goal"
@@ -7603,13 +7607,27 @@ function ClientDetailScreen(props: {
           <div style={{ marginTop: 16 }}>
             <div style={styles.fieldLabel}>{tr("Пол", "Gender")}</div>
             {isLocalClient ? (
-              <select value={draftGender} onChange={(e) => setDraftGender(e.target.value)} style={styles.input}>
+              <select
+                value={draftGender}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDraftGender(v);
+                  saveLocalClientField("gender", v);
+                }}
+                style={styles.input}
+              >
                 <option value="">{tr("Не выбран", "Not selected")}</option>
                 <option value="male">{tr("Мужской", "Male")}</option>
                 <option value="female">{tr("Женский", "Female")}</option>
               </select>
             ) : (
-              <div style={styles.readOnlyValue}>—</div>
+              <div style={styles.readOnlyValue}>
+                {client?.gender === "male"
+                  ? tr("Мужской", "Male")
+                  : client?.gender === "female"
+                    ? tr("Женский", "Female")
+                    : "—"}
+              </div>
             )}
           </div>
 
@@ -8523,6 +8541,7 @@ function PersonalDataScreen(props: {
   useEffect(() => {
     if (!clientProfile) return;
     if (clientProfile.fullName !== undefined) setFio(clientProfile.fullName || "");
+    if (clientProfile.gender !== undefined) setGender(clientProfile.gender || "");
     if (clientProfile.height !== undefined) setHeight(clientProfile.height || "");
     if (clientProfile.weight !== undefined) setWeight(clientProfile.weight || "");
     if (clientProfile.goal !== undefined) setAbout(clientProfile.goal || "");
@@ -8746,7 +8765,15 @@ function PersonalDataScreen(props: {
             <>
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Пол", "Gender")}</div>
-                <select value={gender} onChange={(e) => setGender(e.target.value)} style={styles.input}>
+                <select
+                  value={gender}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setGender(v);
+                    if (isClientProfile) saveClientField("gender", v);
+                  }}
+                  style={styles.input}
+                >
                   <option value="">{tr("Не выбран", "Not selected")}</option>
                   <option value="male">{tr("Мужской", "Male")}</option>
                   <option value="female">{tr("Женский", "Female")}</option>
@@ -9684,6 +9711,7 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     clientProfile: c.clientProfile ?? undefined,
     trainerProfile: c.trainerProfile ?? undefined,
     fullName: c.fullName ?? "",
+    gender: c.gender ?? "",
     height: c.height ?? "",
     weight: c.weight ?? "",
     goal: c.goal ?? "",

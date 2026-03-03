@@ -124,6 +124,7 @@ model TrainerClient {
   updatedAt          DateTime      @updatedAt
 
   fullName           String?
+  gender             String?
   height             String?
   weight             String?
   goal               String?
