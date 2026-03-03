@@ -1084,6 +1084,7 @@ app.get("/clients/:id/sessions", async (req, reply) => {
       ],
     },
     orderBy: { startAt: "desc" },
+    include: { participants: true },
   });
 
   return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
@@ -1849,6 +1850,7 @@ app.get("/sessions", async (req, reply) => {
   const sessions = await prismaAny.trainingSession.findMany({
     where: { trainerTgUserId: dbUser.tgUserId },
     orderBy: { startAt: "asc" },
+    include: { participants: true },
   });
   return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
 });
@@ -2125,6 +2127,7 @@ app.get("/client/sessions", async (req, reply) => {
       ],
     },
     orderBy: { startAt: "asc" },
+    include: { participants: true },
   });
   return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };
 });

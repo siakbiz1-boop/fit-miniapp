@@ -185,6 +185,7 @@ type SessionItem = {
   type?: string;
   price?: string;
   comment?: string;
+  participants?: { clientId: string; clientUsername: string; clientName?: string }[];
 };
 
 type NotesListItem = {
@@ -1453,6 +1454,7 @@ export default function App() {
                   trainerProfile={trainerProfile}
                   pendingSession={pendingSession}
                   onConsumePendingSession={() => setPendingSession(null)}
+                  onLoadHistory={loadClientHistory}
                   onSaveExercises={saveClientExercises}
                 />
               )}
@@ -4085,6 +4087,7 @@ function TrainerSchedule(props: {
   trainerProfile?: TrainerProfile | null;
   pendingSession?: SessionItem | null;
   onConsumePendingSession?: () => void;
+  onLoadHistory?: (client: TrainerClientInvite) => void;
   onSaveExercises?: (
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
@@ -4103,6 +4106,7 @@ function TrainerSchedule(props: {
     trainerProfile,
     pendingSession,
     onConsumePendingSession,
+    onLoadHistory,
     onSaveExercises,
   } = props;
   const tr = useTr();
@@ -4110,9 +4114,11 @@ function TrainerSchedule(props: {
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const [today, setToday] = useState<Date>(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
-  const [scheduleScreen, setScheduleScreen] = useState<"list" | "session">("list");
+  const [scheduleScreen, setScheduleScreen] = useState<"list" | "session" | "groupClient">("list");
   const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
   const [sessionTab, setSessionTab] = useState<"info" | "weights" | "history">("info");
+  const [groupClientTab, setGroupClientTab] = useState<"weights" | "history">("weights");
+  const [groupClientId, setGroupClientId] = useState<string | null>(null);
   const sessionCommentRef = useRef<HTMLTextAreaElement | null>(null);
   const [nowTs, setNowTs] = useState(() => Date.now());
   const [draftSessionType, setDraftSessionType] = useState("");
@@ -4148,13 +4154,14 @@ function TrainerSchedule(props: {
   useEffect(() => {
     if (!activeSession) return;
     const isOneTime = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
+    const isGroup = activeSession.clientUsername === "group" || activeSession.type === "group";
     setDraftSessionType(activeSession.type ?? "");
     const fallbackPrice =
       clients.find((c) => c.username === activeSession.clientUsername)?.subscriptionPrice ?? "";
     setDraftSessionPrice(activeSession.price ?? fallbackPrice ?? "");
     setDraftSessionComment(activeSession.comment ?? "");
     setDraftSessionClientName(activeSession.clientName ?? "");
-    if (isOneTime) setSessionTab("info");
+    if (isOneTime || isGroup) setSessionTab("info");
   }, [
     activeSession?.id,
     activeSession?.type,
@@ -4448,11 +4455,133 @@ function TrainerSchedule(props: {
     }
   }
 
+  if (scheduleScreen === "groupClient" && groupClientId) {
+    const client = clients.find((c) => c.id === groupClientId) || null;
+    return (
+      <div style={styles.pageContainer}>
+        <div style={styles.topBar}>
+          {hasTgBack ? (
+            <div style={{ width: 36 }} />
+          ) : (
+            <button
+              onClick={() => {
+                setScheduleScreen("session");
+              }}
+              style={styles.backBtnInline}
+              aria-label="back"
+            >
+              <IconArrowLeft />
+            </button>
+          )}
+          <div style={styles.topBarTitle}>
+            {client ? getClientLabel(clients, client.username) : tr("Клиент", "Client")}
+          </div>
+          <div style={{ width: 36 }} />
+        </div>
+        <div style={styles.clientTabsScroll}>
+          <div style={styles.clientTabs}>
+            <button
+              type="button"
+              onClick={() => setGroupClientTab("weights")}
+              style={{
+                ...styles.clientTab,
+                ...(groupClientTab === "weights" ? styles.clientTabActive : null),
+              }}
+            >
+              {tr("Статистика упражнений", "Exercise stats")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setGroupClientTab("history")}
+              style={{
+                ...styles.clientTab,
+                ...(groupClientTab === "history" ? styles.clientTabActive : null),
+              }}
+            >
+              {tr("История тренировок клиента", "Client history")}
+            </button>
+          </div>
+        </div>
+        <div style={styles.clientTabsDivider} />
+        <div style={styles.clientPanelPlain}>
+          {groupClientTab === "weights" ? (
+            <ExerciseStatsPanel
+              clientId={client?.id ?? null}
+              exercises={client?.exercises || []}
+              setExercises={(next) => {
+                if (!client) return;
+                setClients((prev) =>
+                  prev.map((c) => (c.id === client.id ? { ...c, exercises: next } : c))
+                );
+              }}
+              onSaveExercises={onSaveExercises}
+              token={token}
+              apiBase={apiBase}
+              embedded
+            />
+          ) : (
+            <div>
+              {(historyByClient[client?.username ?? ""] || []).some((s) => isSessionEnded(s, new Date())) ? (
+                <div style={styles.listBlock}>
+                  {(historyByClient[client?.username ?? ""] || [])
+                    .filter((s) => isSessionEnded(s, new Date()))
+                    .slice()
+                    .sort((a, b) => {
+                      const aEnd = sessionEndTime(a).getTime();
+                      const bEnd = sessionEndTime(b).getTime();
+                      return bEnd - aEnd;
+                    })
+                    .map((s, idx, arr) => {
+                      const isLast = idx === arr.length - 1;
+                      return (
+                        <div
+                          key={`${s.id}-${idx}`}
+                          style={{
+                            ...styles.rowWrap,
+                            borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+                            padding: "12px 0",
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={styles.rowTitle}>{sessionTitle(s, tr)}</div>
+                            <div style={styles.rowSubtitle}>
+                              {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div style={styles.listEmpty}>
+                  {tr("Пока нет тренировок.", "No sessions yet.")}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (scheduleScreen === "session" && activeSession) {
     const sessionClient = clients.find((c) => c.username === activeSession.clientUsername) || null;
     const canDeleteByTime = sessionStartTime(activeSession).getTime() > nowTs;
     const isOneTimeSession = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
     const isGroupSession = activeSession.clientUsername === "group" || activeSession.type === "group";
+    const participantClients = (activeSession.participants || [])
+      .map((p) => ({
+        id: p.clientId || p.clientUsername,
+        client: clients.find((c) => c.id === p.clientId || c.username === p.clientUsername) || null,
+        name: p.clientName || "",
+        username: p.clientUsername || "",
+      }))
+      .filter((p) => p.id) as {
+      id: string;
+      client: TrainerClientInvite | null;
+      name: string;
+      username: string;
+    }[];
     return (
       <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -4485,7 +4614,7 @@ function TrainerSchedule(props: {
             >
               {tr("Информация о тренировке", "Session info")}
             </button>
-            {!isOneTimeSession ? (
+            {!isOneTimeSession && !isGroupSession ? (
               <>
                 <button
                   type="button"
@@ -4515,7 +4644,7 @@ function TrainerSchedule(props: {
         <div style={styles.clientPanelPlain}>
           {sessionTab === "info" ? (
             <div>
-              <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+              <div style={styles.fieldLabel}>{isGroupSession ? tr("Клиенты", "Clients") : tr("Клиент", "Client")}</div>
               {isOneTimeSession ? (
                 <input
                   value={draftSessionClientName}
@@ -4537,10 +4666,39 @@ function TrainerSchedule(props: {
                   placeholder={tr("Введите имя клиента", "Enter client name")}
                   style={styles.input}
                 />
-              ) : (
-                <div style={styles.readOnlyValue}>
-                  {sessionClientLabel(activeSession, tr, clients)}
+              ) : isGroupSession ? (
+                <div style={styles.groupClientChips}>
+                  {(participantClients.length ? participantClients : []).map((p) => {
+                    const label = p.client
+                      ? getClientLabel(clients, p.client.username)
+                      : p.name?.trim()
+                        ? p.name
+                        : p.username
+                          ? `@${p.username.replace(/^@/, "")}`
+                          : tr("Клиент", "Client");
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        style={styles.groupClientChip}
+                        onClick={() => {
+                          if (!p.client) return;
+                          setGroupClientId(p.client.id);
+                          setGroupClientTab("weights");
+                          onLoadHistory?.(p.client);
+                          setScheduleScreen("groupClient");
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                  {participantClients.length === 0 ? (
+                    <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
+                  ) : null}
                 </div>
+              ) : (
+                <div style={styles.readOnlyValue}>{sessionClientLabel(activeSession, tr, clients)}</div>
               )}
               <div style={{ marginTop: 16 }} />
               <div style={styles.metricsRow}>
@@ -4733,7 +4891,7 @@ function TrainerSchedule(props: {
                 </button>
               ) : null}
             </div>
-          ) : sessionTab === "weights" && !isOneTimeSession ? (
+          ) : sessionTab === "weights" && !isOneTimeSession && !isGroupSession ? (
             <ExerciseStatsPanel
               clientId={sessionClient?.id ?? null}
               exercises={sessionClient?.exercises || []}
@@ -4748,7 +4906,7 @@ function TrainerSchedule(props: {
               apiBase={apiBase}
               embedded
             />
-          ) : sessionTab === "history" && !isOneTimeSession ? (
+          ) : sessionTab === "history" && !isOneTimeSession && !isGroupSession ? (
             <div>
               {(historyByClient[activeSession.clientUsername] || []).some((s) => isSessionEnded(s, new Date())) ? (
                 <div style={styles.listBlock}>
@@ -9850,6 +10008,13 @@ function mapSessionFromApi(s: any): SessionItem {
     type: s.type ? String(s.type) : undefined,
     price: s.price ? String(s.price) : undefined,
     comment: s.comment ? String(s.comment) : undefined,
+    participants: Array.isArray(s.participants)
+      ? s.participants.map((p: any) => ({
+          clientId: String(p.clientId || ""),
+          clientUsername: String(p.clientUsername || ""),
+          clientName: p.clientName ? String(p.clientName) : undefined,
+        }))
+      : [],
   };
 }
 
@@ -12464,6 +12629,21 @@ const styles: Record<string, any> = {
     alignItems: "center",
     fontSize: 14,
     color: "var(--text)",
+  },
+  groupClientChips: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  groupClientChip: {
+    borderRadius: 999,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text)",
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
   },
   scheduleTabsDivider: {
     height: 1,
