@@ -3513,7 +3513,7 @@ function ClientSchedule(props: {
             <div>
               <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
               <div style={styles.readOnlyValue}>
-                {activeSession.clientUsername ? `@${activeSession.clientUsername}` : "—"}
+                {activeSession.clientUsername ? sessionClientLabel(activeSession, tr, invites) : "—"}
               </div>
               <div style={{ marginTop: 16 }} />
               <div style={styles.metricsRow}>
