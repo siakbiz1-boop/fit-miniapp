@@ -3514,9 +3514,21 @@ function ClientSchedule(props: {
                 </div>
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+                <div style={styles.fieldLabel}>
+                  {(activeSession.clientUsername === "group" || activeSession.type === "group")
+                    ? tr("Общая стоимость тренировки", "Total session price")
+                    : tr("Стоимость тренировки", "Session price")}
+                </div>
                 <div style={styles.readOnlyValue}>
                   {(() => {
+                    const isGroup = activeSession.clientUsername === "group" || activeSession.type === "group";
+                    if (isGroup) {
+                      const total = parsePriceToNumber(activeSession.price);
+                      const count = activeSession.participants?.length || 0;
+                      if (!total) return "—";
+                      if (!count) return String(total);
+                      return String(Math.round(total / count));
+                    }
                     const value =
                       (activeSession.price && String(activeSession.price).trim()
                         ? activeSession.price
