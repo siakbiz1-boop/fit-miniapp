@@ -7070,6 +7070,7 @@ function ClientDetailScreen(props: {
   const [draftFullName, setDraftFullName] = useState("");
   const [draftHeight, setDraftHeight] = useState("");
   const [draftWeight, setDraftWeight] = useState("");
+  const [draftGender, setDraftGender] = useState("");
   const [draftGoal, setDraftGoal] = useState("");
   const [draftComment, setDraftComment] = useState("");
   const [draftSubStart, setDraftSubStart] = useState("");
@@ -7103,6 +7104,7 @@ function ClientDetailScreen(props: {
     setDraftFullName(client?.fullName ?? "");
     setDraftHeight(client?.height ?? "");
     setDraftWeight(client?.weight ?? "");
+    setDraftGender("");
     setDraftGoal(client?.goal ?? "");
     setDraftComment(client?.comment ?? "");
     setDraftSubStart(client?.subscriptionStart ?? "");
@@ -7595,6 +7597,19 @@ function ClientDetailScreen(props: {
                   <span style={{ fontSize: 13 }}>{tr("Копировать", "Copy")}</span>
                 </button>
               </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <div style={styles.fieldLabel}>{tr("Пол", "Gender")}</div>
+            {isLocalClient ? (
+              <select value={draftGender} onChange={(e) => setDraftGender(e.target.value)} style={styles.input}>
+                <option value="">{tr("Не выбран", "Not selected")}</option>
+                <option value="male">{tr("Мужской", "Male")}</option>
+                <option value="female">{tr("Женский", "Female")}</option>
+              </select>
+            ) : (
+              <div style={styles.readOnlyValue}>—</div>
             )}
           </div>
 
@@ -8465,6 +8480,7 @@ function PersonalDataScreen(props: {
   const [extraInfo, setExtraInfo] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
+  const [gender, setGender] = useState("");
   const [clientWeights, setClientWeights] = useState<{ id: string; name: string; weight: string }[]>([]);
   const [phone, setPhone] = useState("");
   const [instagram, setInstagram] = useState("");
@@ -8728,6 +8744,14 @@ function PersonalDataScreen(props: {
           />
           {showClientBasics ? (
             <>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.fieldLabel}>{tr("Пол", "Gender")}</div>
+                <select value={gender} onChange={(e) => setGender(e.target.value)} style={styles.input}>
+                  <option value="">{tr("Не выбран", "Not selected")}</option>
+                  <option value="male">{tr("Мужской", "Male")}</option>
+                  <option value="female">{tr("Женский", "Female")}</option>
+                </select>
+              </div>
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Рост", "Height")}</div>
