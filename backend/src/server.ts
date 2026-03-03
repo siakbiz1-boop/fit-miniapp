@@ -2111,12 +2111,19 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
     }
     if (remaining.length === 1) {
       const solo = remaining[0];
+      const relation = await tx.trainerClient.findFirst({
+        where: {
+          trainerTgUserId: session.trainerTgUserId,
+          clientUsername: solo.clientUsername,
+        },
+      });
       await tx.trainingSession.update({
         where: { id: session.id },
         data: {
           clientUsername: solo.clientUsername,
           clientName: solo.clientName || null,
           type: null,
+          price: relation?.subscriptionPrice || null,
         },
       });
       await tx.groupSessionParticipant.delete({ where: { id: solo.id } });
