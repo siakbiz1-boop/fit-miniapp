@@ -1798,10 +1798,20 @@ function TrainerHome({
   const [notesItemCreating, setNotesItemCreating] = useState(false);
   const [notesItemDraft, setNotesItemDraft] = useState("");
   const [notesItemSaving, setNotesItemSaving] = useState(false);
+  const [notesItemEditingId, setNotesItemEditingId] = useState<string | null>(null);
+  const [notesItemEditDraft, setNotesItemEditDraft] = useState("");
+  const [notesItemEditing, setNotesItemEditing] = useState(false);
+  const [notesItemSwipeId, setNotesItemSwipeId] = useState<string | null>(null);
+  const [notesItemSwipeOffset, setNotesItemSwipeOffset] = useState(0);
   const notesInputRef = useRef<HTMLInputElement | null>(null);
   const notesEditInputRef = useRef<HTMLInputElement | null>(null);
   const notesItemInputRef = useRef<HTMLInputElement | null>(null);
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
+    id: null,
+    startX: 0,
+    dragging: false,
+  });
+  const itemSwipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
     dragging: false,
@@ -1864,6 +1874,11 @@ function TrainerHome({
       window.setTimeout(() => notesItemInputRef.current?.focus(), 0);
     }
   }, [notesItemCreating]);
+  useEffect(() => {
+    if (notesItemEditingId) {
+      window.setTimeout(() => notesItemInputRef.current?.focus(), 0);
+    }
+  }, [notesItemEditingId]);
   useEffect(() => {
     if (!hasTgBack) return;
     if (!notesOpen) {
@@ -2228,6 +2243,67 @@ function TrainerHome({
     }
   };
 
+  const submitNotesItemEdit = async () => {
+    if (!notesItemEditingId) return;
+    const title = notesItemEditDraft.trim();
+    if (!title) return;
+    if (!token) return;
+    setNotesItemEditing(true);
+    setNotesItemsError(null);
+    try {
+      const res = await fetch(`${apiBase}/notes/items/${encodeURIComponent(notesItemEditingId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        setNotesItemsError(tr("Не удалось сохранить задачу.", "Failed to save task."));
+        return;
+      }
+      const data = (await res.json()) as { ok: boolean; item?: NotesTaskItem };
+      if (data?.item) {
+        setNotesItems((prev) => prev.map((it) => (it.id === data.item?.id ? (data.item as NotesTaskItem) : it)));
+      }
+      setNotesItemEditingId(null);
+      setNotesItemEditDraft("");
+    } catch {
+      setNotesItemsError(tr("Проверьте соединение.", "Check your connection."));
+    } finally {
+      setNotesItemEditing(false);
+    }
+  };
+
+  const handleDeleteNotesItem = async (id: string) => {
+    const message = tr("Вы действительно хотите удалить задачу?", "Delete this task?");
+    const confirmDelete = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch(`${apiBase}/notes/items/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setNotesItemsError(tr("Не удалось удалить задачу.", "Failed to delete task."));
+          return;
+        }
+        setNotesItems((prev) => prev.filter((it) => it.id !== id));
+        if (notesItemSwipeId === id) {
+          setNotesItemSwipeId(null);
+          setNotesItemSwipeOffset(0);
+        }
+      } catch {
+        setNotesItemsError(tr("Проверьте соединение.", "Check your connection."));
+      }
+    };
+    if (typeof WebApp?.showConfirm === "function") {
+      WebApp.showConfirm(message, (ok) => {
+        if (ok) void confirmDelete();
+      });
+      return;
+    }
+    if (window.confirm(message)) void confirmDelete();
+  };
+
   const toggleNotesItem = async (item: NotesTaskItem) => {
     if (!token) return;
     const nextDone = !item.done;
@@ -2310,26 +2386,114 @@ function TrainerHome({
               </div>
             ) : (
               notesItems.map((item) => (
-                <div key={item.id} style={styles.notesRow}>
-                  <span
+                <div key={item.id} style={styles.notesSwipeWrap}>
+                  <div style={styles.notesSwipeActions}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotesItemSwipeId(null);
+                        setNotesItemSwipeOffset(0);
+                        setNotesItemEditingId(item.id);
+                        setNotesItemEditDraft(item.title);
+                      }}
+                      style={{ ...styles.notesSwipeBtn, ...styles.notesSwipeEdit }}
+                      aria-label={tr("редактировать", "edit")}
+                    >
+                      <IconPencil />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteNotesItem(item.id)}
+                      style={{ ...styles.notesSwipeBtn, ...styles.notesSwipeDelete }}
+                      aria-label={tr("удалить", "delete")}
+                    >
+                      <IconTrash size={20} strokeWidth={2} />
+                    </button>
+                  </div>
+                  <div
                     style={{
-                      ...styles.notesRowTitle,
-                      ...(item.done ? styles.notesTaskDone : null),
+                      ...styles.notesRow,
+                      ...styles.notesSwipeRow,
+                      transform:
+                        notesItemSwipeId === item.id
+                          ? `translateX(${notesItemSwipeOffset}px)`
+                          : "translateX(0px)",
+                    }}
+                    onPointerDown={(e) => {
+                      if (notesItemEditingId) return;
+                      itemSwipeStateRef.current = { id: item.id, startX: e.clientX, dragging: true };
+                    }}
+                    onPointerMove={(e) => {
+                      if (!itemSwipeStateRef.current.dragging) return;
+                      if (itemSwipeStateRef.current.id !== item.id) return;
+                      const delta = e.clientX - itemSwipeStateRef.current.startX;
+                      const clamped = Math.max(-120, Math.min(0, delta));
+                      setNotesItemSwipeId(item.id);
+                      setNotesItemSwipeOffset(clamped);
+                    }}
+                    onPointerUp={() => {
+                      if (!itemSwipeStateRef.current.dragging) return;
+                      itemSwipeStateRef.current.dragging = false;
+                      const shouldOpen = notesItemSwipeOffset <= -60;
+                      setNotesItemSwipeId(shouldOpen ? item.id : null);
+                      setNotesItemSwipeOffset(shouldOpen ? -120 : 0);
+                    }}
+                    onPointerLeave={() => {
+                      if (!itemSwipeStateRef.current.dragging) return;
+                      itemSwipeStateRef.current.dragging = false;
+                      const shouldOpen = notesItemSwipeOffset <= -60;
+                      setNotesItemSwipeId(shouldOpen ? item.id : null);
+                      setNotesItemSwipeOffset(shouldOpen ? -120 : 0);
                     }}
                   >
-                    {item.title}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleNotesItem(item)}
-                    style={{
-                      ...styles.notesTaskToggle,
-                      ...(item.done ? styles.notesTaskToggleActive : null),
-                    }}
-                    aria-label={tr("отметить задачу", "toggle task")}
-                  >
-                    {item.done ? <IconCheck size={16} strokeWidth={2.2} /> : null}
-                  </button>
+                    {notesItemEditingId === item.id ? (
+                      <input
+                        ref={notesItemInputRef}
+                        value={notesItemEditDraft}
+                        onChange={(e) => setNotesItemEditDraft(e.target.value)}
+                        placeholder={tr("Новая задача", "New task")}
+                        style={styles.notesInput}
+                        disabled={notesItemEditing}
+                        onKeyDown={(e) => {
+                          if (notesItemEditing) return;
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            submitNotesItemEdit();
+                          }
+                          if (e.key === "Escape") {
+                            setNotesItemEditingId(null);
+                            setNotesItemEditDraft("");
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!notesItemEditDraft.trim()) return;
+                          submitNotesItemEdit();
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <span
+                          style={{
+                            ...styles.notesRowTitle,
+                            ...(item.done ? styles.notesTaskDone : null),
+                          }}
+                        >
+                          {item.title}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleNotesItem(item)}
+                          style={{
+                            ...styles.notesTaskToggle,
+                            ...(item.done ? styles.notesTaskToggleActive : null),
+                          }}
+                          aria-label={tr("отметить задачу", "toggle task")}
+                        >
+                          {item.done ? <IconCheck size={14} strokeWidth={2.2} /> : null}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -10638,12 +10802,16 @@ const styles: Record<string, any> = {
     touchAction: "pan-y",
   },
   notesTaskToggle: {
-    width: 26,
-    height: 26,
-    borderRadius: 999,
+    width: 28,
+    height: 28,
+    borderRadius: "50%",
     border: "2px solid rgba(84, 192, 198, 0.8)",
     background: "transparent",
     cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
   },
   notesTaskToggleActive: {
     background: "rgba(84, 192, 198, 0.25)",

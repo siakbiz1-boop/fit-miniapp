@@ -1425,6 +1425,39 @@ app.patch("/notes/items/:id", async (req, reply) => {
   }
 });
 
+app.delete("/notes/items/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+  if (dbUser.role !== "trainer") {
+    return reply.code(403).send({ message: "Only trainers can delete notes items" });
+  }
+  const id = String((req.params as any)?.id || "");
+  if (!id) {
+    return reply.code(400).send({ message: "id is required" });
+  }
+  try {
+    const removed = await prismaAny.trainerNoteItem.deleteMany({
+      where: {
+        id,
+        list: { trainerTgUserId: dbUser.tgUserId },
+      },
+    });
+    if (!removed.count) return reply.code(404).send({ message: "not found" });
+    return { ok: true };
+  } catch (err: any) {
+    if (!isMissingNotesTableError(err)) throw err;
+    await ensureTrainerNotesTable();
+    const removed = await prismaAny.trainerNoteItem.deleteMany({
+      where: {
+        id,
+        list: { trainerTgUserId: dbUser.tgUserId },
+      },
+    });
+    if (!removed.count) return reply.code(404).send({ message: "not found" });
+    return { ok: true };
+  }
+});
+
 // --------------------
 // Client activation & booking
 // --------------------
