@@ -1078,7 +1078,10 @@ app.get("/clients/:id/sessions", async (req, reply) => {
   const sessions = await prismaAny.trainingSession.findMany({
     where: {
       trainerTgUserId: dbUser.tgUserId,
-      clientUsername: client.clientUsername,
+      OR: [
+        { clientUsername: client.clientUsername },
+        { participants: { some: { clientId: client.id } } },
+      ],
     },
     orderBy: { startAt: "desc" },
   });
@@ -1861,9 +1864,20 @@ app.post("/sessions", async (req, reply) => {
   const end = String(body?.end || "");
   const clientId = body?.clientId ? String(body.clientId) : "";
   const clientUsernameRaw = body?.clientUsername ? String(body.clientUsername) : "";
+  const groupClientIdsRaw = Array.isArray(body?.groupClientIds) ? body.groupClientIds : [];
+  const groupClientIds = Array.from(
+    new Set(groupClientIdsRaw.map((id: any) => String(id || "").trim()).filter(Boolean))
+  );
   const oneTime = body?.oneTime === true;
   const clientNameRaw = body?.clientName ? String(body.clientName) : "";
-  if (!dateKey || !start || !end || (!oneTime && !clientId && !clientUsernameRaw)) {
+  const isGroup = groupClientIds.length > 0;
+  if (isGroup && groupClientIds.length < 2) {
+    return reply.code(400).send({ message: "group requires at least 2 clients" });
+  }
+  if (isGroup && oneTime) {
+    return reply.code(400).send({ message: "group cannot be one-time" });
+  }
+  if (!dateKey || !start || !end || (!oneTime && !isGroup && !clientId && !clientUsernameRaw)) {
     return reply.code(400).send({ message: "dateKey/start/end/client required" });
   }
 
@@ -1886,7 +1900,20 @@ app.post("/sessions", async (req, reply) => {
   }
 
   let relation = null as any;
-  if (!oneTime) {
+  let groupClients: any[] = [];
+  if (!oneTime && isGroup) {
+    groupClients = await prismaAny.trainerClient.findMany({
+      where: {
+        id: { in: groupClientIds },
+        trainerTgUserId: dbUser.tgUserId,
+        status: "active",
+        archived: false,
+      },
+    });
+    if (groupClients.length !== groupClientIds.length) {
+      return reply.code(404).send({ message: "client not found" });
+    }
+  } else if (!oneTime) {
     if (clientId) {
       relation = await prismaAny.trainerClient.findUnique({ where: { id: clientId } });
       if (relation && relation.trainerTgUserId !== dbUser.tgUserId) relation = null;
@@ -1919,17 +1946,28 @@ app.post("/sessions", async (req, reply) => {
     data: {
       id,
       trainerTgUserId: dbUser.tgUserId,
-      clientUsername: oneTime ? "one_time" : relation.clientUsername,
-      clientName: oneTime ? (clientNameRaw.trim() || null) : relation.fullName || null,
+      clientUsername: oneTime ? "one_time" : isGroup ? "group" : relation.clientUsername,
+      clientName: oneTime ? (clientNameRaw.trim() || null) : isGroup ? null : relation.fullName || null,
       startAt,
       endAt,
       startTime: start,
       endTime: end,
-      type: oneTime ? "one_time" : null,
+      type: oneTime ? "one_time" : isGroup ? "group" : null,
       source: "trainer",
       remindAt,
     },
   });
+
+  if (isGroup && groupClients.length) {
+    await prismaAny.groupSessionParticipant.createMany({
+      data: groupClients.map((c: any) => ({
+        sessionId: session.id,
+        clientId: c.id,
+        clientUsername: c.clientUsername,
+        clientName: c.fullName || null,
+      })),
+    });
+  }
 
   const slots = await prismaAny.trainingSlot.findMany({
     where: { trainerTgUserId: dbUser.tgUserId, dateKey },
@@ -1951,7 +1989,13 @@ app.post("/sessions", async (req, reply) => {
   }
 
   if (!oneTime && startAt.getTime() > Date.now()) {
-    await adjustSubscriptionLeft(dbUser.tgUserId, relation.clientUsername, -1);
+    if (isGroup) {
+      for (const c of groupClients) {
+        await adjustSubscriptionLeft(dbUser.tgUserId, c.clientUsername, -1);
+      }
+    } else {
+      await adjustSubscriptionLeft(dbUser.tgUserId, relation.clientUsername, -1);
+    }
   }
 
   return { ok: true, session: serializeSession(session) };
@@ -1966,7 +2010,10 @@ app.delete("/sessions/:id", async (req, reply) => {
   if (!id) return reply.code(400).send({ message: "id required" });
 
   const tryDelete = async (sessionId: string) => {
-    const session = await prismaAny.trainingSession.findUnique({ where: { id: sessionId } });
+    const session = await prismaAny.trainingSession.findUnique({
+      where: { id: sessionId },
+      include: { participants: true },
+    });
     if (!session || session.trainerTgUserId !== dbUser.tgUserId) return null;
     await prismaAny.trainingSession.delete({ where: { id: sessionId } });
     return session;
@@ -1976,7 +2023,13 @@ app.delete("/sessions/:id", async (req, reply) => {
   const deleted = await tryDelete(id);
   if (deleted) {
     if (new Date(deleted.startAt).getTime() > Date.now()) {
-      await adjustSubscriptionLeft(deleted.trainerTgUserId, deleted.clientUsername, 1);
+      if (deleted.type === "group" && Array.isArray(deleted.participants)) {
+        for (const p of deleted.participants) {
+          await adjustSubscriptionLeft(deleted.trainerTgUserId, p.clientUsername, 1);
+        }
+      } else {
+        await adjustSubscriptionLeft(deleted.trainerTgUserId, deleted.clientUsername, 1);
+      }
     }
     return { ok: true };
   }
@@ -1988,11 +2041,17 @@ app.delete("/sessions/:id", async (req, reply) => {
         const deletedNormalized = await tryDelete(normalized);
         if (deletedNormalized) {
           if (new Date(deletedNormalized.startAt).getTime() > Date.now()) {
-            await adjustSubscriptionLeft(
-              deletedNormalized.trainerTgUserId,
-              deletedNormalized.clientUsername,
-              1
-            );
+            if (deletedNormalized.type === "group" && Array.isArray(deletedNormalized.participants)) {
+              for (const p of deletedNormalized.participants) {
+                await adjustSubscriptionLeft(deletedNormalized.trainerTgUserId, p.clientUsername, 1);
+              }
+            } else {
+              await adjustSubscriptionLeft(
+                deletedNormalized.trainerTgUserId,
+                deletedNormalized.clientUsername,
+                1
+              );
+            }
           }
           return { ok: true };
         }
@@ -2056,9 +2115,15 @@ app.get("/client/sessions", async (req, reply) => {
 
   const username = dbUser.username || "";
   if (!username) return { ok: true, sessions: [] };
+  const normalizedUsername = username.replace(/^@/, "");
 
   const sessions = await prismaAny.trainingSession.findMany({
-    where: { clientUsername: username.replace(/^@/, "") },
+    where: {
+      OR: [
+        { clientUsername: normalizedUsername },
+        { participants: { some: { clientUsername: normalizedUsername } } },
+      ],
+    },
     orderBy: { startAt: "asc" },
   });
   return { ok: true, sessions: sessions.map((s: any) => serializeSession(s)) };

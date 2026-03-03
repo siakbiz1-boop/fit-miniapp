@@ -643,10 +643,7 @@ export default function App() {
       const payload = allSessions.map((s) => ({
         id: s.id,
         clientUsername: s.clientUsername,
-        clientName:
-          s.clientUsername === "one_time" || s.type === "one_time"
-            ? s.clientName?.trim() || null
-            : getClientLabel(invites, s.clientUsername),
+        clientName: sessionClientLabel(s, tr, invites) || null,
         startAt: sessionStartTime(s).toISOString(),
         endAt: sessionEndTime(s).toISOString(),
         startTime: s.start,
@@ -2751,13 +2748,7 @@ function TrainerHome({
                         {sessionStatusLabel(nearest, now)}
                       </div>
                     </div>
-                    <div style={styles.homeNextMeta}>
-                      {nearest.clientUsername === "one_time" || nearest.type === "one_time"
-                        ? nearest.clientName?.trim()
-                          ? nearest.clientName
-                          : tr("Разовая тренировка", "One-time session")
-                        : getClientLabel(clients, nearest.clientUsername)}
-                    </div>
+                    <div style={styles.homeNextMeta}>{sessionClientLabel(nearest, tr, clients)}</div>
                   </button>
                   {!(nearest.clientUsername === "one_time" || nearest.type === "one_time") &&
                   !isLocalClientUsername(nearest.clientUsername || "") ? (
@@ -3517,7 +3508,7 @@ function ClientSchedule(props: {
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
                 <div style={styles.readOnlyValue}>
-                  {activeSession.type && activeSession.type.trim() ? activeSession.type : "—"}
+                  {sessionTitle(activeSession, tr)}
                 </div>
               </div>
               <div style={{ marginTop: 16 }}>
@@ -3717,7 +3708,7 @@ function ClientSchedule(props: {
                 >
                   <div style={styles.sessionBannerLeft}>
                     <div style={styles.sessionBannerTitle}>
-                      {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
+                      {sessionTitle(s, tr)}
                     </div>
                     <div style={styles.sessionBannerTime}>
                       {s.start} — {s.end}
@@ -3830,7 +3821,7 @@ function ClientSchedule(props: {
                 >
                   <div style={styles.sessionBannerLeft}>
                     <div style={styles.sessionBannerTitle}>
-                      {s.type?.trim() ? s.type : tr("Тренировка", "Session")}
+                      {sessionTitle(s, tr)}
                     </div>
                     <div style={styles.sessionBannerTime}>
                       {s.start} — {s.end}
@@ -4128,7 +4119,7 @@ function TrainerSchedule(props: {
   const [draftSessionPrice, setDraftSessionPrice] = useState("");
   const [draftSessionComment, setDraftSessionComment] = useState("");
   const [draftSessionClientName, setDraftSessionClientName] = useState("");
-  const [weekScheduleMode, setWeekScheduleMode] = useState<"client" | "one_time">("client");
+  const [weekScheduleMode, setWeekScheduleMode] = useState<"client" | "one_time" | "group">("client");
   const [weekScheduleClientName, setWeekScheduleClientName] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
   const weekSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -4138,6 +4129,7 @@ function TrainerSchedule(props: {
   const [weekScheduleStart, setWeekScheduleStart] = useState("12:30");
   const [weekScheduleEnd, setWeekScheduleEnd] = useState("13:30");
   const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
+  const [weekScheduleGroupIds, setWeekScheduleGroupIds] = useState<string[]>([]);
   const [weekScheduleError, setWeekScheduleError] = useState("");
   const weekScheduleDays = useMemo(() => buildCalendarStrip(today, 14, 30), [today]);
   const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
@@ -4225,10 +4217,7 @@ function TrainerSchedule(props: {
     const payload = allSessions.map((s) => ({
       id: s.id,
       clientUsername: s.clientUsername,
-      clientName:
-        s.clientUsername === "one_time" || s.type === "one_time"
-          ? s.clientName?.trim() || null
-          : getClientLabel(clients, s.clientUsername),
+      clientName: sessionClientLabel(s, tr, clients) || null,
       startAt: sessionStartTime(s).toISOString(),
       endAt: sessionEndTime(s).toISOString(),
       startTime: s.start,
@@ -4350,12 +4339,23 @@ function TrainerSchedule(props: {
       const first = activeClients[0];
       if (first?.id) setWeekScheduleClientId(first.id);
     }
+    if (weekScheduleMode === "group" && weekScheduleGroupIds.length < 2) {
+      const defaults = activeClients.slice(0, 2).map((c) => c.id);
+      if (defaults.length >= 2) setWeekScheduleGroupIds(defaults);
+    }
     const scroller = weekScheduleScrollerRef.current;
     const target = weekScheduleSelectedRef.current || weekScheduleTodayRef.current;
     if (!scroller || !target) return;
     const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
     scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [showWeekSchedule, weekScheduleDate, activeClients, weekScheduleClientId, weekScheduleMode]);
+  }, [
+    showWeekSchedule,
+    weekScheduleDate,
+    activeClients,
+    weekScheduleClientId,
+    weekScheduleGroupIds,
+    weekScheduleMode,
+  ]);
 
   useEffect(() => {
     if (bookingMode !== "both" && section === "free") {
@@ -4456,6 +4456,7 @@ function TrainerSchedule(props: {
     const sessionClient = clients.find((c) => c.username === activeSession.clientUsername) || null;
     const canDeleteByTime = sessionStartTime(activeSession).getTime() > nowTs;
     const isOneTimeSession = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
+    const isGroupSession = activeSession.clientUsername === "group" || activeSession.type === "group";
     return (
       <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -4542,7 +4543,7 @@ function TrainerSchedule(props: {
                 />
               ) : (
                 <div style={styles.readOnlyValue}>
-                  {getClientLabel(clients, activeSession.clientUsername)}
+                  {sessionClientLabel(activeSession, tr, clients)}
                 </div>
               )}
               <div style={{ marginTop: 16 }} />
@@ -4561,6 +4562,12 @@ function TrainerSchedule(props: {
                 {isOneTimeSession ? (
                   <input
                     value={tr("Разовая тренировка", "One-time session")}
+                    readOnly
+                    style={{ ...styles.input, opacity: 0.8 }}
+                  />
+                ) : isGroupSession ? (
+                  <input
+                    value={tr("Групповая тренировка", "Group session")}
                     readOnly
                     style={{ ...styles.input, opacity: 0.8 }}
                   />
@@ -4769,7 +4776,7 @@ function TrainerSchedule(props: {
                           }}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.rowTitle}>{s.type?.trim() ? s.type : tr("Тренировка", "Session")}</div>
+                            <div style={styles.rowTitle}>{sessionTitle(s, tr)}</div>
                             <div style={styles.rowSubtitle}>
                               {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
                             </div>
@@ -4965,8 +4972,11 @@ function TrainerSchedule(props: {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {}}
-                    style={styles.scheduleTab}
+                    onClick={() => setWeekScheduleMode("group")}
+                    style={{
+                      ...styles.scheduleTab,
+                      ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
+                    }}
                   >
                     {tr("Групповая тренировка", "Group session")}
                   </button>
@@ -5050,7 +5060,7 @@ function TrainerSchedule(props: {
                         )}
                       </select>
                     </div>
-                  ) : (
+                  ) : weekScheduleMode === "one_time" ? (
                     <div style={{ marginTop: 12 }}>
                       <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
                       <input
@@ -5062,6 +5072,34 @@ function TrainerSchedule(props: {
                         placeholder={tr("Введите имя клиента", "Enter client name")}
                         style={styles.input}
                       />
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={styles.fieldLabel}>{tr("Клиенты", "Clients")}</div>
+                      <div style={styles.groupSelectList}>
+                        {activeClients.length === 0 ? (
+                          <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
+                        ) : (
+                          activeClients.map((c) => {
+                            const checked = weekScheduleGroupIds.includes(c.id);
+                            return (
+                              <label key={c.id} style={styles.groupSelectRow}>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => {
+                                    setWeekScheduleGroupIds((prev) =>
+                                      prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                                    );
+                                    if (weekScheduleError) setWeekScheduleError("");
+                                  }}
+                                />
+                                <span style={{ marginLeft: 8 }}>{getClientLabel(activeClients, c.username)}</span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
                   )}
                   {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
@@ -5107,6 +5145,7 @@ function TrainerSchedule(props: {
                         return;
                       }
                       let client: TrainerClientInvite | null = null;
+                      let groupClients: TrainerClientInvite[] = [];
                       if (weekScheduleMode === "client") {
                         if (!weekScheduleClientId) {
                           setWeekScheduleError(tr("Выберите клиента.", "Select a client."));
@@ -5117,15 +5156,33 @@ function TrainerSchedule(props: {
                           setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
                           return;
                         }
-                      } else if (!weekScheduleClientName.trim()) {
-                        setWeekScheduleError(tr("Введите имя клиента.", "Enter client name."));
-                        return;
+                      } else if (weekScheduleMode === "one_time") {
+                        if (!weekScheduleClientName.trim()) {
+                          setWeekScheduleError(tr("Введите имя клиента.", "Enter client name."));
+                          return;
+                        }
+                      } else {
+                        if (weekScheduleGroupIds.length < 2) {
+                          setWeekScheduleError(tr("Выберите минимум двух клиентов.", "Select at least two clients."));
+                          return;
+                        }
+                        groupClients = activeClients.filter((c) => weekScheduleGroupIds.includes(c.id));
+                        if (groupClients.length < 2) {
+                          setWeekScheduleError(tr("Клиенты не найдены.", "Clients not found."));
+                          return;
+                        }
                       }
                       if (!token) {
                         setWeekScheduleError(tr("Сначала войдите в аккаунт.", "Please login first."));
                         return;
                       }
                       try {
+                        const payload =
+                          weekScheduleMode === "client" && client
+                            ? { clientId: client.id }
+                            : weekScheduleMode === "one_time"
+                              ? { oneTime: true, clientName: weekScheduleClientName.trim() }
+                              : { groupClientIds: groupClients.map((c) => c.id) };
                         const res = await fetch(`${apiBase}/sessions`, {
                           method: "POST",
                           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -5133,9 +5190,7 @@ function TrainerSchedule(props: {
                             dateKey,
                             start,
                             end,
-                            ...(weekScheduleMode === "client" && client
-                              ? { clientId: client.id }
-                              : { oneTime: true, clientName: weekScheduleClientName.trim() }),
+                            ...payload,
                           }),
                         });
                         if (!res.ok) {
@@ -5197,12 +5252,13 @@ function TrainerSchedule(props: {
                 <div style={styles.sessionList}>
                   {list.map((s) => {
                     const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
-                    const title = isOneTime
-                      ? tr("Разовая тренировка", "One-time session")
-                      : s.type?.trim()
-                        ? s.type
-                        : tr("Тренировка", "Session");
-                    const clientLabel = isOneTime ? s.clientName?.trim() || "" : getClientLabel(clients, s.clientUsername);
+                    const title = sessionTitle(s, tr);
+                    const isGroup = s.type === "group" || s.clientUsername === "group";
+                    const clientLabel = isOneTime
+                      ? s.clientName?.trim() || ""
+                      : isGroup
+                        ? ""
+                        : getClientLabel(clients, s.clientUsername);
                     return (
                       <div
                         key={s.id}
@@ -5304,7 +5360,6 @@ function TrainerSchedule(props: {
                               />
                             ))}
                             {daySessions.map((s) => {
-                              const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
                               const startMin = timeToMinutes(s.start);
                               const endMin = timeToMinutes(s.end);
                               const top =
@@ -5327,7 +5382,7 @@ function TrainerSchedule(props: {
                                 }}
                               >
                                   <div style={styles.scheduleWeekSessionTitle}>
-                                    {isOneTime ? s.clientName?.trim() || "" : getClientLabel(clients, s.clientUsername)}
+                                    {sessionClientLabel(s, tr, clients)}
                                   </div>
                                   <div style={styles.scheduleWeekSessionTime}>
                                     {s.start}–{s.end}
@@ -5407,7 +5462,11 @@ function TrainerSchedule(props: {
                         ...styles.scheduleWeekAddBtn,
                         ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
                       }}
-                      onClick={() => setShowWeekAddMenu(false)}
+                      onClick={() => {
+                        setShowWeekAddMenu(false);
+                        setWeekScheduleMode("group");
+                        setShowWeekSchedule(true);
+                      }}
                     >
                       {tr("Групповую тренировку", "Group session")}
                     </button>
@@ -5441,7 +5500,7 @@ function TrainerSchedule(props: {
                       </button>
                     </div>
 
-                    <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                    <div style={styles.scheduleModeStack}>
                       <button
                         type="button"
                         onClick={() => setWeekScheduleMode("client")}
@@ -5461,6 +5520,16 @@ function TrainerSchedule(props: {
                         }}
                       >
                         {tr("Разовая тренировка", "One-time session")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMode("group")}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
+                        }}
+                      >
+                        {tr("Групповая тренировка", "Group session")}
                       </button>
                     </div>
 
@@ -5542,7 +5611,7 @@ function TrainerSchedule(props: {
                             )}
                           </select>
                         </div>
-                      ) : (
+                      ) : weekScheduleMode === "one_time" ? (
                         <div style={{ marginTop: 12 }}>
                           <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
                           <input
@@ -5554,6 +5623,34 @@ function TrainerSchedule(props: {
                             placeholder={tr("Введите имя клиента", "Enter client name")}
                             style={styles.input}
                           />
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={styles.fieldLabel}>{tr("Клиенты", "Clients")}</div>
+                          <div style={styles.groupSelectList}>
+                            {activeClients.length === 0 ? (
+                              <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
+                            ) : (
+                              activeClients.map((c) => {
+                                const checked = weekScheduleGroupIds.includes(c.id);
+                                return (
+                                  <label key={c.id} style={styles.groupSelectRow}>
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => {
+                                        setWeekScheduleGroupIds((prev) =>
+                                          prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                                        );
+                                        if (weekScheduleError) setWeekScheduleError("");
+                                      }}
+                                    />
+                                    <span style={{ marginLeft: 8 }}>{getClientLabel(activeClients, c.username)}</span>
+                                  </label>
+                                );
+                              })
+                            )}
+                          </div>
                         </div>
                       )}
                       {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
@@ -5599,6 +5696,7 @@ function TrainerSchedule(props: {
                             return;
                           }
                           let client: TrainerClientInvite | null = null;
+                          let groupClients: TrainerClientInvite[] = [];
                           if (weekScheduleMode === "client") {
                             if (!weekScheduleClientId) {
                               setWeekScheduleError(tr("Выберите клиента.", "Select a client."));
@@ -5609,27 +5707,43 @@ function TrainerSchedule(props: {
                               setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
                               return;
                             }
-                          } else if (!weekScheduleClientName.trim()) {
-                            setWeekScheduleError(tr("Введите имя клиента.", "Enter client name."));
-                            return;
+                          } else if (weekScheduleMode === "one_time") {
+                            if (!weekScheduleClientName.trim()) {
+                              setWeekScheduleError(tr("Введите имя клиента.", "Enter client name."));
+                              return;
+                            }
+                          } else {
+                            if (weekScheduleGroupIds.length < 2) {
+                              setWeekScheduleError(tr("Выберите минимум двух клиентов.", "Select at least two clients."));
+                              return;
+                            }
+                            groupClients = activeClients.filter((c) => weekScheduleGroupIds.includes(c.id));
+                            if (groupClients.length < 2) {
+                              setWeekScheduleError(tr("Клиенты не найдены.", "Clients not found."));
+                              return;
+                            }
                           }
                           if (!token) {
                             setWeekScheduleError(tr("Сначала войдите в аккаунт.", "Please login first."));
                             return;
                           }
                           try {
-                          const res = await fetch(`${apiBase}/sessions`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({
-                              dateKey,
-                              start,
-                              end,
-                              ...(weekScheduleMode === "client" && client
+                            const payload =
+                              weekScheduleMode === "client" && client
                                 ? { clientId: client.id }
-                                : { oneTime: true, clientName: weekScheduleClientName.trim() }),
-                            }),
-                          });
+                                : weekScheduleMode === "one_time"
+                                  ? { oneTime: true, clientName: weekScheduleClientName.trim() }
+                                  : { groupClientIds: groupClients.map((c) => c.id) };
+                            const res = await fetch(`${apiBase}/sessions`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({
+                                dateKey,
+                                start,
+                                end,
+                                ...payload,
+                              }),
+                            });
                             if (!res.ok) {
                               if (res.status === 409) {
                                 setWeekScheduleError(
@@ -9106,12 +9220,12 @@ function PersonalDataScreen(props: {
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={styles.rowTitle}>{s.type?.trim() ? s.type : tr("Тренировка", "Session")}</div>
+                          <div style={styles.rowTitle}>{sessionTitle(s, tr)}</div>
                           <div style={styles.rowSubtitle}>
                             {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
                           </div>
                           <div style={styles.rowSubtitle}>
-                            {getClientLabel(subscriptionItems || [], s.clientUsername)}
+                            {sessionClientLabel(s, tr, subscriptionItems || [])}
                           </div>
                         </div>
                       </div>
@@ -9768,6 +9882,26 @@ function mapSessionFromApi(s: any): SessionItem {
     price: s.price ? String(s.price) : undefined,
     comment: s.comment ? String(s.comment) : undefined,
   };
+}
+
+function sessionTitle(s: SessionItem, tr: (ru: string, en: string) => string) {
+  if (s.type === "group" || s.clientUsername === "group") return tr("Групповая тренировка", "Group session");
+  const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
+  if (isOneTime) return tr("Разовая тренировка", "One-time session");
+  return s.type?.trim() ? s.type : tr("Тренировка", "Session");
+}
+
+function sessionClientLabel(
+  s: SessionItem,
+  tr: (ru: string, en: string) => string,
+  clients: TrainerClientInvite[]
+) {
+  if (s.type === "group" || s.clientUsername === "group") return tr("Групповая тренировка", "Group session");
+  const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
+  if (isOneTime) {
+    return s.clientName?.trim() ? s.clientName : tr("Разовая тренировка", "One-time session");
+  }
+  return getClientLabel(clients, s.clientUsername);
 }
 
 function getClientLabel(clients: TrainerClientInvite[], username: string) {
@@ -12256,6 +12390,12 @@ const styles: Record<string, any> = {
     WebkitOverflowScrolling: "touch",
     paddingBottom: 4,
   },
+  scheduleModeStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    marginBottom: 12,
+  },
   personalTabsRow: {
     marginTop: 14,
     display: "flex",
@@ -12338,6 +12478,23 @@ const styles: Record<string, any> = {
     background: "var(--accent)",
     color: "var(--accent-contrast)",
     border: "1px solid var(--accent)",
+  },
+  groupSelectList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    maxHeight: 180,
+    overflowY: "auto",
+  },
+  groupSelectRow: {
+    display: "flex",
+    alignItems: "center",
+    fontSize: 14,
+    color: "var(--text)",
   },
   scheduleTabsDivider: {
     height: 1,
