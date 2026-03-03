@@ -3441,6 +3441,7 @@ function ClientSchedule(props: {
   if (scheduleScreen === "session" && activeSession) {
     const canClientDelete = activeTrainer?.bookingMode === "both";
     const canDeleteByTime = sessionStartTime(activeSession).getTime() > nowTs;
+    const isGroupSession = activeSession.clientUsername === "group" || activeSession.type === "group";
 
     return (
       <div style={styles.pageContainer}>
@@ -3514,11 +3515,7 @@ function ClientSchedule(props: {
                 </div>
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>
-                  {(activeSession.clientUsername === "group" || activeSession.type === "group")
-                    ? tr("Общая стоимость тренировки", "Total session price")
-                    : tr("Стоимость тренировки", "Session price")}
-                </div>
+                <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
                 <div style={styles.readOnlyValue}>
                   {(() => {
                     const isGroup = activeSession.clientUsername === "group" || activeSession.type === "group";
@@ -3526,8 +3523,8 @@ function ClientSchedule(props: {
                       const total = parsePriceToNumber(activeSession.price);
                       const count = activeSession.participants?.length || 0;
                       if (!total) return "—";
-                      if (!count) return String(total);
-                      return String(Math.round(total / count));
+                      const perClient = count ? Math.round(total / count) : total;
+                      return formatMoney(perClient);
                     }
                     const value =
                       (activeSession.price && String(activeSession.price).trim()
@@ -3545,7 +3542,43 @@ function ClientSchedule(props: {
                     : "—"}
                 </div>
               </div>
-              {canClientDelete && canDeleteByTime ? (
+              {isGroupSession && canDeleteByTime ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const doLeave = async () => {
+                      if (!token) return;
+                      try {
+                        const res = await fetch(
+                          `${apiBase}/client/sessions/${encodeURIComponent(activeSession.id)}/leave`,
+                          { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        if (!res.ok) {
+                          try {
+                            WebApp?.showPopup?.({
+                              title: tr("Не удалось отказаться", "Failed to leave"),
+                              message: `${tr("Статус", "Status")}: ${res.status}`,
+                              buttons: [{ type: "ok" }],
+                            });
+                          } catch {
+                            // ignore
+                          }
+                          return;
+                        }
+                        setScheduleScreen("list");
+                        setActiveSession(null);
+                        onBooked();
+                      } catch {
+                        // ignore
+                      }
+                    };
+                    void doLeave();
+                  }}
+                  style={{ ...styles.saveBtn, ...styles.neutralBtn, marginTop: 16 }}
+                >
+                  {tr("Отказаться от тренировки", "Cancel participation")}
+                </button>
+              ) : canClientDelete && canDeleteByTime ? (
                 <button
                   type="button"
                   onClick={() => {

@@ -2063,6 +2063,59 @@ app.delete("/sessions/:id", async (req, reply) => {
   return reply.code(404).send({ message: "session not found" });
 });
 
+// Client leaves a group session
+app.post("/client/sessions/:id/leave", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  if (dbUser.role !== "client") {
+    return reply.code(403).send({ message: "Only clients can leave sessions" });
+  }
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const session = await prismaAny.trainingSession.findUnique({
+    where: { id },
+    include: { participants: true },
+  });
+  if (!session) return reply.code(404).send({ message: "session not found" });
+
+  const isGroup = session.clientUsername === "group" || session.type === "group";
+  if (!isGroup) return reply.code(400).send({ message: "not a group session" });
+
+  const username = normalizeUsername(dbUser.username || "");
+  if (!username) return reply.code(400).send({ message: "username required" });
+
+  const participant = (session.participants || []).find(
+    (p: any) => normalizeUsername(p.clientUsername || "") === username
+  );
+  if (!participant) return reply.code(404).send({ message: "participant not found" });
+
+  const total = parseInt(String(session.price || "").replace(/[^\d]/g, ""), 10);
+  const countBefore = Array.isArray(session.participants) ? session.participants.length : 0;
+  const perClient =
+    Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.round(total / countBefore) : 0;
+  const nextTotal =
+    Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.max(0, total - perClient) : total;
+
+  await prismaAny.$transaction(async (tx: any) => {
+    await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
+    if (Number.isFinite(nextTotal) && total > 0 && countBefore > 0) {
+      await tx.trainingSession.update({
+        where: { id: session.id },
+        data: { price: String(nextTotal) },
+      });
+    }
+  });
+
+  if (new Date(session.startAt).getTime() > Date.now()) {
+    await adjustSubscriptionLeft(session.trainerTgUserId, participant.clientUsername, 1);
+  }
+
+  return { ok: true };
+});
+
 // Update trainer session info (type/price/comment)
 app.patch("/sessions/:id", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
