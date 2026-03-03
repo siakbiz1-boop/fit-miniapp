@@ -94,6 +94,8 @@ model TrainerNoteList {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  items TrainerNoteItem[]
+
   @@index([trainerTgUserId])
 }
 
