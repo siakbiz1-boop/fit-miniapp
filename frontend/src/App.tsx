@@ -5371,6 +5371,13 @@ function TrainerSchedule(props: {
                           throw new Error("session missing");
                         }
                         const mapped = mapSessionFromApi(data.session);
+                        if (weekScheduleMode === "group" && groupClients.length && (!mapped.participants || mapped.participants.length === 0)) {
+                          mapped.participants = groupClients.map((c) => ({
+                            clientId: c.id,
+                            clientUsername: c.username,
+                            clientName: c.fullName || c.clientName || "",
+                          }));
+                        }
                         setSessionsByDate((prev) => {
                           const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
                           list.push(mapped);
@@ -5892,6 +5899,13 @@ function TrainerSchedule(props: {
                               throw new Error("session missing");
                             }
                             const mapped = mapSessionFromApi(data.session);
+                            if (weekScheduleMode === "group" && groupClients.length && (!mapped.participants || mapped.participants.length === 0)) {
+                              mapped.participants = groupClients.map((c) => ({
+                                clientId: c.id,
+                                clientUsername: c.username,
+                                clientName: c.fullName || c.clientName || "",
+                              }));
+                            }
                             setSessionsByDate((prev) => {
                               const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
                               list.push(mapped);
