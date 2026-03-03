@@ -2752,30 +2752,48 @@ function TrainerHome({
                     </div>
                     <div style={styles.homeNextMeta}>{sessionClientLabel(nearest, tr, clients)}</div>
                   </button>
-                  {!(nearest.clientUsername === "one_time" || nearest.type === "one_time") &&
-                  !isLocalClientUsername(nearest.clientUsername || "") ? (
-                    <div style={styles.homeNextContactRow}>
-                      <div style={styles.homeNextContactLabel}>
-                        {tr("Связаться с клиентом:", "Contact the client:")}
+                  {(() => {
+                    const isGroup = nearest.clientUsername === "group" || nearest.type === "group";
+                    const isOneTime = nearest.clientUsername === "one_time" || nearest.type === "one_time";
+                    if (isOneTime) return null;
+                    const usernames = isGroup
+                      ? Array.from(
+                          new Set(
+                            (nearest.participants || [])
+                              .map((p) => String(p.clientUsername || "").replace(/^@/, "").trim())
+                              .filter(Boolean)
+                          )
+                        )
+                      : [String(nearest.clientUsername || "").replace(/^@/, "").trim()].filter(Boolean);
+                    const tgUsernames = usernames.filter((u) => !isLocalClientUsername(u));
+                    if (tgUsernames.length === 0) return null;
+                    return (
+                      <div style={styles.homeNextContactRow}>
+                        <div style={styles.homeNextContactLabel}>
+                          {tr("Связаться с клиентом:", "Contact the client:")}
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {tgUsernames.map((handle) => (
+                            <button
+                              key={handle}
+                              type="button"
+                              onClick={() => {
+                                const link = `https://t.me/${handle}`;
+                                if (typeof WebApp?.openTelegramLink === "function") {
+                                  WebApp.openTelegramLink(link);
+                                } else {
+                                  window.open(link, "_blank");
+                                }
+                              }}
+                              style={styles.homeNextContactLink}
+                            >
+                              @{handle}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const handle = nearest.clientUsername?.trim();
-                          if (!handle) return;
-                          const link = `https://t.me/${handle.replace(/^@/, "")}`;
-                          if (typeof WebApp?.openTelegramLink === "function") {
-                            WebApp.openTelegramLink(link);
-                          } else {
-                            window.open(link, "_blank");
-                          }
-                        }}
-                        style={styles.homeNextContactLink}
-                      >
-                        @{nearest.clientUsername}
-                      </button>
-                    </div>
-                  ) : null}
+                    );
+                  })()}
                 </>
               ) : (
                 <div style={styles.homeNextEmpty}>
@@ -10093,7 +10111,14 @@ function sessionClientLabel(
   tr: (ru: string, en: string) => string,
   clients: TrainerClientInvite[]
 ) {
-  if (s.type === "group" || s.clientUsername === "group") return tr("Групповая тренировка", "Group session");
+  if (s.type === "group" || s.clientUsername === "group") {
+    const count = s.participants?.length || 0;
+    if (count > 0) {
+      const suffix = count === 1 ? "человек" : count >= 2 && count <= 4 ? "человека" : "человек";
+      return tr(`Записано ${count} ${suffix}`, `Enrolled: ${count}`);
+    }
+    return tr("Групповая тренировка", "Group session");
+  }
   const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
   if (isOneTime) {
     return s.clientName?.trim() ? s.clientName : tr("Разовая тренировка", "One-time session");
