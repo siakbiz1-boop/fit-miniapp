@@ -191,6 +191,14 @@ type NotesListItem = {
   createdAt: string;
 };
 
+type NotesTaskItem = {
+  id: string;
+  listId: string;
+  title: string;
+  done: boolean;
+  createdAt: string;
+};
+
 const LanguageContext = React.createContext<"ru" | "en">("ru");
 
 function useTr() {
@@ -1783,8 +1791,16 @@ function TrainerHome({
   const [notesEditing, setNotesEditing] = useState(false);
   const [notesSwipeId, setNotesSwipeId] = useState<string | null>(null);
   const [notesSwipeOffset, setNotesSwipeOffset] = useState(0);
+  const [notesActiveList, setNotesActiveList] = useState<NotesListItem | null>(null);
+  const [notesItems, setNotesItems] = useState<NotesTaskItem[]>([]);
+  const [notesItemsLoading, setNotesItemsLoading] = useState(false);
+  const [notesItemsError, setNotesItemsError] = useState<string | null>(null);
+  const [notesItemCreating, setNotesItemCreating] = useState(false);
+  const [notesItemDraft, setNotesItemDraft] = useState("");
+  const [notesItemSaving, setNotesItemSaving] = useState(false);
   const notesInputRef = useRef<HTMLInputElement | null>(null);
   const notesEditInputRef = useRef<HTMLInputElement | null>(null);
+  const notesItemInputRef = useRef<HTMLInputElement | null>(null);
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
@@ -1844,12 +1860,23 @@ function TrainerHome({
     }
   }, [notesEditingId]);
   useEffect(() => {
+    if (notesItemCreating) {
+      window.setTimeout(() => notesItemInputRef.current?.focus(), 0);
+    }
+  }, [notesItemCreating]);
+  useEffect(() => {
     if (!hasTgBack) return;
-    if (!notesOpen) {
+    if (!notesOpen || notesActiveList) {
       WebApp.BackButton.hide();
       return;
     }
-    const handler = () => setNotesOpen(false);
+    const handler = () => {
+      setNotesOpen(false);
+      setNotesActiveList(null);
+      setNotesItems([]);
+      setNotesItemsError(null);
+      setNotesItemCreating(false);
+    };
     WebApp.BackButton.show();
     WebApp.BackButton.onClick(handler);
     return () => {
@@ -2136,6 +2163,185 @@ function TrainerHome({
     if (window.confirm(message)) void confirmDelete();
   };
 
+  const loadNotesItems = useCallback(
+    async (listId: string) => {
+      if (!token) return;
+      setNotesItemsLoading(true);
+      setNotesItemsError(null);
+      try {
+        const res = await fetch(`${apiBase}/notes/lists/${encodeURIComponent(listId)}/items`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setNotesItemsError(tr("Не удалось загрузить задачи.", "Failed to load tasks."));
+          return;
+        }
+        const data = (await res.json()) as { ok: boolean; items?: NotesTaskItem[] };
+        setNotesItems(Array.isArray(data.items) ? data.items : []);
+      } catch {
+        setNotesItemsError(tr("Проверьте соединение.", "Check your connection."));
+      } finally {
+        setNotesItemsLoading(false);
+      }
+    },
+    [apiBase, token, tr]
+  );
+
+  const submitNotesItemDraft = async () => {
+    if (!notesActiveList) return;
+    const title = notesItemDraft.trim();
+    if (!title) {
+      setNotesItemDraft("");
+      setNotesItemCreating(false);
+      return;
+    }
+    if (!token) return;
+    setNotesItemSaving(true);
+    setNotesItemsError(null);
+    try {
+      const res = await fetch(`${apiBase}/notes/lists/${encodeURIComponent(notesActiveList.id)}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title }),
+      });
+      if (!res.ok) {
+        setNotesItemsError(tr("Не удалось сохранить задачу.", "Failed to save task."));
+        return;
+      }
+      const data = (await res.json()) as { ok: boolean; item?: NotesTaskItem };
+      if (data?.item) {
+        setNotesItems((prev) => [data.item as NotesTaskItem, ...prev]);
+      }
+      setNotesItemDraft("");
+      setNotesItemCreating(false);
+    } catch {
+      setNotesItemsError(tr("Проверьте соединение.", "Check your connection."));
+    } finally {
+      setNotesItemSaving(false);
+    }
+  };
+
+  const toggleNotesItem = async (item: NotesTaskItem) => {
+    if (!token) return;
+    const nextDone = !item.done;
+    setNotesItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, done: nextDone } : it)));
+    try {
+      const res = await fetch(`${apiBase}/notes/items/${encodeURIComponent(item.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ done: nextDone }),
+      });
+      if (!res.ok) {
+        setNotesItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, done: item.done } : it)));
+        setNotesItemsError(tr("Не удалось обновить задачу.", "Failed to update task."));
+      }
+    } catch {
+      setNotesItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, done: item.done } : it)));
+      setNotesItemsError(tr("Проверьте соединение.", "Check your connection."));
+    }
+  };
+
+  if (notesOpen && notesActiveList) {
+    return (
+      <div style={styles.pageContainer}>
+        <div style={styles.notesScreen}>
+          <div style={styles.topBar}>
+            <button
+              type="button"
+              onClick={() => {
+                setNotesActiveList(null);
+                setNotesItems([]);
+                setNotesItemsError(null);
+                setNotesItemCreating(false);
+              }}
+              style={styles.backBtnInline}
+              aria-label={tr("назад", "back")}
+            >
+              <IconArrowLeft />
+            </button>
+            <div style={styles.topBarTitle}>{notesActiveList.title}</div>
+            <div style={styles.backBtnSpacer} />
+          </div>
+          <div style={styles.topBarDivider} />
+          <div style={styles.notesList}>
+            {notesItemCreating ? (
+              <div style={styles.notesRow}>
+                <input
+                  ref={notesItemInputRef}
+                  value={notesItemDraft}
+                  onChange={(e) => setNotesItemDraft(e.target.value)}
+                  placeholder={tr("Новая задача", "New task")}
+                  style={styles.notesInput}
+                  disabled={notesItemSaving}
+                  onKeyDown={(e) => {
+                    if (notesItemSaving) return;
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submitNotesItemDraft();
+                    }
+                    if (e.key === "Escape") {
+                      setNotesItemDraft("");
+                      setNotesItemCreating(false);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!notesItemDraft.trim()) {
+                      setNotesItemDraft("");
+                      setNotesItemCreating(false);
+                    }
+                  }}
+                />
+                <span style={{ ...styles.notesRowAction, ...styles.notesRowActionDisabled }}>+</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setNotesItemCreating(true);
+                  setNotesItemDraft("");
+                }}
+                style={{ ...styles.notesRow, ...styles.notesRowButton }}
+              >
+                <span style={styles.notesRowTitle}>{tr("Новая задача", "New task")}</span>
+                <span style={styles.notesRowAction}>+</span>
+              </button>
+            )}
+            {notesItemsError ? <div style={styles.notesError}>{notesItemsError}</div> : null}
+            {notesItemsLoading ? (
+              <div style={styles.notesEmpty}>{tr("Загрузка...", "Loading...")}</div>
+            ) : notesItems.length === 0 ? (
+              <div style={styles.notesEmpty}>
+                {tr("Добавьте первую задачу.", "Add your first task.")}
+              </div>
+            ) : (
+              notesItems.map((item) => (
+                <div key={item.id} style={styles.notesRow}>
+                  <span
+                    style={{
+                      ...styles.notesRowTitle,
+                      ...(item.done ? styles.notesTaskDone : null),
+                    }}
+                  >
+                    {item.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleNotesItem(item)}
+                    style={{
+                      ...styles.notesTaskToggle,
+                      ...(item.done ? styles.notesTaskToggleActive : null),
+                    }}
+                    aria-label={tr("отметить задачу", "toggle task")}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (notesOpen) {
     return (
       <div style={styles.pageContainer}>
@@ -2254,6 +2460,14 @@ function TrainerHome({
                       const shouldOpen = notesSwipeOffset <= -60;
                       setNotesSwipeId(shouldOpen ? item.id : null);
                       setNotesSwipeOffset(shouldOpen ? -120 : 0);
+                    }}
+                    onClick={() => {
+                      if (notesEditingId || notesSwipeId === item.id) return;
+                      setNotesActiveList(item);
+                      setNotesItems([]);
+                      setNotesItemsError(null);
+                      setNotesItemCreating(false);
+                      void loadNotesItems(item.id);
                     }}
                   >
                     {notesEditingId === item.id ? (
@@ -10411,6 +10625,21 @@ const styles: Record<string, any> = {
     zIndex: 1,
     transition: "transform 0.12s ease",
     touchAction: "pan-y",
+  },
+  notesTaskToggle: {
+    width: 26,
+    height: 26,
+    borderRadius: 999,
+    border: "2px solid rgba(84, 192, 198, 0.8)",
+    background: "transparent",
+    cursor: "pointer",
+  },
+  notesTaskToggleActive: {
+    background: "rgba(84, 192, 198, 0.25)",
+    borderColor: "rgba(84, 192, 198, 1)",
+  },
+  notesTaskDone: {
+    opacity: 0.6,
   },
   notesRowButton: {
     cursor: "pointer",

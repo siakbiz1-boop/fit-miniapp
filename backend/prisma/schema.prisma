@@ -97,6 +97,19 @@ model TrainerNoteList {
   @@index([trainerTgUserId])
 }
 
+model TrainerNoteItem {
+  id        String   @id @default(cuid())
+  listId    String
+  title     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  list TrainerNoteList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@index([listId])
+}
+
 model TrainerClient {
   id                 String        @id @default(cuid())
   trainerTgUserId    BigInt
