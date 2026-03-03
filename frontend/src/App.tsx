@@ -1866,11 +1866,18 @@ function TrainerHome({
   }, [notesItemCreating]);
   useEffect(() => {
     if (!hasTgBack) return;
-    if (!notesOpen || notesActiveList) {
+    if (!notesOpen) {
       WebApp.BackButton.hide();
       return;
     }
     const handler = () => {
+      if (notesActiveList) {
+        setNotesActiveList(null);
+        setNotesItems([]);
+        setNotesItemsError(null);
+        setNotesItemCreating(false);
+        return;
+      }
       setNotesOpen(false);
       setNotesActiveList(null);
       setNotesItems([]);
@@ -1886,7 +1893,7 @@ function TrainerHome({
         // ignore
       }
     };
-  }, [hasTgBack, notesOpen]);
+  }, [hasTgBack, notesOpen, notesActiveList]);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const doneSessions = allSessions.filter((s) => sessionEndTime(s).getTime() <= now.getTime());
@@ -2246,19 +2253,7 @@ function TrainerHome({
       <div style={styles.pageContainer}>
         <div style={styles.notesScreen}>
           <div style={styles.topBar}>
-            <button
-              type="button"
-              onClick={() => {
-                setNotesActiveList(null);
-                setNotesItems([]);
-                setNotesItemsError(null);
-                setNotesItemCreating(false);
-              }}
-              style={styles.backBtnInline}
-              aria-label={tr("назад", "back")}
-            >
-              <IconArrowLeft />
-            </button>
+            <div style={styles.backBtnSpacer} />
             <div style={styles.topBarTitle}>{notesActiveList.title}</div>
             <div style={styles.backBtnSpacer} />
           </div>
@@ -2332,7 +2327,9 @@ function TrainerHome({
                       ...(item.done ? styles.notesTaskToggleActive : null),
                     }}
                     aria-label={tr("отметить задачу", "toggle task")}
-                  />
+                  >
+                    {item.done ? <IconCheck size={16} strokeWidth={2.2} /> : null}
+                  </button>
                 </div>
               ))
             )}
@@ -9918,6 +9915,20 @@ function IconPencil({ size = 22, strokeWidth = 2.1 }: IconProps) {
   );
 }
 
+function IconCheck({ size = 18, strokeWidth = 2.2 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M5 12.5l4 4 10-10"
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 // -----------------------
 // Styles
 // -----------------------
@@ -10640,6 +10651,7 @@ const styles: Record<string, any> = {
   },
   notesTaskDone: {
     opacity: 0.6,
+    textDecoration: "line-through",
   },
   notesRowButton: {
     cursor: "pointer",
