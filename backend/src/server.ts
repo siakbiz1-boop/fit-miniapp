@@ -2099,6 +2099,8 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
   const nextTotal =
     Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.max(0, total - perClient) : total;
 
+  const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
+
   await prismaAny.$transaction(async (tx: any) => {
     await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
     if (Number.isFinite(nextTotal) && total > 0 && countBefore > 0) {
@@ -2106,6 +2108,18 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
         where: { id: session.id },
         data: { price: String(nextTotal) },
       });
+    }
+    if (remaining.length === 1) {
+      const solo = remaining[0];
+      await tx.trainingSession.update({
+        where: { id: session.id },
+        data: {
+          clientUsername: solo.clientUsername,
+          clientName: solo.clientName || null,
+          type: null,
+        },
+      });
+      await tx.groupSessionParticipant.delete({ where: { id: solo.id } });
     }
   });
 
