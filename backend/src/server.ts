@@ -407,29 +407,31 @@ async function tickReminders() {
       });
 
       try {
-        const clientLink = await prismaAny.trainerClient.findFirst({
-          where: {
-            trainerTgUserId: session.trainerTgUserId,
-            clientUsername: session.clientUsername,
-            status: "active",
-            clientTgUserId: { not: null },
-          },
-        });
-        if (clientLink?.clientTgUserId) {
-          const trainerUser = await prisma.user.findUnique({
-            where: { tgUserId: session.trainerTgUserId },
+        if (session.clientUsername !== "group" && session.type !== "group") {
+          const clientLink = await prismaAny.trainerClient.findFirst({
+            where: {
+              trainerTgUserId: session.trainerTgUserId,
+              clientUsername: session.clientUsername,
+              status: "active",
+              clientTgUserId: { not: null },
+            },
           });
-          const trainerLabel =
-            (trainerUser?.username
-              ? `@${String(trainerUser.username).replace(/^@/, "")}`
-              : `${trainerUser?.firstName ?? ""} ${trainerUser?.lastName ?? ""}`.trim()) ||
-            "Тренер";
-          await sendTelegramReminderToClient({
-            chatId: clientLink.clientTgUserId.toString(),
-            startTime: session.startTime,
-            endTime: session.endTime,
-            trainerName: trainerLabel,
-          });
+          if (clientLink?.clientTgUserId) {
+            const trainerUser = await prisma.user.findUnique({
+              where: { tgUserId: session.trainerTgUserId },
+            });
+            const trainerLabel =
+              (trainerUser?.username
+                ? `@${String(trainerUser.username).replace(/^@/, "")}`
+                : `${trainerUser?.firstName ?? ""} ${trainerUser?.lastName ?? ""}`.trim()) ||
+              "Тренер";
+            await sendTelegramReminderToClient({
+              chatId: clientLink.clientTgUserId.toString(),
+              startTime: session.startTime,
+              endTime: session.endTime,
+              trainerName: trainerLabel,
+            });
+          }
         }
       } catch (err) {
         app.log.error({ err, sessionId: session.id }, "Failed to send client reminder");
@@ -444,6 +446,67 @@ async function tickReminders() {
         // ignore rollback errors
       }
       app.log.error({ err, sessionId: session.id }, "Failed to send reminder");
+    }
+  }
+
+  // Group client reminders (per-client reminderHours)
+  const groupSessions = await prismaAny.trainingSession.findMany({
+    where: {
+      type: "group",
+      startAt: { gt: now },
+      participants: { some: { remindedAt: null } },
+    },
+    include: { participants: true },
+    take: 50,
+  });
+
+  for (const session of groupSessions) {
+    try {
+      const trainerUser = await prisma.user.findUnique({
+        where: { tgUserId: session.trainerTgUserId },
+      });
+      const trainerLabel =
+        (trainerUser?.username
+          ? `@${String(trainerUser.username).replace(/^@/, "")}`
+          : `${trainerUser?.firstName ?? ""} ${trainerUser?.lastName ?? ""}`.trim()) || "Тренер";
+
+      const participants = (session.participants || []).filter((p: any) => !p.remindedAt);
+      if (participants.length === 0) continue;
+
+      const clientIds = participants.map((p: any) => p.clientId);
+      const links = (await prismaAny.trainerClient.findMany({
+        where: { id: { in: clientIds } },
+      })) as { id: string; clientTgUserId: bigint | null }[];
+      const linkById = new Map<string, { id: string; clientTgUserId: bigint | null }>(
+        links.map((c) => [c.id, c])
+      );
+      const tgIds = links.map((c) => c.clientTgUserId).filter(Boolean) as bigint[];
+      const users = await prisma.user.findMany({
+        where: { tgUserId: { in: tgIds } },
+      });
+      const userByTg = new Map(users.map((u: any) => [String(u.tgUserId), u]));
+
+      for (const p of participants) {
+        const link = linkById.get(p.clientId);
+        if (!link?.clientTgUserId) continue;
+        const user = userByTg.get(String(link.clientTgUserId));
+        const hours = typeof user?.reminderHours === "number" ? user.reminderHours : 1;
+        if (!hours || hours <= 0) continue;
+        const remindAt = new Date(session.startAt.getTime() - hours * 60 * 60 * 1000);
+        if (now < remindAt) continue;
+        await sendTelegramReminderToClient({
+          chatId: link.clientTgUserId.toString(),
+          startTime: session.startTime,
+          endTime: session.endTime,
+          trainerName: trainerLabel,
+        });
+        await prismaAny.groupSessionParticipant.update({
+          where: { id: p.id },
+          data: { remindedAt: now },
+        });
+      }
+    } catch (err) {
+      app.log.error({ err, sessionId: session.id }, "Failed to send group client reminders");
     }
   }
 }

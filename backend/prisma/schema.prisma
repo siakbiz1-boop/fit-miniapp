@@ -75,6 +75,7 @@ model GroupSessionParticipant {
   clientUsername String
   clientName     String?
   createdAt      DateTime @default(now())
+  remindedAt     DateTime?
 
   session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
