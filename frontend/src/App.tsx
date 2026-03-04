@@ -4242,6 +4242,25 @@ function TrainerSchedule(props: {
   ]);
 
   useEffect(() => {
+    if (!groupEditMode) return;
+    const onOutside = (event: Event) => {
+      if (groupEditJustOpenedRef.current) {
+        groupEditJustOpenedRef.current = false;
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target?.closest?.("[data-group-remove='true']")) return;
+      setGroupEditMode(false);
+    };
+    document.addEventListener("pointerdown", onOutside, true);
+    document.addEventListener("touchstart", onOutside, true);
+    return () => {
+      document.removeEventListener("pointerdown", onOutside, true);
+      document.removeEventListener("touchstart", onOutside, true);
+    };
+  }, [groupEditMode]);
+
+  useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 30000);
     return () => window.clearInterval(id);
   }, []);
@@ -4538,29 +4557,7 @@ function TrainerSchedule(props: {
   if (scheduleScreen === "groupClient" && groupClientId) {
     const client = clients.find((c) => c.id === groupClientId) || null;
     return (
-      <div
-        style={styles.pageContainer}
-        onPointerDownCapture={(event) => {
-          if (!groupEditMode) return;
-          if (groupEditJustOpenedRef.current) {
-            groupEditJustOpenedRef.current = false;
-            return;
-          }
-          const target = event.target as HTMLElement | null;
-          if (target?.closest?.("[data-group-remove='true']")) return;
-          setGroupEditMode(false);
-        }}
-        onTouchStartCapture={(event) => {
-          if (!groupEditMode) return;
-          if (groupEditJustOpenedRef.current) {
-            groupEditJustOpenedRef.current = false;
-            return;
-          }
-          const target = event.target as HTMLElement | null;
-          if (target?.closest?.("[data-group-remove='true']")) return;
-          setGroupEditMode(false);
-        }}
-      >
+      <div style={styles.pageContainer}>
         <div style={styles.topBar}>
           {hasTgBack ? (
             <div style={{ width: 36 }} />
