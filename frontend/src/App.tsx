@@ -4749,7 +4749,7 @@ function TrainerSchedule(props: {
                   style={styles.input}
                 />
               ) : isGroupSession ? (
-                <div style={styles.groupClientChips}>
+                <div style={styles.groupClientChips} onClick={(e) => e.stopPropagation()}>
                   {(participantClients.length ? participantClients : []).map((p) => {
                     const label = p.client
                       ? getClientLabel(clients, p.client.username)
@@ -4786,7 +4786,7 @@ function TrainerSchedule(props: {
                         >
                           {label}
                         </button>
-                        {groupEditMode ? (
+                        {groupEditMode && canDeleteByTime ? (
                           <button
                             type="button"
                             style={styles.groupClientChipRemove}
@@ -4827,18 +4827,20 @@ function TrainerSchedule(props: {
                       </div>
                     );
                   })}
-                  <button
-                    type="button"
-                    style={styles.groupClientChipAdd}
-                    onClick={() => {
-                      setGroupAddOpen((v) => !v);
-                      if (!groupAddClientId && availableGroupClients[0]?.id) {
-                        setGroupAddClientId(availableGroupClients[0].id);
-                      }
-                    }}
-                  >
-                    +
-                  </button>
+                  {canDeleteByTime ? (
+                    <button
+                      type="button"
+                      style={styles.groupClientChipAdd}
+                      onClick={() => {
+                        setGroupAddOpen((v) => !v);
+                        if (!groupAddClientId && availableGroupClients[0]?.id) {
+                          setGroupAddClientId(availableGroupClients[0].id);
+                        }
+                      }}
+                    >
+                      +
+                    </button>
+                  ) : null}
                   {participantClients.length === 0 ? (
                     <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
                   ) : null}
@@ -4846,7 +4848,7 @@ function TrainerSchedule(props: {
               ) : (
                 <div style={styles.readOnlyValue}>{sessionClientLabel(activeSession, tr, clients)}</div>
               )}
-              {isGroupSession && groupAddOpen ? (
+              {isGroupSession && groupAddOpen && canDeleteByTime ? (
                 <div style={{ marginTop: 12 }}>
                   <div style={styles.fieldLabel}>{tr("Добавить клиента", "Add client")}</div>
                   <div style={{ display: "flex", gap: 8 }}>
@@ -12904,7 +12906,10 @@ const styles: Record<string, any> = {
     background: "var(--surface)",
     color: "var(--text)",
     fontSize: 14,
-    lineHeight: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: "1",
     cursor: "pointer",
   },
   groupClientChipAdd: {
