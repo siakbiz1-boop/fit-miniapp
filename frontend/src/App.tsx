@@ -4225,7 +4225,8 @@ function TrainerSchedule(props: {
     setDraftSessionType(activeSession.type ?? "");
     const fallbackPrice =
       clients.find((c) => c.username === activeSession.clientUsername)?.subscriptionPrice ?? "";
-    setDraftSessionPrice(activeSession.price ?? fallbackPrice ?? "");
+    const rawPrice = activeSession.price ?? fallbackPrice ?? "";
+    setDraftSessionPrice(rawPrice ? normalizePriceRUB(rawPrice) : "");
     setDraftSessionComment(activeSession.comment ?? "");
     setDraftSessionClientName(activeSession.clientName ?? "");
     if (isOneTime || isGroup) setSessionTab("info");
@@ -4271,11 +4272,18 @@ function TrainerSchedule(props: {
       const data = (await res.json()) as { ok: boolean; session?: any };
       if (!data?.session || !activeSession) return;
       const mapped = mapSessionFromApi(data.session);
+      if ((activeSession.participants?.length || 0) > 0 && (mapped.participants?.length || 0) === 0) {
+        mapped.participants = activeSession.participants;
+      }
       setActiveSession((prev) => (prev && prev.id === mapped.id ? { ...prev, ...mapped } : prev));
       setSessionsByDate((prev) => {
         const dateKey = mapped.dateKey;
         const list = prev[dateKey] ? [...prev[dateKey]] : [];
-        const nextList = list.map((item) => (item.id === mapped.id ? { ...item, ...mapped } : item));
+        const nextList = list.map((item) =>
+          item.id === mapped.id
+            ? { ...item, ...mapped, participants: mapped.participants?.length ? mapped.participants : item.participants }
+            : item
+        );
         return { ...prev, [dateKey]: nextList };
       });
     } catch {
@@ -4806,6 +4814,7 @@ function TrainerSchedule(props: {
                                     );
                                     return { ...prev, [mapped.dateKey]: nextList };
                                   });
+                                  setGroupEditMode(false);
                                 }
                               } catch {
                                 // ignore
@@ -12888,14 +12897,14 @@ const styles: Record<string, any> = {
     position: "absolute",
     top: -6,
     right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: "50%",
+    width: 22,
+    height: 22,
+    borderRadius: 999,
     border: "1px solid var(--border)",
     background: "var(--surface)",
     color: "var(--text)",
     fontSize: 14,
-    lineHeight: "18px",
+    lineHeight: "20px",
     cursor: "pointer",
   },
   groupClientChipAdd: {
