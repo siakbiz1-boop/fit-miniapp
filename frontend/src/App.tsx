@@ -4192,6 +4192,7 @@ function TrainerSchedule(props: {
   const [groupAddOpen, setGroupAddOpen] = useState(false);
   const [groupAddClientId, setGroupAddClientId] = useState("");
   const groupPressTimerRef = useRef<number | null>(null);
+  const groupEditJustOpenedRef = useRef(false);
   const [weekScheduleMode, setWeekScheduleMode] = useState<"client" | "one_time" | "group">("client");
   const [weekScheduleClientName, setWeekScheduleClientName] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -4537,7 +4538,17 @@ function TrainerSchedule(props: {
   if (scheduleScreen === "groupClient" && groupClientId) {
     const client = clients.find((c) => c.id === groupClientId) || null;
     return (
-      <div style={styles.pageContainer}>
+      <div
+        style={styles.pageContainer}
+        onClick={() => {
+          if (!groupEditMode) return;
+          if (groupEditJustOpenedRef.current) {
+            groupEditJustOpenedRef.current = false;
+            return;
+          }
+          setGroupEditMode(false);
+        }}
+      >
         <div style={styles.topBar}>
           {hasTgBack ? (
             <div style={{ width: 36 }} />
@@ -4749,7 +4760,7 @@ function TrainerSchedule(props: {
                   style={styles.input}
                 />
               ) : isGroupSession ? (
-                <div style={styles.groupClientChips} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.groupClientChips}>
                   {(participantClients.length ? participantClients : []).map((p) => {
                     const label = p.client
                       ? getClientLabel(clients, p.client.username)
@@ -4766,6 +4777,7 @@ function TrainerSchedule(props: {
                           onPointerDown={() => {
                             if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
                             groupPressTimerRef.current = window.setTimeout(() => {
+                              groupEditJustOpenedRef.current = true;
                               setGroupEditMode(true);
                             }, 450);
                           }}
@@ -4776,7 +4788,14 @@ function TrainerSchedule(props: {
                             if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
                           }}
                           onClick={() => {
-                            if (groupEditMode) return;
+                            if (groupEditMode) {
+                              if (groupEditJustOpenedRef.current) {
+                                groupEditJustOpenedRef.current = false;
+                                return;
+                              }
+                              setGroupEditMode(false);
+                              return;
+                            }
                             if (!p.client) return;
                             setGroupClientId(p.client.id);
                             setGroupClientTab("weights");
@@ -4791,7 +4810,8 @@ function TrainerSchedule(props: {
                             type="button"
                             style={styles.groupClientChipRemove}
                             aria-label="remove client"
-                            onClick={async () => {
+                            onClick={async (event) => {
+                              event.stopPropagation();
                               if (!p.client || !token) return;
                               try {
                                 const res = await fetch(
