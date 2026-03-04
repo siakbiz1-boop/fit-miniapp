@@ -4188,6 +4188,10 @@ function TrainerSchedule(props: {
   const [draftSessionPrice, setDraftSessionPrice] = useState("");
   const [draftSessionComment, setDraftSessionComment] = useState("");
   const [draftSessionClientName, setDraftSessionClientName] = useState("");
+  const [groupEditMode, setGroupEditMode] = useState(false);
+  const [groupAddOpen, setGroupAddOpen] = useState(false);
+  const [groupAddClientId, setGroupAddClientId] = useState("");
+  const groupPressTimerRef = useRef<number | null>(null);
   const [weekScheduleMode, setWeekScheduleMode] = useState<"client" | "one_time" | "group">("client");
   const [weekScheduleClientName, setWeekScheduleClientName] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -4649,6 +4653,9 @@ function TrainerSchedule(props: {
       name: string;
       username: string;
     }[];
+    const availableGroupClients = clients.filter(
+      (c) => !c.archived && c.status === "active" && !participantClients.some((p) => p.client?.id === c.id)
+    );
     return (
       <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -4744,22 +4751,85 @@ function TrainerSchedule(props: {
                           ? `@${p.username.replace(/^@/, "")}`
                           : tr("Клиент", "Client");
                     return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        style={styles.groupClientChip}
-                        onClick={() => {
-                          if (!p.client) return;
-                          setGroupClientId(p.client.id);
-                          setGroupClientTab("weights");
-                          onLoadHistory?.(p.client);
-                          setScheduleScreen("groupClient");
-                        }}
-                      >
-                        {label}
-                      </button>
+                      <div key={p.id} style={styles.groupClientChipWrap}>
+                        <button
+                          type="button"
+                          style={styles.groupClientChip}
+                          onPointerDown={() => {
+                            if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
+                            groupPressTimerRef.current = window.setTimeout(() => {
+                              setGroupEditMode(true);
+                            }, 450);
+                          }}
+                          onPointerUp={() => {
+                            if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
+                          }}
+                          onPointerLeave={() => {
+                            if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
+                          }}
+                          onClick={() => {
+                            if (groupEditMode) return;
+                            if (!p.client) return;
+                            setGroupClientId(p.client.id);
+                            setGroupClientTab("weights");
+                            onLoadHistory?.(p.client);
+                            setScheduleScreen("groupClient");
+                          }}
+                        >
+                          {label}
+                        </button>
+                        {groupEditMode ? (
+                          <button
+                            type="button"
+                            style={styles.groupClientChipRemove}
+                            aria-label="remove client"
+                            onClick={async () => {
+                              if (!p.client || !token) return;
+                              try {
+                                const res = await fetch(
+                                  `${apiBase}/sessions/${encodeURIComponent(activeSession.id)}/group/remove`,
+                                  {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ clientId: p.client.id }),
+                                  }
+                                );
+                                if (!res.ok) return;
+                                const data = (await res.json()) as { ok: boolean; session?: any };
+                                if (data?.session) {
+                                  const mapped = mapSessionFromApi(data.session);
+                                  setActiveSession(mapped);
+                                  setSessionsByDate((prev) => {
+                                    const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                                    const nextList = list.map((item) =>
+                                      item.id === mapped.id ? { ...item, ...mapped } : item
+                                    );
+                                    return { ...prev, [mapped.dateKey]: nextList };
+                                  });
+                                }
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
                     );
                   })}
+                  <button
+                    type="button"
+                    style={styles.groupClientChipAdd}
+                    onClick={() => {
+                      setGroupAddOpen((v) => !v);
+                      if (!groupAddClientId && availableGroupClients[0]?.id) {
+                        setGroupAddClientId(availableGroupClients[0].id);
+                      }
+                    }}
+                  >
+                    +
+                  </button>
                   {participantClients.length === 0 ? (
                     <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
                   ) : null}
@@ -4767,6 +4837,63 @@ function TrainerSchedule(props: {
               ) : (
                 <div style={styles.readOnlyValue}>{sessionClientLabel(activeSession, tr, clients)}</div>
               )}
+              {isGroupSession && groupAddOpen ? (
+                <div style={{ marginTop: 12 }}>
+                  <div style={styles.fieldLabel}>{tr("Добавить клиента", "Add client")}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <select
+                      value={groupAddClientId}
+                      onChange={(e) => setGroupAddClientId(e.target.value)}
+                      style={{ ...styles.input, flex: 1 }}
+                    >
+                      {availableGroupClients.length === 0 ? (
+                        <option value="">{tr("Нет клиентов", "No clients")}</option>
+                      ) : (
+                        availableGroupClients.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {getClientLabel(clients, c.username)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <button
+                      type="button"
+                      style={styles.inlineCheckBtn}
+                      onClick={async () => {
+                        if (!groupAddClientId || !token) return;
+                        try {
+                          const res = await fetch(
+                            `${apiBase}/sessions/${encodeURIComponent(activeSession.id)}/group/add`,
+                            {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ clientId: groupAddClientId }),
+                            }
+                          );
+                          if (!res.ok) return;
+                          const data = (await res.json()) as { ok: boolean; session?: any };
+                          if (data?.session) {
+                            const mapped = mapSessionFromApi(data.session);
+                            setActiveSession(mapped);
+                            setSessionsByDate((prev) => {
+                              const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                              const nextList = list.map((item) =>
+                                item.id === mapped.id ? { ...item, ...mapped } : item
+                              );
+                              return { ...prev, [mapped.dateKey]: nextList };
+                            });
+                          }
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                      aria-label="add client"
+                    >
+                      ✓
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div style={{ marginTop: 16 }} />
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
@@ -5346,6 +5473,8 @@ function TrainerSchedule(props: {
                         );
                         return;
                       }
+                      const startMin = timeToMinutes(start);
+                      const endMin = timeToMinutes(end);
                       const selectedDay = startOfDay(weekScheduleDate);
                       const todayDay = startOfDay(new Date());
                       if (selectedDay.getTime() < todayDay.getTime()) {
@@ -5354,9 +5483,17 @@ function TrainerSchedule(props: {
                         );
                         return;
                       }
+                      if (selectedDay.getTime() === todayDay.getTime()) {
+                        const now = new Date();
+                        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                        if (startMin <= nowMinutes) {
+                          setWeekScheduleError(
+                            tr("Время начала уже прошло.", "Start time has already passed.")
+                          );
+                          return;
+                        }
+                      }
                       const existingSessions = sessionsByDate[dateKey] || [];
-                      const startMin = timeToMinutes(start);
-                      const endMin = timeToMinutes(end);
                       const overlapsSession = existingSessions.some((s) => {
                         const sStart = timeToMinutes(s.start);
                         const sEnd = timeToMinutes(s.end);
@@ -5874,6 +6011,8 @@ function TrainerSchedule(props: {
                             );
                             return;
                           }
+                          const startMin = timeToMinutes(start);
+                          const endMin = timeToMinutes(end);
                           const selectedDay = startOfDay(weekScheduleDate);
                           const todayDay = startOfDay(new Date());
                           if (selectedDay.getTime() < todayDay.getTime()) {
@@ -5882,9 +6021,17 @@ function TrainerSchedule(props: {
                             );
                             return;
                           }
+                          if (selectedDay.getTime() === todayDay.getTime()) {
+                            const now = new Date();
+                            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                            if (startMin <= nowMinutes) {
+                              setWeekScheduleError(
+                                tr("Время начала уже прошло.", "Start time has already passed.")
+                              );
+                              return;
+                            }
+                          }
                           const existingSessions = sessionsByDate[dateKey] || [];
-                          const startMin = timeToMinutes(start);
-                          const endMin = timeToMinutes(end);
                           const overlapsSession = existingSessions.some((s) => {
                             const sStart = timeToMinutes(s.start);
                             const sEnd = timeToMinutes(s.end);
@@ -12731,6 +12878,34 @@ const styles: Record<string, any> = {
     padding: "8px 12px",
     fontSize: 13,
     fontWeight: 600,
+    cursor: "pointer",
+  },
+  groupClientChipWrap: {
+    position: "relative",
+    display: "inline-flex",
+  },
+  groupClientChipRemove: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: "50%",
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text)",
+    fontSize: 14,
+    lineHeight: "18px",
+    cursor: "pointer",
+  },
+  groupClientChipAdd: {
+    borderRadius: 999,
+    border: "1px dashed var(--border)",
+    background: "transparent",
+    color: "var(--text)",
+    padding: "6px 12px",
+    fontSize: 16,
+    fontWeight: 700,
     cursor: "pointer",
   },
   scheduleTabsDivider: {

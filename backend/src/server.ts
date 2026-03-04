@@ -2247,6 +2247,146 @@ app.patch("/sessions/:id", async (req, reply) => {
   return reply.code(404).send({ message: "session not found" });
 });
 
+// Add/remove participants in group session (trainer)
+app.post("/sessions/:id/group/add", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+  if (dbUser.role !== "trainer") {
+    return reply.code(403).send({ message: "Only trainers can update group sessions" });
+  }
+
+  const id = String((req.params as any)?.id || "");
+  const body = req.body as any;
+  const clientId = String(body?.clientId || "");
+  if (!id || !clientId) return reply.code(400).send({ message: "id/clientId required" });
+
+  const session = await prismaAny.trainingSession.findUnique({
+    where: { id },
+    include: { participants: true },
+  });
+  if (!session || session.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "session not found" });
+  }
+  if (!(session.clientUsername === "group" || session.type === "group")) {
+    return reply.code(400).send({ message: "not a group session" });
+  }
+
+  const client = await prismaAny.trainerClient.findFirst({
+    where: {
+      id: clientId,
+      trainerTgUserId: dbUser.tgUserId,
+      status: "active",
+      archived: false,
+    },
+  });
+  if (!client) return reply.code(404).send({ message: "client not found" });
+
+  const already = (session.participants || []).some(
+    (p: any) => p.clientId === client.id || p.clientUsername === client.clientUsername
+  );
+  if (already) return { ok: true, session: serializeSession(session) };
+
+  const total = parseInt(String(session.price || "").replace(/[^\d]/g, ""), 10);
+  const countBefore = Array.isArray(session.participants) ? session.participants.length : 0;
+  const perClient =
+    Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.round(total / countBefore) : 0;
+  const nextTotal =
+    Number.isFinite(total) && total > 0 && countBefore > 0 ? total + perClient : total;
+
+  const updated = await prismaAny.$transaction(async (tx: any) => {
+    await tx.groupSessionParticipant.create({
+      data: {
+        sessionId: session.id,
+        clientId: client.id,
+        clientUsername: client.clientUsername,
+        clientName: client.fullName || null,
+      },
+    });
+    if (Number.isFinite(nextTotal) && total > 0 && countBefore > 0) {
+      await tx.trainingSession.update({
+        where: { id: session.id },
+        data: { price: String(nextTotal) },
+      });
+    }
+    return tx.trainingSession.findUnique({
+      where: { id: session.id },
+      include: { participants: true },
+    });
+  });
+
+  return { ok: true, session: serializeSession(updated) };
+});
+
+app.post("/sessions/:id/group/remove", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+  if (dbUser.role !== "trainer") {
+    return reply.code(403).send({ message: "Only trainers can update group sessions" });
+  }
+
+  const id = String((req.params as any)?.id || "");
+  const body = req.body as any;
+  const clientId = String(body?.clientId || "");
+  if (!id || !clientId) return reply.code(400).send({ message: "id/clientId required" });
+
+  const session = await prismaAny.trainingSession.findUnique({
+    where: { id },
+    include: { participants: true },
+  });
+  if (!session || session.trainerTgUserId !== dbUser.tgUserId) {
+    return reply.code(404).send({ message: "session not found" });
+  }
+  if (!(session.clientUsername === "group" || session.type === "group")) {
+    return reply.code(400).send({ message: "not a group session" });
+  }
+
+  const participant = (session.participants || []).find((p: any) => p.clientId === clientId);
+  if (!participant) return reply.code(404).send({ message: "participant not found" });
+
+  const total = parseInt(String(session.price || "").replace(/[^\d]/g, ""), 10);
+  const countBefore = Array.isArray(session.participants) ? session.participants.length : 0;
+  const perClient =
+    Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.round(total / countBefore) : 0;
+  const nextTotal =
+    Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.max(0, total - perClient) : total;
+  const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
+
+  const updated = await prismaAny.$transaction(async (tx: any) => {
+    await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
+    if (Number.isFinite(nextTotal) && total > 0 && countBefore > 0) {
+      await tx.trainingSession.update({
+        where: { id: session.id },
+        data: { price: String(nextTotal) },
+      });
+    }
+    if (remaining.length === 1) {
+      const solo = remaining[0];
+      const relation = await tx.trainerClient.findFirst({
+        where: {
+          trainerTgUserId: session.trainerTgUserId,
+          clientUsername: solo.clientUsername,
+        },
+      });
+      await tx.trainingSession.update({
+        where: { id: session.id },
+        data: {
+          clientUsername: solo.clientUsername,
+          clientName: solo.clientName || null,
+          type: null,
+          price: relation?.subscriptionPrice || null,
+        },
+      });
+      await tx.groupSessionParticipant.delete({ where: { id: solo.id } });
+    }
+    return tx.trainingSession.findUnique({
+      where: { id: session.id },
+      include: { participants: true },
+    });
+  });
+
+  return { ok: true, session: serializeSession(updated) };
+});
+
 // Client sessions
 app.get("/client/sessions", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
