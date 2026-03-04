@@ -4540,12 +4540,24 @@ function TrainerSchedule(props: {
     return (
       <div
         style={styles.pageContainer}
-        onClick={() => {
+        onPointerDownCapture={(event) => {
           if (!groupEditMode) return;
           if (groupEditJustOpenedRef.current) {
             groupEditJustOpenedRef.current = false;
             return;
           }
+          const target = event.target as HTMLElement | null;
+          if (target?.closest?.("[data-group-remove='true']")) return;
+          setGroupEditMode(false);
+        }}
+        onTouchStartCapture={(event) => {
+          if (!groupEditMode) return;
+          if (groupEditJustOpenedRef.current) {
+            groupEditJustOpenedRef.current = false;
+            return;
+          }
+          const target = event.target as HTMLElement | null;
+          if (target?.closest?.("[data-group-remove='true']")) return;
           setGroupEditMode(false);
         }}
       >
@@ -4810,6 +4822,7 @@ function TrainerSchedule(props: {
                             type="button"
                             style={styles.groupClientChipRemove}
                             aria-label="remove client"
+                            data-group-remove="true"
                             onClick={async (event) => {
                               event.stopPropagation();
                               if (!p.client || !token) return;
