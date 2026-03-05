@@ -1825,6 +1825,7 @@ function TrainerHome({
   const [statsRangeOpen, setStatsRangeOpen] = useState(false);
   const [financeHistoryOpen, setFinanceHistoryOpen] = useState(false);
   const [clientStatsMonth, setClientStatsMonth] = useState<Date>(() => startOfMonth(new Date()));
+  const [clientStatsMode, setClientStatsMode] = useState<"count" | "money">("count");
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 60 * 1000);
@@ -2064,17 +2065,25 @@ function TrainerHome({
     const end = sessionEndTime(s);
     return end.getTime() >= clientStatsMonthStart.getTime() && end.getTime() < clientStatsMonthEnd.getTime();
   });
-  const clientStatsMap = new Map<string, { label: string; count: number }>();
-  let oneTimeCount = 0;
-  const addClientStat = (key: string, label: string) => {
-    const prev = clientStatsMap.get(key) || { label, count: 0 };
-    prev.count += 1;
+  const clientStatsMap = new Map<string, { label: string; value: number }>();
+  let oneTimeValue = 0;
+  const addClientStat = (key: string, label: string, value: number) => {
+    const prev = clientStatsMap.get(key) || { label, value: 0 };
+    prev.value += value;
     clientStatsMap.set(key, prev);
   };
   clientStatsSessions.forEach((s) => {
     const isGroup = s.clientUsername === "group" || s.type === "group";
     const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
     if (isGroup) {
+      const participants = s.participants || [];
+      const total = getSessionPrice(clients, s);
+      const perClientValue =
+        clientStatsMode === "money"
+          ? participants.length
+            ? total / participants.length
+            : 0
+          : 1;
       (s.participants || []).forEach((p) => {
         const client = clients.find((c) => c.id === p.clientId || c.username === p.clientUsername) || null;
         const label = client
@@ -2085,24 +2094,28 @@ function TrainerHome({
               ? `@${p.clientUsername.replace(/^@/, "")}`
               : tr("Клиент", "Client");
         const key = client?.id || client?.username || label;
-        addClientStat(key, label);
+        addClientStat(key, label, perClientValue);
       });
       return;
     }
     if (isOneTime) {
-      oneTimeCount += 1;
+      oneTimeValue += clientStatsMode === "money" ? getSessionPrice(clients, s) : 1;
       return;
     }
     const client = clients.find((c) => c.username === s.clientUsername) || null;
     if (!client) return;
-    addClientStat(client.id || client.username, getClientLabel(clients, client.username));
+    addClientStat(
+      client.id || client.username,
+      getClientLabel(clients, client.username),
+      clientStatsMode === "money" ? getSessionPrice(clients, s) : 1
+    );
   });
   if (clientStatsSessions.length > 0) {
     const label = tr("Разовые", "One-time");
-    clientStatsMap.set(label, { label, count: oneTimeCount });
+    clientStatsMap.set(label, { label, value: oneTimeValue });
   }
-  const clientStats = Array.from(clientStatsMap.values()).sort((a, b) => b.count - a.count);
-  const clientStatsMax = Math.max(1, ...clientStats.map((item) => item.count));
+  const clientStats = Array.from(clientStatsMap.values()).sort((a, b) => b.value - a.value);
+  const clientStatsMax = Math.max(1, ...clientStats.map((item) => item.value));
   const financeHistoryMap = new Map<string, { year: number; month: number; count: number; amount: number }>();
   doneSessions.forEach((s) => {
     const end = sessionEndTime(s);
@@ -3085,7 +3098,29 @@ function TrainerHome({
             <div style={styles.clientStatsBlock}>
               <div style={styles.clientStatsHeader}>
                 <div style={styles.clientStatsTitle}>{tr("Статистика по клиентам", "Client stats")}</div>
-                <div style={styles.clientStatsMonthPicker}>
+                <div style={styles.clientStatsControls}>
+                  <div style={styles.clientStatsModeGroup}>
+                    <button
+                      type="button"
+                      onClick={() => setClientStatsMode("count")}
+                      style={{
+                        ...styles.clientStatsModeBtn,
+                        ...(clientStatsMode === "count" ? styles.clientStatsModeBtnActive : null),
+                      }}
+                    >
+                      {tr("Шт.", "Count")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientStatsMode("money")}
+                      style={{
+                        ...styles.clientStatsModeBtn,
+                        ...(clientStatsMode === "money" ? styles.clientStatsModeBtnActive : null),
+                      }}
+                    >
+                      ₽
+                    </button>
+                  </div>
                   <button
                     type="button"
                     style={styles.clientStatsMonthBtn}
@@ -3122,11 +3157,13 @@ function TrainerHome({
                         <div
                           style={{
                             ...styles.clientStatsBarFill,
-                            width: item.count === 0 ? "0%" : `${Math.max(6, (item.count / clientStatsMax) * 100)}%`,
+                            width: item.value === 0 ? "0%" : `${Math.max(6, (item.value / clientStatsMax) * 100)}%`,
                           }}
                         />
                       </div>
-                      <div style={styles.clientStatsCount}>{item.count}</div>
+                      <div style={styles.clientStatsCount}>
+                        {clientStatsMode === "money" ? formatMoney(Math.round(item.value)) : item.value}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -12257,9 +12294,35 @@ const styles: Record<string, any> = {
     gap: 12,
     flexWrap: "wrap",
   },
+  clientStatsControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
   clientStatsTitle: {
     fontSize: 16,
     fontWeight: 800,
+    color: "var(--text)",
+  },
+  clientStatsModeGroup: {
+    display: "flex",
+    alignItems: "center",
+    borderRadius: 999,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    overflow: "hidden",
+  },
+  clientStatsModeBtn: {
+    padding: "6px 10px",
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  clientStatsModeBtnActive: {
+    background: "rgba(30, 107, 255, 0.12)",
     color: "var(--text)",
   },
   clientStatsMonthPicker: {
