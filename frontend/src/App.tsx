@@ -11430,6 +11430,8 @@ const styles: Record<string, any> = {
     alignItems: "center",
     justifyContent: "center",
     padding: 0,
+    opacity: 1,
+    visibility: "visible",
   },
   notesTaskToggleActive: {
     background: "rgba(84, 192, 198, 0.25)",
