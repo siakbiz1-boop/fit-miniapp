@@ -1824,6 +1824,7 @@ function TrainerHome({
   const [statsInfoOpen, setStatsInfoOpen] = useState(false);
   const [statsRangeOpen, setStatsRangeOpen] = useState(false);
   const [financeHistoryOpen, setFinanceHistoryOpen] = useState(false);
+  const [clientStatsMonth, setClientStatsMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 60 * 1000);
@@ -2055,13 +2056,22 @@ function TrainerHome({
     return end.getTime() >= financeMonthStart.getTime() && end.getTime() < financeMonthEnd.getTime();
   });
   const financeBalance = financeMonthDone.reduce((sum, s) => sum + getSessionPrice(clients, s), 0);
+  const clientStatsMonthStart = startOfMonth(clientStatsMonth);
+  const clientStatsMonthEnd = endOfMonthExclusive(clientStatsMonthStart);
+  const clientStatsMonthLabel = formatMonthYear(clientStatsMonthStart);
+  const clientStatsMaxMonth = startOfMonth(now);
+  const clientStatsSessions = doneSessions.filter((s) => {
+    const end = sessionEndTime(s);
+    return end.getTime() >= clientStatsMonthStart.getTime() && end.getTime() < clientStatsMonthEnd.getTime();
+  });
   const clientStatsMap = new Map<string, { label: string; count: number }>();
+  let oneTimeCount = 0;
   const addClientStat = (key: string, label: string) => {
     const prev = clientStatsMap.get(key) || { label, count: 0 };
     prev.count += 1;
     clientStatsMap.set(key, prev);
   };
-  doneSessions.forEach((s) => {
+  clientStatsSessions.forEach((s) => {
     const isGroup = s.clientUsername === "group" || s.type === "group";
     const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
     if (isGroup) {
@@ -2079,11 +2089,18 @@ function TrainerHome({
       });
       return;
     }
-    if (isOneTime) return;
+    if (isOneTime) {
+      oneTimeCount += 1;
+      return;
+    }
     const client = clients.find((c) => c.username === s.clientUsername) || null;
     if (!client) return;
     addClientStat(client.id || client.username, getClientLabel(clients, client.username));
   });
+  if (clientStatsSessions.length > 0) {
+    const label = tr("Разовые", "One-time");
+    clientStatsMap.set(label, { label, count: oneTimeCount });
+  }
   const clientStats = Array.from(clientStatsMap.values()).sort((a, b) => b.count - a.count);
   const clientStatsMax = Math.max(1, ...clientStats.map((item) => item.count));
   const financeHistoryMap = new Map<string, { year: number; month: number; count: number; amount: number }>();
@@ -3066,7 +3083,36 @@ function TrainerHome({
               </div>
             </div>
             <div style={styles.clientStatsBlock}>
-              <div style={styles.clientStatsTitle}>{tr("Статистика по клиентам", "Client stats")}</div>
+              <div style={styles.clientStatsHeader}>
+                <div style={styles.clientStatsTitle}>{tr("Статистика по клиентам", "Client stats")}</div>
+                <div style={styles.clientStatsMonthPicker}>
+                  <button
+                    type="button"
+                    style={styles.clientStatsMonthBtn}
+                    onClick={() => setClientStatsMonth(startOfMonth(addMonths(clientStatsMonthStart, -1)))}
+                    aria-label={tr("Предыдущий месяц", "Previous month")}
+                  >
+                    ‹
+                  </button>
+                  <div style={styles.clientStatsMonthLabel}>{clientStatsMonthLabel}</div>
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.clientStatsMonthBtn,
+                      opacity: clientStatsMonthStart.getTime() >= clientStatsMaxMonth.getTime() ? 0.4 : 1,
+                      cursor: clientStatsMonthStart.getTime() >= clientStatsMaxMonth.getTime() ? "not-allowed" : "pointer",
+                    }}
+                    onClick={() => {
+                      if (clientStatsMonthStart.getTime() >= clientStatsMaxMonth.getTime()) return;
+                      setClientStatsMonth(startOfMonth(addMonths(clientStatsMonthStart, 1)));
+                    }}
+                    disabled={clientStatsMonthStart.getTime() >= clientStatsMaxMonth.getTime()}
+                    aria-label={tr("Следующий месяц", "Next month")}
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
               {clientStats.length ? (
                 <div style={styles.clientStatsList}>
                   {clientStats.map((item, idx) => (
@@ -3076,7 +3122,7 @@ function TrainerHome({
                         <div
                           style={{
                             ...styles.clientStatsBarFill,
-                            width: `${Math.max(6, (item.count / clientStatsMax) * 100)}%`,
+                            width: item.count === 0 ? "0%" : `${Math.max(6, (item.count / clientStatsMax) * 100)}%`,
                           }}
                         />
                       </div>
@@ -10094,6 +10140,20 @@ function addDays(d: Date, delta: number) {
   return out;
 }
 
+function addMonths(d: Date, delta: number) {
+  const out = new Date(d);
+  out.setMonth(out.getMonth() + delta);
+  return out;
+}
+
+function startOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function endOfMonthExclusive(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1);
+}
+
 function formatDateShort(d: Date) {
   const day = String(d.getDate()).padStart(2, "0");
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -10107,6 +10167,14 @@ function formatDateShortMonth(d: Date) {
       : ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
   const day = String(d.getDate()).padStart(2, "0");
   return `${day} ${months[d.getMonth()]}`;
+}
+
+function formatMonthYear(d: Date) {
+  const months =
+    currentLanguage === "en"
+      ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      : ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function formatMoney(value: number) {
@@ -12182,10 +12250,43 @@ const styles: Record<string, any> = {
     flexDirection: "column",
     gap: 12,
   },
+  clientStatsHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+  },
   clientStatsTitle: {
     fontSize: 16,
     fontWeight: 800,
     color: "var(--text)",
+  },
+  clientStatsMonthPicker: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  clientStatsMonthBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    color: "var(--text)",
+    fontSize: 18,
+    fontWeight: 700,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+  },
+  clientStatsMonthLabel: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--text)",
+    minWidth: 90,
+    textAlign: "center",
   },
   clientStatsList: {
     display: "flex",
