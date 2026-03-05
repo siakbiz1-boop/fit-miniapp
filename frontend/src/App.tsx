@@ -5124,7 +5124,7 @@ function TrainerSchedule(props: {
                 )}
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-start" }}>
                   <div style={styles.fieldLabel}>
                     {isGroupSession
                       ? tr("Общая стоимость тренировки", "Total session price")
@@ -5133,7 +5133,7 @@ function TrainerSchedule(props: {
                   {isGroupSession ? (
                     <button
                       type="button"
-                      style={styles.statsInfo}
+                      style={{ ...styles.statsInfo, width: 20, height: 20, fontSize: 12 }}
                       onClick={() => setGroupPriceInfoOpen(true)}
                       aria-label={tr("Информация", "Info")}
                     >
