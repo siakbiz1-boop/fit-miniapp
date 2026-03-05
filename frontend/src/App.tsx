@@ -4330,6 +4330,7 @@ function TrainerSchedule(props: {
   const [groupAddClientId, setGroupAddClientId] = useState("");
   const groupPressTimerRef = useRef<number | null>(null);
   const groupEditJustOpenedRef = useRef(false);
+  const [groupPriceInfoOpen, setGroupPriceInfoOpen] = useState(false);
   const [weekScheduleMode, setWeekScheduleMode] = useState<"client" | "one_time" | "group">("client");
   const [weekScheduleClientName, setWeekScheduleClientName] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -5123,10 +5124,22 @@ function TrainerSchedule(props: {
                 )}
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>
-                  {isGroupSession
-                    ? tr("Общая стоимость тренировки", "Total session price")
-                    : tr("Стоимость тренировки", "Session price")}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                  <div style={styles.fieldLabel}>
+                    {isGroupSession
+                      ? tr("Общая стоимость тренировки", "Total session price")
+                      : tr("Стоимость тренировки", "Session price")}
+                  </div>
+                  {isGroupSession ? (
+                    <button
+                      type="button"
+                      style={styles.statsInfo}
+                      onClick={() => setGroupPriceInfoOpen(true)}
+                      aria-label={tr("Информация", "Info")}
+                    >
+                      i
+                    </button>
+                  ) : null}
                 </div>
                 <div style={styles.inputRow}>
                   <input
@@ -5323,6 +5336,28 @@ function TrainerSchedule(props: {
             <div style={styles.clientPanelBody}>{tr("Пока заглушка.", "Placeholder for now.")}</div>
           )}
         </div>
+        {groupPriceInfoOpen && isGroupSession ? (
+          <div style={styles.statsInfoOverlay} onClick={() => setGroupPriceInfoOpen(false)}>
+            <div style={styles.statsInfoSheet} onClick={(event) => event.stopPropagation()}>
+              <button type="button" style={styles.statsInfoClose} onClick={() => setGroupPriceInfoOpen(false)}>
+                ×
+              </button>
+              <div style={styles.statsInfoTitle}>{tr("Общая стоимость тренировки", "Total session price")}</div>
+              <div style={styles.statsInfoText}>
+                {tr(
+                  "Введите общую сумму за групповую тренировку. Она будет автоматически распределена между всеми участниками поровну.",
+                  "Enter the total price for a group session. It will be split equally among all participants."
+                )}
+              </div>
+              <div style={styles.statsInfoText}>
+                {tr(
+                  "Например: 4 клиента и 2000 ₽ — значит по 500 ₽ на клиента.",
+                  "Example: 4 clients and 2000 ₽ — 500 ₽ per client."
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }
