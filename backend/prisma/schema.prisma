@@ -98,7 +98,6 @@ model TrainerProfile {
   instagram      String?
   otherSocial    String?
   bookingMode    BookingMode @default(trainer)
-  onboardingDone Boolean     @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
