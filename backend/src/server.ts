@@ -1188,6 +1188,7 @@ app.patch("/profile/trainer", async (req, reply) => {
     instagram: body?.instagram,
     otherSocial: body?.otherSocial,
     bookingMode: body?.bookingMode === "both" || body?.bookingMode === "trainer" ? body.bookingMode : undefined,
+    onboardingDone: typeof body?.onboardingDone === "boolean" ? body.onboardingDone : undefined,
   };
 
   const profile = await prismaAny.trainerProfile.upsert({

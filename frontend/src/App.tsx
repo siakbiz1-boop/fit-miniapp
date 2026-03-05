@@ -148,6 +148,7 @@ type TrainerProfile = {
   instagram?: string;
   otherSocial?: string;
   bookingMode?: "trainer" | "both";
+  onboardingDone?: boolean;
 };
 
 type ClientProfile = {
@@ -301,6 +302,11 @@ export default function App() {
   });
   const [trainerProfile, setTrainerProfile] = useState<TrainerProfile | null>(null);
   const prefsSyncRef = useRef<number | null>(null);
+  const [trainerOnboardingStep, setTrainerOnboardingStep] = useState<number | null>(null);
+  const [trainerOnboardingClientId, setTrainerOnboardingClientId] = useState<string | null>(null);
+  const [trainerOnboardingSessionId, setTrainerOnboardingSessionId] = useState<string | null>(null);
+  const [trainerOnboardingArchived, setTrainerOnboardingArchived] = useState(false);
+  const [trainerOnboardingDeleted, setTrainerOnboardingDeleted] = useState(false);
 
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreen>("main");
@@ -334,6 +340,7 @@ export default function App() {
   const processedSessionIdsRef = useRef<Set<string>>(new Set());
   const [pendingSession, setPendingSession] = useState<SessionItem | null>(null);
   const [trainerSessionsLoaded, setTrainerSessionsLoaded] = useState(false);
+  const trainerSessionsFlat = useMemo(() => Object.values(sessionsByDate).flat(), [sessionsByDate]);
   const trainerHistory = useMemo(() => {
     if (role !== "trainer") return [];
     return Object.values(sessionsByDate)
@@ -683,6 +690,28 @@ export default function App() {
   useEffect(() => {
     fetchTrainerProfile();
   }, [token, role, apiBase]);
+
+  useEffect(() => {
+    if (role !== "trainer") return;
+    if (!trainerProfile) return;
+    if (trainerProfile.onboardingDone) {
+      if (trainerOnboardingStep !== null) {
+        setTrainerOnboardingStep(null);
+      }
+      return;
+    }
+    if (trainerOnboardingStep === null) {
+      setTrainerOnboardingStep(0);
+    }
+  }, [role, trainerProfile, trainerOnboardingStep]);
+
+  useEffect(() => {
+    if (trainerOnboardingStep !== 0) return;
+    setTrainerOnboardingClientId(null);
+    setTrainerOnboardingSessionId(null);
+    setTrainerOnboardingArchived(false);
+    setTrainerOnboardingDeleted(false);
+  }, [trainerOnboardingStep]);
 
   useEffect(() => {
     fetchClientTrainers();
@@ -1271,6 +1300,117 @@ export default function App() {
     if (clientTab !== "settings") setClientSettingsScreen("main");
   }, [clientTab]);
 
+  const onboardingActive = role === "trainer" && trainerOnboardingStep !== null;
+  const onboardingStep = trainerOnboardingStep ?? 0;
+  const onboardingStepValue = onboardingActive ? onboardingStep : undefined;
+  const onboardingSession =
+    trainerOnboardingSessionId && trainerSessionsFlat.length
+      ? trainerSessionsFlat.find((s) => s.id === trainerOnboardingSessionId) || null
+      : null;
+  const onboardingStepsText = [
+    tr("Покажем основные функции за 1 минуту.", "We'll show the main features in one minute."),
+    tr("Здесь всё, что нужно на сегодня: ближайшее занятие, клиенты, быстрые действия.", "Everything for today: next session, clients, quick actions."),
+    tr("Здесь отображается ближайшая тренировка — чтобы вы её не пропустили. Сейчас пусто, добавим клиента и занятие.", "The next session appears here so you don't miss it. It's empty now — let's add a client and a session."),
+    tr("Добавляйте клиентов из Telegram или создавайте локальных.", "Add Telegram clients or create local ones."),
+    tr("Создадим локального клиента.", "Let's create a local client."),
+    tr("Запишем клиента на тренировку.", "Let's schedule a session for the client."),
+    tr("Здесь можно редактировать клиента, сумму и комментарий. Время задано при создании.", "Here you can edit client, price, and comment. Time is set when creating."),
+    tr("Можно переключать режимы отображения расписания.", "You can switch between list and table views."),
+    tr("Тренировка отображается в расписании.", "The session now appears in the schedule."),
+    tr("Здесь будут все ваши клиенты.", "All your clients will be listed here."),
+    tr("Здесь информация, упражнения и история тренировок.", "Here are details, exercises, and training history."),
+    tr("Если клиент ушёл — перенесите его в архив.", "If a client leaves, move them to archive."),
+    tr("Архивного клиента можно удалить окончательно.", "Archived clients can be deleted permanently."),
+    tr("Обучение завершено! Теперь вы готовы работать.", "Onboarding complete! You're ready to go."),
+  ];
+  const onboardingNextEnabled = (() => {
+    if (!onboardingActive) return false;
+    if (onboardingStep === 4) return Boolean(trainerOnboardingClientId);
+    if (onboardingStep === 5) return Boolean(trainerOnboardingSessionId);
+    if (onboardingStep === 11) return trainerOnboardingArchived;
+    if (onboardingStep === 12) return trainerOnboardingDeleted;
+    return true;
+  })();
+  const onboardingNextLabel = onboardingStep >= onboardingStepsText.length - 1 ? tr("Готово", "Done") : tr("Далее", "Next");
+  const onboardingHighlightId = (() => {
+    switch (onboardingStep) {
+      case 1:
+        return "homeTab";
+      case 2:
+        return "homeNext";
+      case 3:
+        return null;
+      case 4:
+        return "clientsAdd";
+      case 5:
+        return "scheduleAdd";
+      case 6:
+        return "sessionCard";
+      case 7:
+        return "scheduleToggle";
+      case 8:
+        return "scheduleGrid";
+      case 9:
+        return "clientsList";
+      case 10:
+        return "clientTabs";
+      case 11:
+        return "clientArchive";
+      case 12:
+        return "clientDelete";
+      case 13:
+        return null;
+      default:
+        return null;
+    }
+  })();
+  const onboardingNavHighlight = (() => {
+    if (!onboardingActive) return null;
+    if (onboardingStep === 3 || onboardingStep === 9) return "clients";
+    if ([5, 6, 7, 8].includes(onboardingStep)) return "schedule";
+    if (onboardingStep === 1 || onboardingStep === 2) return "home";
+    return null;
+  })();
+  const onboardingHighlight = onboardingActive ? onboardingHighlightId : null;
+  const advanceOnboarding = () => {
+    if (!onboardingActive) return;
+    if (onboardingStep >= onboardingStepsText.length - 1) {
+      setTrainerOnboardingStep(null);
+      setTrainerOnboardingClientId(null);
+      setTrainerOnboardingSessionId(null);
+      setTrainerOnboardingArchived(false);
+      setTrainerOnboardingDeleted(false);
+      saveTrainerProfile({ onboardingDone: true });
+      return;
+    }
+    switch (onboardingStep) {
+      case 0:
+        setActiveTab("home");
+        break;
+      case 2:
+        setActiveTab("clients");
+        setClientsScreen("list");
+        break;
+      case 4:
+        setActiveTab("schedule");
+        break;
+      case 5:
+        if (onboardingSession) {
+          setPendingSession(onboardingSession);
+        } else if (trainerSessionsFlat.length > 0) {
+          setPendingSession(trainerSessionsFlat[0]);
+        }
+        break;
+      case 8:
+        setActiveTab("clients");
+        setClientsScreen("list");
+        break;
+      default:
+        break;
+    }
+    setTrainerOnboardingStep((prev) => (prev === null ? 0 : prev + 1));
+  };
+
   const handleDeleteProfile = () => {
     const isTrainer = role === "trainer";
     const message = isTrainer
@@ -1438,6 +1578,8 @@ export default function App() {
                   onOpenSettings={() => setActiveTab("settings")}
                   token={token}
                   apiBase={apiBase}
+                  onboardingStep={onboardingStepValue}
+                  onboardingHighlightId={onboardingHighlight}
                 />
               )}
               {activeTab === "schedule" && (
@@ -1456,6 +1598,15 @@ export default function App() {
                   onConsumePendingSession={() => setPendingSession(null)}
                   onLoadHistory={loadClientHistory}
                   onSaveExercises={saveClientExercises}
+                  onboardingStep={onboardingStepValue}
+                  onboardingHighlightId={onboardingHighlight}
+                  onboardingSessionId={trainerOnboardingSessionId}
+                  onOnboardingSessionCreated={(session) => {
+                    if (!onboardingActive) return;
+                    if (!trainerOnboardingSessionId) {
+                      setTrainerOnboardingSessionId(session.id);
+                    }
+                  }}
                 />
               )}
               {activeTab === "clients" && (
@@ -1473,6 +1624,31 @@ export default function App() {
                   onLoadHistory={loadClientHistory}
                   onRefreshClients={fetchClients}
                   onSaveClientExercises={saveClientExercises}
+                  onboardingStep={onboardingStepValue}
+                  onboardingHighlightId={onboardingHighlight}
+                  onboardingClientId={trainerOnboardingClientId}
+                  onOnboardingLocalClientCreated={(client) => {
+                    if (!onboardingActive) return;
+                    if (!trainerOnboardingClientId) setTrainerOnboardingClientId(client.id);
+                  }}
+                  onOnboardingClientArchived={(client) => {
+                    if (!onboardingActive) return;
+                    if (trainerOnboardingClientId && client.id === trainerOnboardingClientId) {
+                      setTrainerOnboardingArchived(true);
+                    }
+                  }}
+                  onOnboardingClientDeleted={(clientId) => {
+                    if (!onboardingActive) return;
+                    if (trainerOnboardingClientId && clientId === trainerOnboardingClientId) {
+                      setTrainerOnboardingDeleted(true);
+                    }
+                  }}
+                  onOnboardingSessionCreated={(session) => {
+                    if (!onboardingActive) return;
+                    if (!trainerOnboardingSessionId) {
+                      setTrainerOnboardingSessionId(session.id);
+                    }
+                  }}
                 />
               )}
               {activeTab === "settings" && (
@@ -1501,12 +1677,42 @@ export default function App() {
                 onDeleteProfile={handleDeleteProfile}
               />
             )}
-              <div style={{ height: 14 }} />
-            </div>
+            <div style={{ height: 14 }} />
+          </div>
 
-            <BottomNav
-              active={activeTab}
-              onChange={(t) => setActiveTab(t)}
+          {onboardingActive ? (
+            <>
+              <div style={styles.onboardingDim} />
+              <div style={styles.onboardingCard}>
+                <div style={styles.onboardingTitle}>
+                  {onboardingStep === 0
+                    ? tr("Добро пожаловать в My fitness", "Welcome to My fitness")
+                    : tr(
+                        `Шаг ${onboardingStep + 1} из ${onboardingStepsText.length}`,
+                        `Step ${onboardingStep + 1} of ${onboardingStepsText.length}`
+                      )}
+                </div>
+                <div style={styles.onboardingText}>{onboardingStepsText[onboardingStep]}</div>
+                <button
+                  type="button"
+                  onClick={advanceOnboarding}
+                  disabled={!onboardingNextEnabled}
+                  style={{
+                    ...styles.onboardingBtn,
+                    ...(!onboardingNextEnabled ? styles.onboardingBtnDisabled : null),
+                  }}
+                >
+                  {onboardingNextLabel}
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          <BottomNav
+            active={activeTab}
+            onChange={(t) => setActiveTab(t)}
+            highlightId={onboardingNavHighlight as Tab | null}
+            highlightStyle={styles.onboardingHighlight}
               items={[
                 { id: "home", label: t.navHome, icon: <IconHome /> },
                 { id: "schedule", label: t.navSchedule, icon: <IconCalendar /> },
@@ -1768,6 +1974,8 @@ function TrainerHome({
   onOpenSettings,
   token,
   apiBase,
+  onboardingStep,
+  onboardingHighlightId,
 }: {
   name: string;
   photoUrl: string;
@@ -1777,6 +1985,8 @@ function TrainerHome({
   onOpenSettings: () => void;
   token: string;
   apiBase: string;
+  onboardingStep?: number;
+  onboardingHighlightId?: string | null;
 }) {
   const tr = useTr();
   const [homeTab, setHomeTab] = useState<"work" | "income" | "subscription">("work");
@@ -1807,6 +2017,7 @@ function TrainerHome({
   const notesInputRef = useRef<HTMLInputElement | null>(null);
   const notesEditInputRef = useRef<HTMLInputElement | null>(null);
   const notesItemInputRef = useRef<HTMLInputElement | null>(null);
+  const highlightId = onboardingHighlightId || null;
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
@@ -1835,6 +2046,12 @@ function TrainerHome({
   useEffect(() => {
     if (homeTab !== "work" && notesOpen) setNotesOpen(false);
   }, [homeTab, notesOpen]);
+
+  useEffect(() => {
+    if (onboardingStep === 1 || onboardingStep === 2) {
+      setHomeTab("work");
+    }
+  }, [onboardingStep]);
   useEffect(() => {
     if (!notesOpen || !token) return;
     let cancelled = false;
@@ -2764,6 +2981,7 @@ function TrainerHome({
             style={{
               ...styles.scheduleTab,
               ...(homeTab === "work" ? styles.scheduleTabActive : null),
+              ...(highlightId === "homeTab" ? styles.onboardingHighlight : null),
             }}
           >
             {tr("Рабочий экран", "Workspace")}
@@ -2795,7 +3013,12 @@ function TrainerHome({
             <div style={styles.homeGreeting}>
               {getGreetingByTime()}, {name || tr("Пользователь", "User")}
             </div>
-            <div style={styles.homeNextBlock}>
+            <div
+              style={{
+                ...styles.homeNextBlock,
+                ...(highlightId === "homeNext" ? styles.onboardingHighlight : null),
+              }}
+            >
               <div style={styles.homeNextTitle}>{tr("Ближайшее занятие", "Next session")}</div>
               {nearest ? (
                 <>
@@ -3440,6 +3663,7 @@ function ClientSchedule(props: {
 }) {
   const { invites, t, token, apiBase, sessionsByDate, onBooked, onSaveExercises } = props;
   const tr = useTr();
+  const highlightId = null;
   const [today, setToday] = useState<Date>(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [section, setSection] = useState<"today" | "book" | "history">("today");
@@ -3645,7 +3869,12 @@ function ClientSchedule(props: {
         </div>
         <div style={styles.clientTabsDivider} />
 
-        <div style={styles.clientPanelPlain}>
+        <div
+          style={{
+            ...styles.clientPanelPlain,
+            ...(highlightId === "sessionCard" ? styles.onboardingHighlight : null),
+          }}
+        >
           {sessionTab === "info" ? (
             <div>
               <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
@@ -4292,6 +4521,10 @@ function TrainerSchedule(props: {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
+  onboardingStep?: number;
+  onboardingHighlightId?: string | null;
+  onboardingSessionId?: string | null;
+  onOnboardingSessionCreated?: (session: SessionItem) => void;
 }) {
   const {
     clients,
@@ -4308,6 +4541,10 @@ function TrainerSchedule(props: {
     onConsumePendingSession,
     onLoadHistory,
     onSaveExercises,
+    onboardingStep,
+    onboardingHighlightId,
+    onboardingSessionId,
+    onOnboardingSessionCreated,
   } = props;
   const tr = useTr();
   const language = React.useContext(LanguageContext);
@@ -4331,6 +4568,7 @@ function TrainerSchedule(props: {
   const groupPressTimerRef = useRef<number | null>(null);
   const groupEditJustOpenedRef = useRef(false);
   const [groupPriceInfoOpen, setGroupPriceInfoOpen] = useState(false);
+  const highlightId = onboardingHighlightId || null;
   const [weekScheduleMode, setWeekScheduleMode] = useState<"client" | "one_time" | "group">("client");
   const [weekScheduleClientName, setWeekScheduleClientName] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -4356,6 +4594,7 @@ function TrainerSchedule(props: {
     setSessionTab("info");
     onConsumePendingSession?.();
   }, [pendingSession, onConsumePendingSession]);
+
 
   useEffect(() => {
     if (!activeSession) return;
@@ -4513,6 +4752,32 @@ function TrainerSchedule(props: {
   const [freeError, setFreeError] = useState("");
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
   const [slotError, setSlotError] = useState("");
+  useEffect(() => {
+    if (onboardingStep === undefined || onboardingStep === null) return;
+    if (onboardingStep === 6 && onboardingSessionId) {
+      const target = Object.values(sessionsByDate)
+        .flat()
+        .find((s) => s.id === onboardingSessionId);
+      if (target && scheduleScreen !== "session") {
+        setActiveSession(target);
+        setScheduleScreen("session");
+        setSessionTab("info");
+      }
+      return;
+    }
+    if ([5, 7, 8, 9].includes(onboardingStep)) {
+      if (scheduleScreen !== "list") {
+        setScheduleScreen("list");
+        setActiveSession(null);
+      }
+    }
+    if (onboardingStep === 7 && scheduleView !== "list") {
+      setScheduleView("list");
+    }
+    if (onboardingStep === 8 && scheduleView !== "grid") {
+      setScheduleView("grid");
+    }
+  }, [onboardingStep, onboardingSessionId, sessionsByDate, scheduleScreen, scheduleView]);
   const slotsSigRef = useRef<Record<string, string>>({});
   const [assignForId, setAssignForId] = useState<string | null>(null);
   const [assignClientUsername, setAssignClientUsername] = useState<string>("");
@@ -5405,6 +5670,7 @@ function TrainerSchedule(props: {
               style={{
                 ...styles.scheduleViewSwitchBtn,
                 ...(scheduleView === "list" ? styles.scheduleViewSwitchBtnActive : null),
+                ...(highlightId === "scheduleToggle" ? styles.onboardingHighlight : null),
               }}
             >
               {tr("Список", "List")}
@@ -5415,6 +5681,7 @@ function TrainerSchedule(props: {
               style={{
                 ...styles.scheduleViewSwitchBtn,
                 ...(scheduleView === "grid" ? styles.scheduleViewSwitchBtnActive : null),
+                ...(highlightId === "scheduleToggle" ? styles.onboardingHighlight : null),
               }}
             >
               {tr("Таблица", "Table")}
@@ -5481,7 +5748,10 @@ function TrainerSchedule(props: {
                   setWeekScheduleDate(selected);
                   setShowWeekSchedule(true);
                 }}
-                style={styles.scheduleTab}
+                style={{
+                  ...styles.scheduleTab,
+                  ...(highlightId === "scheduleAdd" ? styles.onboardingHighlight : null),
+                }}
               >
                 {tr("Добавить тренировку", "Add session")}
               </button>
@@ -5799,6 +6069,7 @@ function TrainerSchedule(props: {
                             clientName: c.fullName || c.clientName || "",
                           }));
                         }
+                        onOnboardingSessionCreated?.(mapped);
                         setSessionsByDate((prev) => {
                           const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
                           list.push(mapped);
@@ -5958,6 +6229,9 @@ function TrainerSchedule(props: {
                                 style={{
                                   ...styles.scheduleWeekSession,
                                   ...(theme === "dark" ? styles.scheduleWeekSessionDark : null),
+                                  ...(highlightId === "scheduleGrid" && onboardingSessionId === s.id
+                                    ? styles.onboardingHighlight
+                                    : null),
                                   top,
                                   height,
                                 }}
@@ -6663,6 +6937,13 @@ function TrainerClients(props: {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
+  onboardingStep?: number;
+  onboardingHighlightId?: string | null;
+  onboardingClientId?: string | null;
+  onOnboardingLocalClientCreated?: (client: TrainerClientInvite) => void;
+  onOnboardingClientArchived?: (client: TrainerClientInvite) => void;
+  onOnboardingClientDeleted?: (clientId: string) => void;
+  onOnboardingSessionCreated?: (session: SessionItem) => void;
 }) {
   const {
     screen,
@@ -6678,18 +6959,57 @@ function TrainerClients(props: {
     onLoadHistory,
     onRefreshClients,
     onSaveClientExercises,
+    onboardingStep,
+    onboardingHighlightId,
+    onboardingClientId,
+    onOnboardingLocalClientCreated,
+    onOnboardingClientArchived,
+    onOnboardingClientDeleted,
+    onOnboardingSessionCreated,
   } = props;
   const tr = useTr();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientsTab, setClientsTab] = useState<"my" | "pending" | "archive">("my");
   const activeClientsCount = invites.filter((c) => !c.archived).length;
   const limitReached = activeClientsCount >= SUBSCRIPTION_CLIENT_LIMIT;
+  const highlightId = onboardingHighlightId || null;
 
   useEffect(() => {
     if (screen !== "detail") return;
     const client = invites.find((c) => c.id === selectedClientId) || null;
     if (client) onLoadHistory?.(client);
   }, [screen, selectedClientId, invites, onLoadHistory]);
+
+  useEffect(() => {
+    if (onboardingStep === undefined || onboardingStep === null) return;
+    if (onboardingStep === 3 || onboardingStep === 4) {
+      if (clientsTab !== "pending") setClientsTab("pending");
+      if (screen === "detail") setScreen("list");
+    }
+    if (onboardingStep === 9) {
+      if (clientsTab !== "my") setClientsTab("my");
+      if (screen !== "list") setScreen("list");
+    }
+    if (onboardingStep === 10 && onboardingClientId) {
+      if (screen !== "detail" || selectedClientId !== onboardingClientId) {
+        setSelectedClientId(onboardingClientId);
+        setScreen("detail");
+      }
+    }
+    if (onboardingStep === 11 && onboardingClientId) {
+      if (screen !== "detail" || selectedClientId !== onboardingClientId) {
+        setSelectedClientId(onboardingClientId);
+        setScreen("detail");
+      }
+    }
+    if (onboardingStep === 12 && onboardingClientId) {
+      if (clientsTab !== "archive") setClientsTab("archive");
+      if (screen !== "detail" || selectedClientId !== onboardingClientId) {
+        setSelectedClientId(onboardingClientId);
+        setScreen("detail");
+      }
+    }
+  }, [onboardingStep, onboardingClientId, screen, clientsTab, selectedClientId, setScreen]);
 
   const showLimitWarning = () => {
     const message =
@@ -6761,6 +7081,7 @@ function TrainerClients(props: {
       if (!res.ok || !data?.client) return null;
       const mapped = mapClientFromApi(data.client);
       setInvites((prev) => [mapped, ...prev]);
+      onOnboardingLocalClientCreated?.(mapped);
       return mapped;
     } catch {
       return null;
@@ -6833,14 +7154,21 @@ function TrainerClients(props: {
           updateClient(target.id, { archived: nextArchived });
           setScreen("list");
           setClientsTab(nextArchived ? "archive" : "my");
+          if (nextArchived) {
+            onOnboardingClientArchived?.(target);
+          }
         }}
         onDeleteClient={(target) => {
           deleteClient(target);
           setScreen("list");
           setClientsTab("my");
+          onOnboardingClientDeleted?.(target.id);
         }}
         onSaveExercises={onSaveClientExercises}
         history={historyByClient[client?.username ?? ""] ?? []}
+        onboardingHighlightId={highlightId}
+        onboardingClientId={onboardingClientId}
+        onOnboardingSessionCreated={onOnboardingSessionCreated}
       />
     );
   }
@@ -6858,7 +7186,10 @@ function TrainerClients(props: {
               }
               setScreen("add");
             }}
-            style={styles.iconBtn}
+            style={{
+              ...styles.iconBtn,
+              ...(highlightId === "clientsAdd" ? styles.onboardingHighlight : null),
+            }}
             aria-label="add client"
           >
             ➕
@@ -6934,7 +7265,12 @@ function TrainerClients(props: {
         }
         return (
           <div style={{ marginTop: 14 }}>
-            <div style={styles.listBlock}>
+            <div
+              style={{
+                ...styles.listBlock,
+                ...(highlightId === "clientsList" ? styles.onboardingHighlight : null),
+              }}
+            >
               {filtered.map((inv, idx) => {
                 const isLast = idx === filtered.length - 1;
                 const isLocal = inv.isLocal || inv.username.startsWith("local_");
@@ -7768,11 +8104,27 @@ function ClientDetailScreen(props: {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
+  onboardingHighlightId?: string | null;
+  onboardingClientId?: string | null;
+  onOnboardingSessionCreated?: (session: SessionItem) => void;
 }) {
-  const { client, onBack, onUpdateClient, onToggleArchive, onDeleteClient, history, onSaveExercises } = props;
+  const {
+    client,
+    onBack,
+    onUpdateClient,
+    onToggleArchive,
+    onDeleteClient,
+    history,
+    onSaveExercises,
+    onboardingHighlightId,
+    onboardingClientId,
+    onOnboardingSessionCreated,
+  } = props;
   const { sessionsByDate, setSessionsByDate, token, apiBase } = props;
   const tr = useTr();
   const [tab, setTab] = useState<"info" | "subscription" | "weights" | "history">("info");
+  const highlightId = onboardingHighlightId || null;
+  const isOnboardingClient = Boolean(onboardingClientId && client?.id === onboardingClientId);
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
   const [draftFullName, setDraftFullName] = useState("");
@@ -8185,6 +8537,7 @@ function ClientDetailScreen(props: {
                       throw new Error("session missing");
                     }
                     const mapped = mapSessionFromApi(data.session);
+                    onOnboardingSessionCreated?.(mapped);
                     setSessionsByDate((prev) => {
                       const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
                       list.push(mapped);
@@ -8205,7 +8558,12 @@ function ClientDetailScreen(props: {
         </div>
       ) : null}
 
-      <div style={styles.clientTabsScroll}>
+      <div
+        style={{
+          ...styles.clientTabsScroll,
+          ...(highlightId === "clientTabs" && isOnboardingClient ? styles.onboardingHighlight : null),
+        }}
+      >
         <div style={styles.clientTabs}>
           <button
             type="button"
@@ -8486,8 +8844,18 @@ function ClientDetailScreen(props: {
             }}
             style={
               client?.archived
-                ? { ...styles.saveBtn, ...styles.neutralBtn, marginTop: 18 }
-                : { ...styles.saveBtn, ...styles.dangerBtn, marginTop: 18 }
+                ? {
+                    ...styles.saveBtn,
+                    ...styles.neutralBtn,
+                    marginTop: 18,
+                    ...(highlightId === "clientArchive" && isOnboardingClient ? styles.onboardingHighlight : null),
+                  }
+                : {
+                    ...styles.saveBtn,
+                    ...styles.dangerBtn,
+                    marginTop: 18,
+                    ...(highlightId === "clientArchive" && isOnboardingClient ? styles.onboardingHighlight : null),
+                  }
             }
           >
             {client?.archived ? tr("Разархивировать", "Unarchive") : tr("Архивировать", "Archive")}
@@ -8512,7 +8880,12 @@ function ClientDetailScreen(props: {
                 }
                 if (window.confirm(message)) doDelete();
               }}
-              style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 10 }}
+              style={{
+                ...styles.saveBtn,
+                ...styles.dangerBtn,
+                marginTop: 10,
+                ...(highlightId === "clientDelete" && isOnboardingClient ? styles.onboardingHighlight : null),
+              }}
             >
               {tr("Удалить клиента", "Delete client")}
             </button>
@@ -10160,14 +10533,17 @@ function BottomNav<T extends string>(props: {
   onChange: (t: T) => void;
   items: { id: T; label: string; icon: React.ReactNode }[];
   hidden?: boolean;
+  highlightId?: T | null;
+  highlightStyle?: React.CSSProperties;
 }) {
-  const { active, onChange, items, hidden } = props;
+  const { active, onChange, items, hidden, highlightId, highlightStyle } = props;
 
   return (
     <div style={{ ...styles.bottomNav, display: hidden ? "none" : "flex" }}>
       {items.map((it) => {
         const isActive = it.id === active;
         const color = isActive ? "var(--accent)" : "var(--muted)";
+        const highlight = highlightId === it.id ? highlightStyle : null;
 
         return (
           <button
@@ -10176,6 +10552,7 @@ function BottomNav<T extends string>(props: {
             style={{
               ...styles.navBtn,
               color,
+              ...(highlight || null),
             }}
           >
             <div style={{ ...styles.navIconWrap, color }}>{it.icon}</div>
@@ -12432,6 +12809,60 @@ const styles: Record<string, any> = {
   clientStatsEmpty: {
     fontSize: 13,
     color: "var(--muted)",
+  },
+  onboardingHighlight: {
+    position: "relative",
+    zIndex: 90,
+    boxShadow: "0 0 0 2px rgba(77, 163, 255, 0.9), 0 0 0 8px rgba(77, 163, 255, 0.22)",
+    borderRadius: 16,
+  },
+  onboardingDim: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0, 0, 0, 0.25)",
+    zIndex: 80,
+    pointerEvents: "none",
+  },
+  onboardingCard: {
+    position: "fixed",
+    left: 16,
+    right: 16,
+    bottom: 84,
+    background: "var(--surface)",
+    borderRadius: 16,
+    border: "1px solid var(--border)",
+    padding: "14px 16px",
+    zIndex: 90,
+    boxShadow: "0 16px 30px rgba(15, 23, 42, 0.25)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    pointerEvents: "auto",
+  },
+  onboardingTitle: {
+    fontSize: 14,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  onboardingText: {
+    fontSize: 14,
+    color: "var(--muted)",
+    lineHeight: 1.35,
+  },
+  onboardingBtn: {
+    alignSelf: "flex-end",
+    padding: "10px 16px",
+    borderRadius: 12,
+    border: "none",
+    background: "var(--accent)",
+    color: "white",
+    fontWeight: 700,
+    fontSize: 14,
+    cursor: "pointer",
+  },
+  onboardingBtnDisabled: {
+    opacity: 0.5,
+    cursor: "not-allowed",
   },
   tariffScroller: {
     marginTop: 10,
