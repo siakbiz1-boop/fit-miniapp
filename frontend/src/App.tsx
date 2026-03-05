@@ -2055,6 +2055,37 @@ function TrainerHome({
     return end.getTime() >= financeMonthStart.getTime() && end.getTime() < financeMonthEnd.getTime();
   });
   const financeBalance = financeMonthDone.reduce((sum, s) => sum + getSessionPrice(clients, s), 0);
+  const clientStatsMap = new Map<string, { label: string; count: number }>();
+  const addClientStat = (key: string, label: string) => {
+    const prev = clientStatsMap.get(key) || { label, count: 0 };
+    prev.count += 1;
+    clientStatsMap.set(key, prev);
+  };
+  doneSessions.forEach((s) => {
+    const isGroup = s.clientUsername === "group" || s.type === "group";
+    const isOneTime = s.clientUsername === "one_time" || s.type === "one_time";
+    if (isGroup) {
+      (s.participants || []).forEach((p) => {
+        const client = clients.find((c) => c.id === p.clientId || c.username === p.clientUsername) || null;
+        const label = client
+          ? getClientLabel(clients, client.username)
+          : p.clientName?.trim()
+            ? p.clientName
+            : p.clientUsername
+              ? `@${p.clientUsername.replace(/^@/, "")}`
+              : tr("Клиент", "Client");
+        const key = client?.id || client?.username || label;
+        addClientStat(key, label);
+      });
+      return;
+    }
+    if (isOneTime) return;
+    const client = clients.find((c) => c.username === s.clientUsername) || null;
+    if (!client) return;
+    addClientStat(client.id || client.username, getClientLabel(clients, client.username));
+  });
+  const clientStats = Array.from(clientStatsMap.values()).sort((a, b) => b.count - a.count);
+  const clientStatsMax = Math.max(1, ...clientStats.map((item) => item.count));
   const financeHistoryMap = new Map<string, { year: number; month: number; count: number; amount: number }>();
   doneSessions.forEach((s) => {
     const end = sessionEndTime(s);
@@ -3033,6 +3064,29 @@ function TrainerHome({
                   {tr("История", "History")}
                 </button>
               </div>
+            </div>
+            <div style={styles.clientStatsBlock}>
+              <div style={styles.clientStatsTitle}>{tr("Статистика по клиентам", "Client stats")}</div>
+              {clientStats.length ? (
+                <div style={styles.clientStatsList}>
+                  {clientStats.map((item, idx) => (
+                    <div key={`${item.label}-${idx}`} style={styles.clientStatsRow}>
+                      <div style={styles.clientStatsName}>{item.label}</div>
+                      <div style={styles.clientStatsBarTrack}>
+                        <div
+                          style={{
+                            ...styles.clientStatsBarFill,
+                            width: `${Math.max(6, (item.count / clientStatsMax) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <div style={styles.clientStatsCount}>{item.count}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={styles.clientStatsEmpty}>{tr("Пока нет данных", "No data yet")}</div>
+              )}
             </div>
             {statsInfoOpen ? (
               <div style={styles.statsInfoOverlay} onClick={() => setStatsInfoOpen(false)}>
@@ -12115,6 +12169,61 @@ const styles: Record<string, any> = {
   },
   financeEmpty: {
     marginTop: 14,
+    fontSize: 13,
+    color: "var(--muted)",
+  },
+  clientStatsBlock: {
+    marginTop: 10,
+    borderRadius: 16,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    padding: "14px 16px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  clientStatsTitle: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  clientStatsList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  clientStatsRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(90px, 1.2fr) 3fr 32px",
+    alignItems: "center",
+    gap: 10,
+  },
+  clientStatsName: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "var(--text)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  clientStatsBarTrack: {
+    height: 10,
+    borderRadius: 999,
+    background: "rgba(30, 107, 255, 0.12)",
+    overflow: "hidden",
+  },
+  clientStatsBarFill: {
+    height: "100%",
+    borderRadius: 999,
+    background: "#1E6BFF",
+  },
+  clientStatsCount: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--muted)",
+    textAlign: "right",
+  },
+  clientStatsEmpty: {
     fontSize: 13,
     color: "var(--muted)",
   },
