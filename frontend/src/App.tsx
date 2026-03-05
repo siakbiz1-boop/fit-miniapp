@@ -12026,9 +12026,10 @@ const styles: Record<string, any> = {
     cursor: "pointer",
   },
   statsModeBtnActive: {
-    background: "var(--text)",
-    color: "white",
-    borderColor: "var(--text)",
+    background: "rgba(77, 163, 255, 0.2)",
+    color: "var(--primary)",
+    borderColor: "rgba(77, 163, 255, 0.35)",
+    boxShadow: "0 6px 16px rgba(30, 107, 255, 0.18)",
   },
   statsDatePicker: {
     display: "flex",
