@@ -5123,7 +5123,11 @@ function TrainerSchedule(props: {
                 )}
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+                <div style={styles.fieldLabel}>
+                  {isGroupSession
+                    ? tr("Общая стоимость тренировки", "Total session price")
+                    : tr("Стоимость тренировки", "Session price")}
+                </div>
                 <div style={styles.inputRow}>
                   <input
                     inputMode="numeric"
@@ -5928,7 +5932,9 @@ function TrainerSchedule(props: {
                                 }}
                               >
                                   <div style={styles.scheduleWeekSessionTitle}>
-                                    {sessionClientLabel(s, tr, clients)}
+                                    {s.type === "group" || s.clientUsername === "group"
+                                      ? sessionTitle(s, tr)
+                                      : sessionClientLabel(s, tr, clients)}
                                   </div>
                                   <div style={styles.scheduleWeekSessionTime}>
                                     {s.start}–{s.end}
