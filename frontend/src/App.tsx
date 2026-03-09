@@ -13948,7 +13948,7 @@ const styles: Record<string, any> = {
     gap: 8,
     width: "100%",
     height: "100%",
-    padding: 14,
+    padding: "12px 14px",
     boxSizing: "border-box",
     alignItems: "center",
     justifyItems: "center",
@@ -13961,6 +13961,7 @@ const styles: Record<string, any> = {
     width: "100%",
     justifySelf: "stretch",
     alignSelf: "stretch",
+    justifyContent: "center",
   },
   addMenuBtn: {
     width: "100%",
@@ -13985,8 +13986,8 @@ const styles: Record<string, any> = {
   addMenuLogo: {
     gridColumn: 2,
     gridRow: 2,
-    width: 70,
-    height: 70,
+    width: 64,
+    height: 64,
     borderRadius: 18,
     background: "#1677ff",
     color: "#ffffff",
