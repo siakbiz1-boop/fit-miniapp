@@ -306,6 +306,7 @@ export default function App() {
   const [settingsScreen, setSettingsScreen] = useState<SettingsScreen>("main");
   const [clientSettingsScreen, setClientSettingsScreen] = useState<SettingsScreen>("main");
   const [clientTab, setClientTab] = useState<ClientTab>("home");
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [clientConnected, setClientConnected] = useState<boolean>(() => {
     try {
       return localStorage.getItem("clientConnected") === "true";
@@ -1504,16 +1505,150 @@ export default function App() {
               <div style={{ height: 14 }} />
             </div>
 
-            <BottomNav
-              active={activeTab}
-              onChange={(t) => setActiveTab(t)}
-              items={[
-                { id: "home", label: t.navHome, icon: <IconHome /> },
-                { id: "schedule", label: t.navSchedule, icon: <IconCalendar /> },
-                { id: "clients", label: t.navClients, icon: <IconUsers /> },
-                { id: "settings", label: t.navSettings, icon: <IconSettings /> },
-              ]}
-            />
+            {addMenuOpen && (
+              <div
+                style={styles.addMenuOverlay}
+                onClick={() => setAddMenuOpen(false)}
+                role="presentation"
+              >
+                <div
+                  style={styles.addMenuCard}
+                  onClick={(event) => event.stopPropagation()}
+                  role="presentation"
+                >
+                  <div style={styles.addMenuGrid}>
+                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnTL }}>
+                      -
+                    </button>
+                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnTR }}>
+                      -
+                    </button>
+                    <div style={styles.addMenuCenter}>+</div>
+                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnBL }}>
+                      -
+                    </button>
+                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnBR }}>
+                      -
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={styles.bottomNav}>
+              <button
+                onClick={() => setActiveTab("home")}
+                style={{
+                  ...styles.navBtn,
+                  color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.navIconWrap,
+                    color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
+                  }}
+                >
+                  <IconHome />
+                </div>
+                <div
+                  style={{
+                    ...styles.navLabel,
+                    color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
+                    fontWeight: activeTab === "home" ? 700 : 600,
+                  }}
+                >
+                  {t.navHome}
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("schedule")}
+                style={{
+                  ...styles.navBtn,
+                  color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.navIconWrap,
+                    color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
+                  }}
+                >
+                  <IconCalendar />
+                </div>
+                <div
+                  style={{
+                    ...styles.navLabel,
+                    color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
+                    fontWeight: activeTab === "schedule" ? 700 : 600,
+                  }}
+                >
+                  {t.navSchedule}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAddMenuOpen((prev) => !prev)}
+                style={styles.navAddBtn}
+                aria-label={tr("Добавить тренировку", "Add session")}
+              >
+                <IconPlus />
+              </button>
+
+              <button
+                onClick={() => setActiveTab("clients")}
+                style={{
+                  ...styles.navBtn,
+                  color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.navIconWrap,
+                    color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
+                  }}
+                >
+                  <IconUsers />
+                </div>
+                <div
+                  style={{
+                    ...styles.navLabel,
+                    color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
+                    fontWeight: activeTab === "clients" ? 700 : 600,
+                  }}
+                >
+                  {t.navClients}
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("settings")}
+                style={{
+                  ...styles.navBtn,
+                  color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
+                }}
+              >
+                <div
+                  style={{
+                    ...styles.navIconWrap,
+                    color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
+                  }}
+                >
+                  <IconSettings />
+                </div>
+                <div
+                  style={{
+                    ...styles.navLabel,
+                    color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
+                    fontWeight: activeTab === "settings" ? 700 : 600,
+                  }}
+                >
+                  {t.navSettings}
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </LanguageContext.Provider>
@@ -10773,6 +10908,14 @@ function IconSettings() {
   );
 }
 
+function IconPlus({ size = 24, strokeWidth = 2.4 }: IconProps) {
+  return (
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
+      <path d="M12 5v14M5 12h14" />
+    </SvgIcon>
+  );
+}
+
 function IconUser({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
     <SvgIcon size={size} strokeWidth={strokeWidth}>
@@ -13738,4 +13881,78 @@ const styles: Record<string, any> = {
     marginTop: 4,
     letterSpacing: -0.1,
   },
+  navAddBtn: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    border: "none",
+    background: "#1677ff",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: "0 10px 24px rgba(22, 119, 255, 0.35)",
+    marginTop: -8,
+  },
+  addMenuOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.35)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 30,
+  },
+  addMenuCard: {
+    width: 240,
+    height: 240,
+    borderRadius: 24,
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    boxShadow: "0 18px 48px rgba(15, 23, 42, 0.2)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addMenuGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateRows: "repeat(3, 1fr)",
+    gap: 14,
+    width: 200,
+    height: 200,
+    alignItems: "center",
+    justifyItems: "center",
+  },
+  addMenuBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    border: "1px solid var(--border)",
+    background: "var(--surface-2)",
+    color: "var(--text)",
+    fontSize: 26,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  addMenuCenter: {
+    gridColumn: 2,
+    gridRow: 2,
+    width: 62,
+    height: 62,
+    borderRadius: 18,
+    background: "#1677ff",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 28,
+    fontWeight: 800,
+    boxShadow: "0 10px 24px rgba(22, 119, 255, 0.35)",
+  },
+  addMenuBtnTL: { gridColumn: 1, gridRow: 1 },
+  addMenuBtnTR: { gridColumn: 3, gridRow: 1 },
+  addMenuBtnBL: { gridColumn: 1, gridRow: 3 },
+  addMenuBtnBR: { gridColumn: 3, gridRow: 3 },
 };
