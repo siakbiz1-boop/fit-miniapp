@@ -307,6 +307,7 @@ export default function App() {
   const [clientSettingsScreen, setClientSettingsScreen] = useState<SettingsScreen>("main");
   const [clientTab, setClientTab] = useState<ClientTab>("home");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [quickAddScheduleSignal, setQuickAddScheduleSignal] = useState(0);
   const [clientConnected, setClientConnected] = useState<boolean>(() => {
     try {
       return localStorage.getItem("clientConnected") === "true";
@@ -1442,22 +1443,23 @@ export default function App() {
                 />
               )}
               {activeTab === "schedule" && (
-                <TrainerSchedule
-                  clients={invites}
-                  setClients={setInvites}
-                  historyByClient={historyByClient}
-                  sessionsByDate={sessionsByDate}
-                  setSessionsByDate={setSessionsByDate}
-                  token={token}
-                  apiBase={apiBase}
-                  trainerTgUserId={tgUserId}
-                  theme={theme}
-                  trainerProfile={trainerProfile}
-                  pendingSession={pendingSession}
-                  onConsumePendingSession={() => setPendingSession(null)}
-                  onLoadHistory={loadClientHistory}
-                  onSaveExercises={saveClientExercises}
-                />
+                  <TrainerSchedule
+                    clients={invites}
+                    setClients={setInvites}
+                    historyByClient={historyByClient}
+                    sessionsByDate={sessionsByDate}
+                    setSessionsByDate={setSessionsByDate}
+                    token={token}
+                    apiBase={apiBase}
+                    trainerTgUserId={tgUserId}
+                    theme={theme}
+                    trainerProfile={trainerProfile}
+                    pendingSession={pendingSession}
+                    onConsumePendingSession={() => setPendingSession(null)}
+                    onLoadHistory={loadClientHistory}
+                    onSaveExercises={saveClientExercises}
+                    openQuickAddSignal={quickAddScheduleSignal}
+                  />
               )}
               {activeTab === "clients" && (
                 <TrainerClients
@@ -1522,6 +1524,11 @@ export default function App() {
                         type="button"
                         style={styles.addMenuBtn}
                         aria-label={tr("Добавить тренировку", "Add session")}
+                        onClick={() => {
+                          setAddMenuOpen(false);
+                          setActiveTab("schedule");
+                          setQuickAddScheduleSignal((prev) => prev + 1);
+                        }}
                       >
                         {tr("Добавить тренировку", "Add session")}
                       </button>
@@ -4449,6 +4456,7 @@ function TrainerSchedule(props: {
     clientId: string,
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
+  openQuickAddSignal?: number;
 }) {
   const {
     clients,
@@ -4465,6 +4473,7 @@ function TrainerSchedule(props: {
     onConsumePendingSession,
     onLoadHistory,
     onSaveExercises,
+    openQuickAddSignal,
   } = props;
   const tr = useTr();
   const language = React.useContext(LanguageContext);
@@ -4513,6 +4522,17 @@ function TrainerSchedule(props: {
     setSessionTab("info");
     onConsumePendingSession?.();
   }, [pendingSession, onConsumePendingSession]);
+
+  useEffect(() => {
+    if (!openQuickAddSignal) return;
+    setScheduleScreen("list");
+    setActiveSession(null);
+    setSection("sessions");
+    setScheduleView("list");
+    setWeekScheduleMode("client");
+    setWeekScheduleDate(selected);
+    setShowWeekSchedule(true);
+  }, [openQuickAddSignal, selected]);
 
   useEffect(() => {
     if (!activeSession) return;
