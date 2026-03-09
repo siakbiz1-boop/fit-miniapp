@@ -1519,7 +1519,7 @@ export default function App() {
                   <div style={styles.addMenuGrid}>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTL }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить тренировку", "Add session")}>
-                        <IconCalendar size={70} strokeWidth={2.6} />
+                        <IconCalendar size={42} strokeWidth={1.8} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Добавить тренировку", "Add session")}
@@ -1527,7 +1527,7 @@ export default function App() {
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTR }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить окно", "Add slot")}>
-                        <IconClock size={70} strokeWidth={2.6} />
+                        <IconClock size={42} strokeWidth={1.8} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Добавить окно", "Add slot")}
@@ -1538,7 +1538,7 @@ export default function App() {
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBL }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Повторить тренировку", "Repeat session")}>
-                        <IconRepeat size={70} strokeWidth={2.6} />
+                        <IconRepeat size={42} strokeWidth={1.8} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Повторить тренировку", "Repeat session")}
@@ -1546,7 +1546,7 @@ export default function App() {
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBR }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Шаблон", "Template")}>
-                        <IconGrid size={70} strokeWidth={2.6} />
+                        <IconGrid size={42} strokeWidth={1.8} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Шаблон", "Template")}
@@ -13974,10 +13974,10 @@ const styles: Record<string, any> = {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gridTemplateRows: "repeat(3, 1fr)",
-    gap: 2,
+    gap: 6,
     width: "100%",
     height: "100%",
-    padding: 6,
+    padding: 10,
     boxSizing: "border-box",
     alignItems: "center",
     justifyItems: "center",
@@ -13986,12 +13986,12 @@ const styles: Record<string, any> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 2,
+    gap: 6,
     textAlign: "center",
   },
   addMenuBtn: {
-    width: 86,
-    height: 86,
+    width: 60,
+    height: 60,
     borderRadius: 999,
     border: "1px solid var(--border)",
     background: "var(--surface-2)",
@@ -14004,11 +14004,11 @@ const styles: Record<string, any> = {
     justifyContent: "center",
   },
   addMenuLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 700,
     color: "var(--text)",
     lineHeight: 1.2,
-    maxWidth: 86,
+    maxWidth: 96,
   },
   addMenuLogo: {
     gridColumn: 2,
