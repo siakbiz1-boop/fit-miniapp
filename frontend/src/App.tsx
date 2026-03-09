@@ -1519,7 +1519,7 @@ export default function App() {
                   <div style={styles.addMenuGrid}>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTL }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить тренировку", "Add session")}>
-                        <IconCalendar />
+                        <IconCalendar size={70} strokeWidth={2.6} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Добавить тренировку", "Add session")}
@@ -1527,7 +1527,7 @@ export default function App() {
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTR }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить окно", "Add slot")}>
-                        <IconClock />
+                        <IconClock size={70} strokeWidth={2.6} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Добавить окно", "Add slot")}
@@ -1538,7 +1538,7 @@ export default function App() {
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBL }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Повторить тренировку", "Repeat session")}>
-                        <IconRepeat />
+                        <IconRepeat size={70} strokeWidth={2.6} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Повторить тренировку", "Repeat session")}
@@ -1546,7 +1546,7 @@ export default function App() {
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBR }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Шаблон", "Template")}>
-                        <IconGrid />
+                        <IconGrid size={70} strokeWidth={2.6} />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Шаблон", "Template")}
@@ -10899,9 +10899,9 @@ function IconHome() {
   );
 }
 
-function IconCalendar() {
+function IconCalendar({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
-    <SvgIcon>
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
       <path d="M7 3v3M17 3v3" />
       <path d="M4.5 7.5h15" />
       <rect x="4.5" y="6" width="15" height="15" rx="2.5" />
@@ -10910,9 +10910,9 @@ function IconCalendar() {
   );
 }
 
-function IconClock() {
+function IconClock({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
-    <SvgIcon>
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
       <circle cx="12" cy="12" r="8" />
       <path d="M12 8v4l3 2" />
     </SvgIcon>
@@ -10947,9 +10947,9 @@ function IconPlus({ size = 32, strokeWidth = 3.4 }: IconProps) {
   );
 }
 
-function IconRepeat() {
+function IconRepeat({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
-    <SvgIcon>
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
       <path d="M7 8h6a4 4 0 0 1 0 8h-2" />
       <path d="M7 8l2-2M7 8l2 2" />
       <path d="M17 16h-6a4 4 0 0 1 0-8h2" />
@@ -10958,9 +10958,9 @@ function IconRepeat() {
   );
 }
 
-function IconGrid() {
+function IconGrid({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
-    <SvgIcon>
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
       <rect x="5" y="5" width="6" height="6" rx="1.2" />
       <rect x="13" y="5" width="6" height="6" rx="1.2" />
       <rect x="5" y="13" width="6" height="6" rx="1.2" />
@@ -13958,10 +13958,10 @@ const styles: Record<string, any> = {
     zIndex: 30,
   },
   addMenuCard: {
-    width: "78vw",
-    maxWidth: 300,
-    height: "78vw",
-    maxHeight: 300,
+    width: "70vw",
+    maxWidth: 270,
+    height: "70vw",
+    maxHeight: 270,
     borderRadius: 26,
     background: "var(--surface)",
     border: "1px solid var(--border)",
@@ -13974,10 +13974,10 @@ const styles: Record<string, any> = {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gridTemplateRows: "repeat(3, 1fr)",
-    gap: 6,
+    gap: 2,
     width: "100%",
     height: "100%",
-    padding: 12,
+    padding: 6,
     boxSizing: "border-box",
     alignItems: "center",
     justifyItems: "center",
@@ -13986,12 +13986,12 @@ const styles: Record<string, any> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 4,
+    gap: 2,
     textAlign: "center",
   },
   addMenuBtn: {
-    width: 64,
-    height: 64,
+    width: 86,
+    height: 86,
     borderRadius: 999,
     border: "1px solid var(--border)",
     background: "var(--surface-2)",
@@ -14004,17 +14004,17 @@ const styles: Record<string, any> = {
     justifyContent: "center",
   },
   addMenuLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 700,
     color: "var(--text)",
     lineHeight: 1.2,
-    maxWidth: 84,
+    maxWidth: 86,
   },
   addMenuLogo: {
     gridColumn: 2,
     gridRow: 2,
-    width: 66,
-    height: 66,
+    width: 70,
+    height: 70,
     borderRadius: 18,
     background: "#1677ff",
     color: "#ffffff",
