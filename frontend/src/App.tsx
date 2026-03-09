@@ -1518,16 +1518,16 @@ export default function App() {
                 >
                   <div style={styles.addMenuGrid}>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTL }}>
-                      <button type="button" style={styles.addMenuBtn}>
-                        +
+                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить тренировку", "Add session")}>
+                        <IconCalendar />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Добавить тренировку", "Add session")}
                       </div>
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTR }}>
-                      <button type="button" style={styles.addMenuBtn}>
-                        +
+                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить окно", "Add slot")}>
+                        <IconClock />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Добавить окно", "Add slot")}
@@ -1535,16 +1535,16 @@ export default function App() {
                     </div>
                     <div style={styles.addMenuCenter}>+</div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBL }}>
-                      <button type="button" style={styles.addMenuBtn}>
-                        ⟲
+                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Повторить тренировку", "Repeat session")}>
+                        <IconRepeat />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Повторить тренировку", "Repeat session")}
                       </div>
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBR }}>
-                      <button type="button" style={styles.addMenuBtn}>
-                        ▦
+                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Шаблон", "Template")}>
+                        <IconGrid />
                       </button>
                       <div style={styles.addMenuLabel}>
                         {tr("Шаблон", "Template")}
@@ -10908,6 +10908,15 @@ function IconCalendar() {
   );
 }
 
+function IconClock() {
+  return (
+    <SvgIcon>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l3 2" />
+    </SvgIcon>
+  );
+}
+
 function IconUsers() {
   return (
     <SvgIcon>
@@ -10932,6 +10941,28 @@ function IconPlus({ size = 32, strokeWidth = 3.4 }: IconProps) {
   return (
     <SvgIcon size={size} strokeWidth={strokeWidth}>
       <path d="M12 5v14M5 12h14" />
+    </SvgIcon>
+  );
+}
+
+function IconRepeat() {
+  return (
+    <SvgIcon>
+      <path d="M7 8h6a4 4 0 0 1 0 8h-2" />
+      <path d="M7 8l2-2M7 8l2 2" />
+      <path d="M17 16h-6a4 4 0 0 1 0-8h2" />
+      <path d="M17 16l-2-2M17 16l-2 2" />
+    </SvgIcon>
+  );
+}
+
+function IconGrid() {
+  return (
+    <SvgIcon>
+      <rect x="5" y="5" width="6" height="6" rx="1.2" />
+      <rect x="13" y="5" width="6" height="6" rx="1.2" />
+      <rect x="5" y="13" width="6" height="6" rx="1.2" />
+      <rect x="13" y="13" width="6" height="6" rx="1.2" />
     </SvgIcon>
   );
 }
@@ -13925,11 +13956,11 @@ const styles: Record<string, any> = {
     zIndex: 30,
   },
   addMenuCard: {
-    width: "90vw",
-    maxWidth: 360,
-    height: "90vw",
-    maxHeight: 360,
-    borderRadius: 28,
+    width: "78vw",
+    maxWidth: 300,
+    height: "78vw",
+    maxHeight: 300,
+    borderRadius: 26,
     background: "var(--surface)",
     border: "1px solid var(--border)",
     boxShadow: "0 18px 48px rgba(15, 23, 42, 0.2)",
@@ -13941,10 +13972,10 @@ const styles: Record<string, any> = {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gridTemplateRows: "repeat(3, 1fr)",
-    gap: 12,
+    gap: 6,
     width: "100%",
     height: "100%",
-    padding: 18,
+    padding: 12,
     boxSizing: "border-box",
     alignItems: "center",
     justifyItems: "center",
@@ -13953,26 +13984,29 @@ const styles: Record<string, any> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 8,
+    gap: 4,
     textAlign: "center",
   },
   addMenuBtn: {
-    width: 52,
-    height: 52,
+    width: 64,
+    height: 64,
     borderRadius: 999,
     border: "1px solid var(--border)",
     background: "var(--surface-2)",
     color: "var(--text)",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 800,
     cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   addMenuLabel: {
     fontSize: 11,
     fontWeight: 700,
     color: "var(--text)",
     lineHeight: 1.2,
-    maxWidth: 92,
+    maxWidth: 84,
   },
   addMenuCenter: {
     gridColumn: 2,
