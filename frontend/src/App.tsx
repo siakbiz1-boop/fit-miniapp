@@ -10908,7 +10908,7 @@ function IconSettings() {
   );
 }
 
-function IconPlus({ size = 24, strokeWidth = 2.4 }: IconProps) {
+function IconPlus({ size = 28, strokeWidth = 3 }: IconProps) {
   return (
     <SvgIcon size={size} strokeWidth={strokeWidth}>
       <path d="M12 5v14M5 12h14" />
@@ -13928,12 +13928,12 @@ const styles: Record<string, any> = {
   addMenuBtn: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: 999,
     border: "1px solid var(--border)",
     background: "var(--surface-2)",
     color: "var(--text)",
     fontSize: 26,
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
   },
   addMenuCenter: {
@@ -13947,8 +13947,8 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 28,
-    fontWeight: 800,
+    fontSize: 30,
+    fontWeight: 900,
     boxShadow: "0 10px 24px rgba(22, 119, 255, 0.35)",
   },
   addMenuBtnTL: { gridColumn: 1, gridRow: 1 },
