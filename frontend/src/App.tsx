@@ -1517,19 +1517,39 @@ export default function App() {
                   role="presentation"
                 >
                   <div style={styles.addMenuGrid}>
-                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnTL }}>
-                      -
-                    </button>
-                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnTR }}>
-                      -
-                    </button>
+                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTL }}>
+                      <button type="button" style={styles.addMenuBtn}>
+                        +
+                      </button>
+                      <div style={styles.addMenuLabel}>
+                        {tr("Добавить тренировку", "Add session")}
+                      </div>
+                    </div>
+                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTR }}>
+                      <button type="button" style={styles.addMenuBtn}>
+                        +
+                      </button>
+                      <div style={styles.addMenuLabel}>
+                        {tr("Добавить окно", "Add slot")}
+                      </div>
+                    </div>
                     <div style={styles.addMenuCenter}>+</div>
-                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnBL }}>
-                      -
-                    </button>
-                    <button type="button" style={{ ...styles.addMenuBtn, ...styles.addMenuBtnBR }}>
-                      -
-                    </button>
+                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBL }}>
+                      <button type="button" style={styles.addMenuBtn}>
+                        ⟲
+                      </button>
+                      <div style={styles.addMenuLabel}>
+                        {tr("Повторить тренировку", "Repeat session")}
+                      </div>
+                    </div>
+                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBR }}>
+                      <button type="button" style={styles.addMenuBtn}>
+                        ▦
+                      </button>
+                      <div style={styles.addMenuLabel}>
+                        {tr("Шаблон", "Template")}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -13905,9 +13925,11 @@ const styles: Record<string, any> = {
     zIndex: 30,
   },
   addMenuCard: {
-    width: 240,
-    height: 240,
-    borderRadius: 24,
+    width: "90vw",
+    maxWidth: 360,
+    height: "90vw",
+    maxHeight: 360,
+    borderRadius: 28,
     background: "var(--surface)",
     border: "1px solid var(--border)",
     boxShadow: "0 18px 48px rgba(15, 23, 42, 0.2)",
@@ -13919,11 +13941,20 @@ const styles: Record<string, any> = {
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
     gridTemplateRows: "repeat(3, 1fr)",
-    gap: 14,
-    width: 200,
-    height: 200,
+    gap: 12,
+    width: "100%",
+    height: "100%",
+    padding: 18,
+    boxSizing: "border-box",
     alignItems: "center",
     justifyItems: "center",
+  },
+  addMenuItem: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 8,
+    textAlign: "center",
   },
   addMenuBtn: {
     width: 52,
@@ -13932,9 +13963,16 @@ const styles: Record<string, any> = {
     border: "1px solid var(--border)",
     background: "var(--surface-2)",
     color: "var(--text)",
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: 800,
     cursor: "pointer",
+  },
+  addMenuLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: "var(--text)",
+    lineHeight: 1.2,
+    maxWidth: 92,
   },
   addMenuCenter: {
     gridColumn: 2,
