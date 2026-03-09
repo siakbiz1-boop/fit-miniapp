@@ -10908,7 +10908,7 @@ function IconSettings() {
   );
 }
 
-function IconPlus({ size = 28, strokeWidth = 3 }: IconProps) {
+function IconPlus({ size = 32, strokeWidth = 3.4 }: IconProps) {
   return (
     <SvgIcon size={size} strokeWidth={strokeWidth}>
       <path d="M12 5v14M5 12h14" />
@@ -13882,9 +13882,9 @@ const styles: Record<string, any> = {
     letterSpacing: -0.1,
   },
   navAddBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
+    width: 58,
+    height: 58,
+    borderRadius: 999,
     border: "none",
     background: "#1677ff",
     color: "#ffffff",
@@ -13893,7 +13893,7 @@ const styles: Record<string, any> = {
     justifyContent: "center",
     cursor: "pointer",
     boxShadow: "0 10px 24px rgba(22, 119, 255, 0.35)",
-    marginTop: -8,
+    marginTop: -10,
   },
   addMenuOverlay: {
     position: "fixed",
