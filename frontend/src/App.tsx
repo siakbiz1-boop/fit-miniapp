@@ -1533,6 +1533,9 @@ export default function App() {
                         {tr("Добавить окно", "Add slot")}
                       </div>
                     </div>
+                    <div style={styles.addMenuLogo} aria-hidden="true">
+                      <span style={styles.addMenuLogoText}>MF</span>
+                    </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBL }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Повторить тренировку", "Repeat session")}>
                         <IconRepeat />
@@ -14006,6 +14009,24 @@ const styles: Record<string, any> = {
     color: "var(--text)",
     lineHeight: 1.2,
     maxWidth: 84,
+  },
+  addMenuLogo: {
+    gridColumn: 2,
+    gridRow: 2,
+    width: 66,
+    height: 66,
+    borderRadius: 18,
+    background: "#1677ff",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 10px 24px rgba(22, 119, 255, 0.35)",
+  },
+  addMenuLogoText: {
+    fontSize: 26,
+    fontWeight: 900,
+    letterSpacing: -0.5,
   },
   addMenuBtnTL: { gridColumn: 1, gridRow: 1 },
   addMenuBtnTR: { gridColumn: 3, gridRow: 1 },
