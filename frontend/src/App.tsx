@@ -13958,9 +13958,13 @@ const styles: Record<string, any> = {
     flexDirection: "column",
     alignItems: "center",
     textAlign: "center",
+    width: "100%",
+    justifySelf: "stretch",
+    alignSelf: "stretch",
   },
   addMenuBtn: {
-    width: 96,
+    width: "100%",
+    maxWidth: 92,
     height: 54,
     borderRadius: 16,
     border: "1px solid var(--border)",
@@ -13976,6 +13980,7 @@ const styles: Record<string, any> = {
     lineHeight: 1.2,
     padding: "6px 8px",
     whiteSpace: "normal",
+    margin: "0 auto",
   },
   addMenuLogo: {
     gridColumn: 2,
