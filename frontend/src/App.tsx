@@ -1518,39 +1518,39 @@ export default function App() {
                 >
                   <div style={styles.addMenuGrid}>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTL }}>
-                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить тренировку", "Add session")}>
-                        <IconCalendar size={42} strokeWidth={1.8} />
-                      </button>
-                      <div style={styles.addMenuLabel}>
+                      <button
+                        type="button"
+                        style={styles.addMenuBtn}
+                        aria-label={tr("Добавить тренировку", "Add session")}
+                      >
                         {tr("Добавить тренировку", "Add session")}
-                      </div>
+                      </button>
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTR }}>
-                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Добавить окно", "Add slot")}>
-                        <IconClock size={42} strokeWidth={1.8} />
-                      </button>
-                      <div style={styles.addMenuLabel}>
+                      <button
+                        type="button"
+                        style={styles.addMenuBtn}
+                        aria-label={tr("Добавить окно", "Add slot")}
+                      >
                         {tr("Добавить окно", "Add slot")}
-                      </div>
+                      </button>
                     </div>
                     <div style={styles.addMenuLogo} aria-hidden="true">
                       <span style={styles.addMenuLogoText}>MF</span>
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBL }}>
-                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Повторить тренировку", "Repeat session")}>
-                        <IconRepeat size={42} strokeWidth={1.8} />
-                      </button>
-                      <div style={styles.addMenuLabel}>
+                      <button
+                        type="button"
+                        style={styles.addMenuBtn}
+                        aria-label={tr("Повторить тренировку", "Repeat session")}
+                      >
                         {tr("Повторить тренировку", "Repeat session")}
-                      </div>
+                      </button>
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBR }}>
                       <button type="button" style={styles.addMenuBtn} aria-label={tr("Шаблон", "Template")}>
-                        <IconGrid size={42} strokeWidth={1.8} />
-                      </button>
-                      <div style={styles.addMenuLabel}>
                         {tr("Шаблон", "Template")}
-                      </div>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -10910,14 +10910,6 @@ function IconCalendar({ size = 22, strokeWidth = 1.9 }: IconProps) {
   );
 }
 
-function IconClock({ size = 22, strokeWidth = 1.9 }: IconProps) {
-  return (
-    <SvgIcon size={size} strokeWidth={strokeWidth}>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 8v4l3 2" />
-    </SvgIcon>
-  );
-}
 
 function IconUsers() {
   return (
@@ -10947,27 +10939,6 @@ function IconPlus({ size = 32, strokeWidth = 3.4 }: IconProps) {
   );
 }
 
-function IconRepeat({ size = 22, strokeWidth = 1.9 }: IconProps) {
-  return (
-    <SvgIcon size={size} strokeWidth={strokeWidth}>
-      <path d="M7 8h6a4 4 0 0 1 0 8h-2" />
-      <path d="M7 8l2-2M7 8l2 2" />
-      <path d="M17 16h-6a4 4 0 0 1 0-8h2" />
-      <path d="M17 16l-2-2M17 16l-2 2" />
-    </SvgIcon>
-  );
-}
-
-function IconGrid({ size = 22, strokeWidth = 1.9 }: IconProps) {
-  return (
-    <SvgIcon size={size} strokeWidth={strokeWidth}>
-      <rect x="5" y="5" width="6" height="6" rx="1.2" />
-      <rect x="13" y="5" width="6" height="6" rx="1.2" />
-      <rect x="5" y="13" width="6" height="6" rx="1.2" />
-      <rect x="13" y="13" width="6" height="6" rx="1.2" />
-    </SvgIcon>
-  );
-}
 
 function IconUser({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
@@ -13986,29 +13957,24 @@ const styles: Record<string, any> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 6,
     textAlign: "center",
   },
   addMenuBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 999,
+    width: 110,
+    height: 56,
+    borderRadius: 16,
     border: "1px solid var(--border)",
     background: "var(--surface-2)",
     color: "var(--text)",
-    fontSize: 22,
-    fontWeight: 800,
+    fontSize: 12,
+    fontWeight: 700,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-  },
-  addMenuLabel: {
-    fontSize: 11,
-    fontWeight: 700,
-    color: "var(--text)",
+    textAlign: "center",
     lineHeight: 1.2,
-    maxWidth: 96,
+    padding: "6px 8px",
   },
   addMenuLogo: {
     gridColumn: 2,
