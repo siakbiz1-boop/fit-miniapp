@@ -4755,19 +4755,48 @@ function TrainerSchedule(props: {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
-  const hasSessionOverlap = (dateKey: string, start: string, end: string) => {
+  const hasSessionOverlap = (
+    dateKey: string,
+    start: string,
+    end: string,
+    mapOverride?: Record<string, SessionItem[]>
+  ) => {
     const startMin = timeToMinutes(start);
     const endMin = timeToMinutes(end);
     if (!startMin && start !== "00:00") return false;
     if (!endMin && end !== "00:00") return false;
     if (endMin <= startMin) return false;
-    const existing = sessionsByDate[dateKey] || [];
+    const source = mapOverride || sessionsByDate;
+    const existing = source[dateKey] || [];
     return existing.some((s) => {
       const sStart = timeToMinutes(s.start);
       const sEnd = timeToMinutes(s.end);
       if (sEnd <= sStart) return false;
       return startMin < sEnd && endMin > sStart;
     });
+  };
+
+  const refreshSessions = async () => {
+    if (!token) return null;
+    try {
+      const res = await fetch(`${apiBase}/sessions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { ok: boolean; sessions?: any[] };
+      if (!data?.sessions) return null;
+      const mapped = data.sessions.map((s) => mapSessionFromApi(s));
+      const next: Record<string, SessionItem[]> = {};
+      mapped.forEach((s) => {
+        const list = next[s.dateKey] ? next[s.dateKey].slice() : [];
+        list.push(s);
+        next[s.dateKey] = list;
+      });
+      setSessionsByDate(next);
+      return next;
+    } catch {
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -5884,10 +5913,13 @@ function TrainerSchedule(props: {
                         return;
                       }
                       if (hasSessionOverlap(dateKey, start, end)) {
-                        setWeekScheduleError(
-                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                        );
-                        return;
+                        const refreshed = await refreshSessions();
+                        if (!refreshed || hasSessionOverlap(dateKey, start, end, refreshed)) {
+                          setWeekScheduleError(
+                            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                          );
+                          return;
+                        }
                       }
                       const startMin = timeToMinutes(start);
                       const selectedDay = startOfDay(weekScheduleDate);
@@ -6422,10 +6454,13 @@ function TrainerSchedule(props: {
                             return;
                           }
                           if (hasSessionOverlap(dateKey, start, end)) {
-                            setWeekScheduleError(
-                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                            );
-                            return;
+                            const refreshed = await refreshSessions();
+                            if (!refreshed || hasSessionOverlap(dateKey, start, end, refreshed)) {
+                              setWeekScheduleError(
+                                tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                              );
+                              return;
+                            }
                           }
                           const startMin = timeToMinutes(start);
                           const selectedDay = startOfDay(weekScheduleDate);
