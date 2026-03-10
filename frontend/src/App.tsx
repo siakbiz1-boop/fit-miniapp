@@ -5986,6 +5986,7 @@ function TrainerSchedule(props: {
                             dateKey,
                             start,
                             end,
+                            tzOffset: new Date().getTimezoneOffset(),
                             ...payload,
                           }),
                         });
@@ -6527,6 +6528,7 @@ function TrainerSchedule(props: {
                                 dateKey,
                                 start,
                                 end,
+                                tzOffset: new Date().getTimezoneOffset(),
                                 ...payload,
                               }),
                             });
@@ -6640,6 +6642,7 @@ function TrainerSchedule(props: {
                                       dateKey,
                                       start: w.start,
                                       end: w.end,
+                                      tzOffset: new Date().getTimezoneOffset(),
                                       oneTime: true,
                                       clientName: name.trim(),
                                     }),
@@ -6675,13 +6678,14 @@ function TrainerSchedule(props: {
                                 const res = await fetch(`${apiBase}/sessions`, {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                  body: JSON.stringify({
-                                    dateKey,
-                                    start: w.start,
-                                    end: w.end,
-                                    clientId: client.id,
-                                  }),
-                                });
+                                    body: JSON.stringify({
+                                      dateKey,
+                                      start: w.start,
+                                      end: w.end,
+                                      tzOffset: new Date().getTimezoneOffset(),
+                                      clientId: client.id,
+                                    }),
+                                  });
                                 if (!res.ok) {
                                   setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
                                   return;
@@ -8425,6 +8429,7 @@ function ClientDetailScreen(props: {
                         dateKey,
                         start,
                         end,
+                        tzOffset: new Date().getTimezoneOffset(),
                         clientId: client.id,
                       }),
                     });

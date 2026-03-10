@@ -1782,6 +1782,7 @@ app.post("/slots", async (req, reply) => {
   const dateKey = String(body?.dateKey || "");
   const start = String(body?.start || "");
   const end = String(body?.end || "");
+  const tzOffset = typeof body?.tzOffset === "number" ? body.tzOffset : null;
   if (!dateKey || !start || !end) {
     return reply.code(400).send({ message: "dateKey/start/end required" });
   }
@@ -1830,6 +1831,7 @@ app.post("/book", async (req, reply) => {
   const dateKey = String(body?.dateKey || "");
   const start = String(body?.start || "");
   const end = String(body?.end || "");
+  const tzOffset = typeof body?.tzOffset === "number" ? body.tzOffset : null;
   if (!trainerTgUserId || !dateKey || !start || !end) {
     return reply.code(400).send({ message: "trainerTgUserId/dateKey/start/end required" });
   }
@@ -1872,10 +1874,22 @@ app.post("/book", async (req, reply) => {
   if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
     return reply.code(400).send({ message: "time invalid" });
   }
-  const startAt = new Date(day);
-  startAt.setHours(sh, sm, 0, 0);
-  const endAt = new Date(day);
-  endAt.setHours(eh, em, 0, 0);
+  let startAt: Date;
+  let endAt: Date;
+  if (tzOffset !== null && Number.isFinite(tzOffset)) {
+    const parts = dateKey.split("-").map((x) => parseInt(x, 10));
+    const [y, m, d] = parts;
+    if (!y || !m || !d) return reply.code(400).send({ message: "dateKey invalid" });
+    const startUtc = Date.UTC(y, m - 1, d, sh, sm, 0, 0);
+    const endUtc = Date.UTC(y, m - 1, d, eh, em, 0, 0);
+    startAt = new Date(startUtc - tzOffset * 60 * 1000);
+    endAt = new Date(endUtc - tzOffset * 60 * 1000);
+  } else {
+    startAt = new Date(day);
+    startAt.setHours(sh, sm, 0, 0);
+    endAt = new Date(day);
+    endAt.setHours(eh, em, 0, 0);
+  }
   if (Date.now() >= startAt.getTime()) {
     return reply.code(403).send({ message: "slot already started" });
   }
