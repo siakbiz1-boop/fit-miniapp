@@ -1514,42 +1514,39 @@ export default function App() {
                 role="presentation"
               >
                 <div
-                  style={styles.addMenuCard}
+                  style={styles.addMenuArc}
                   onClick={(event) => event.stopPropagation()}
                   role="presentation"
                 >
-                  <div style={styles.addMenuGrid}>
-                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTL }}>
-                      <button
-                        type="button"
-                        style={styles.addMenuBtn}
-                        aria-label={tr("Добавить тренировку", "Add session")}
-                        onClick={() => {
-                          setAddMenuOpen(false);
-                          setActiveTab("schedule");
-                          setQuickAddScheduleSignal((prev) => prev + 1);
-                        }}
-                      >
-                        {tr("Добавить тренировку", "Add session")}
-                      </button>
-                    </div>
-                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTR }}>
-                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Шаблон", "Template")}>
-                        {tr("Шаблон", "Template")}
-                      </button>
-                    </div>
-                    <div style={styles.addMenuLogo} aria-hidden="true">
-                      <span style={styles.addMenuLogoText}>MF</span>
-                    </div>
-                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBC }}>
-                      <button
-                        type="button"
-                        style={styles.addMenuBtn}
-                        aria-label={tr("Повторить тренировку", "Repeat session")}
-                      >
-                        {tr("Повторить тренировку", "Repeat session")}
-                      </button>
-                    </div>
+                  <div style={{ ...styles.addMenuArcDivider, ...styles.addMenuArcDividerLeft }} />
+                  <div style={{ ...styles.addMenuArcDivider, ...styles.addMenuArcDividerRight }} />
+                  <div style={styles.addMenuArcActions}>
+                    <button
+                      type="button"
+                      style={styles.addMenuArcBtn}
+                      aria-label={tr("Добавить тренировку", "Add session")}
+                      onClick={() => {
+                        setAddMenuOpen(false);
+                        setActiveTab("schedule");
+                        setQuickAddScheduleSignal((prev) => prev + 1);
+                      }}
+                    >
+                      {tr("Добавить тренировку", "Add session")}
+                    </button>
+                    <button
+                      type="button"
+                      style={styles.addMenuArcBtn}
+                      aria-label={tr("Шаблон", "Template")}
+                    >
+                      {tr("Шаблон", "Template")}
+                    </button>
+                    <button
+                      type="button"
+                      style={styles.addMenuArcBtn}
+                      aria-label={tr("Повторить тренировку", "Repeat session")}
+                    >
+                      {tr("Повторить тренировку", "Repeat session")}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -13973,84 +13970,64 @@ const styles: Record<string, any> = {
     inset: 0,
     background: "rgba(15, 23, 42, 0.35)",
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "center",
+    paddingBottom: 58,
     zIndex: 30,
   },
-  addMenuCard: {
-    width: "74vw",
-    maxWidth: 320,
-    height: "74vw",
-    maxHeight: 320,
-    borderRadius: 26,
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    boxShadow: "0 18px 48px rgba(15, 23, 42, 0.2)",
+  addMenuArc: {
+    width: "88vw",
+    maxWidth: 360,
+    height: "38vw",
+    maxHeight: 180,
+    minHeight: 140,
+    borderTopLeftRadius: 999,
+    borderTopRightRadius: 999,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    background: "linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%)",
+    border: "1px solid rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 20px 40px rgba(15, 23, 42, 0.18)",
+    position: "relative",
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-end",
     justifyContent: "center",
+    paddingBottom: 22,
+    overflow: "hidden",
   },
-  addMenuGrid: {
+  addMenuArcDivider: {
+    position: "absolute",
+    width: 1,
+    height: "42%",
+    background: "rgba(15, 23, 42, 0.12)",
+    bottom: 12,
+  },
+  addMenuArcDividerLeft: {
+    left: "33.33%",
+  },
+  addMenuArcDividerRight: {
+    left: "66.66%",
+  },
+  addMenuArcActions: {
+    position: "absolute",
+    bottom: 10,
+    left: 0,
+    right: 0,
     display: "grid",
     gridTemplateColumns: "repeat(3, 1fr)",
-    gridTemplateRows: "repeat(3, 1fr)",
-    gap: 8,
-    width: "100%",
-    height: "100%",
-    padding: "12px 14px",
+    gap: 10,
+    padding: "0 18px",
     boxSizing: "border-box",
-    alignItems: "center",
-    justifyItems: "center",
   },
-  addMenuItem: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    textAlign: "center",
-    width: "100%",
-    justifySelf: "stretch",
-    alignSelf: "stretch",
-    justifyContent: "center",
-  },
-  addMenuBtn: {
-    width: "100%",
-    maxWidth: 92,
-    height: 54,
-    borderRadius: 16,
-    border: "1px solid var(--border)",
-    background: "var(--surface-2)",
+  addMenuArcBtn: {
+    border: "none",
+    background: "transparent",
     color: "var(--text)",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 700,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    textAlign: "center",
     lineHeight: 1.2,
-    padding: "6px 8px",
-    whiteSpace: "normal",
-    margin: "0 auto",
+    textAlign: "center",
+    padding: "6px 4px",
+    cursor: "pointer",
   },
-  addMenuLogo: {
-    gridColumn: 2,
-    gridRow: 2,
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    background: "#1677ff",
-    color: "#ffffff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 10px 24px rgba(22, 119, 255, 0.35)",
-  },
-  addMenuLogoText: {
-    fontSize: 26,
-    fontWeight: 900,
-    letterSpacing: -0.5,
-  },
-  addMenuBtnTL: { gridColumn: 1, gridRow: 1 },
-  addMenuBtnTR: { gridColumn: 3, gridRow: 1 },
-  addMenuBtnBC: { gridColumn: 2, gridRow: 3 },
 };
