@@ -308,6 +308,7 @@ export default function App() {
   const [clientTab, setClientTab] = useState<ClientTab>("home");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [quickAddScheduleSignal, setQuickAddScheduleSignal] = useState(0);
+  const [quickAddScheduleHandled, setQuickAddScheduleHandled] = useState(0);
   const [clientConnected, setClientConnected] = useState<boolean>(() => {
     try {
       return localStorage.getItem("clientConnected") === "true";
@@ -1457,9 +1458,11 @@ export default function App() {
                     pendingSession={pendingSession}
                     onConsumePendingSession={() => setPendingSession(null)}
                     onLoadHistory={loadClientHistory}
-                    onSaveExercises={saveClientExercises}
-                    openQuickAddSignal={quickAddScheduleSignal}
-                  />
+                  onSaveExercises={saveClientExercises}
+                  openQuickAddSignal={quickAddScheduleSignal}
+                  quickAddHandled={quickAddScheduleHandled}
+                  onQuickAddHandled={setQuickAddScheduleHandled}
+                />
               )}
               {activeTab === "clients" && (
                 <TrainerClients
@@ -4443,6 +4446,8 @@ function TrainerSchedule(props: {
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
   openQuickAddSignal?: number;
+  quickAddHandled?: number;
+  onQuickAddHandled?: (value: number) => void;
 }) {
   const {
     clients,
@@ -4460,6 +4465,8 @@ function TrainerSchedule(props: {
     onLoadHistory,
     onSaveExercises,
     openQuickAddSignal,
+    quickAddHandled,
+    onQuickAddHandled,
   } = props;
   const tr = useTr();
   const language = React.useContext(LanguageContext);
@@ -4499,7 +4506,6 @@ function TrainerSchedule(props: {
   const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
   const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
   const weekScheduleTodayRef = useRef<HTMLButtonElement | null>(null);
-  const lastQuickAddSignalRef = useRef<number>(openQuickAddSignal || 0);
   const bookingMode = trainerProfile?.bookingMode === "both" ? "both" : "trainer";
 
   useEffect(() => {
@@ -4512,15 +4518,15 @@ function TrainerSchedule(props: {
 
   useEffect(() => {
     if (!openQuickAddSignal) return;
-    if (openQuickAddSignal === lastQuickAddSignalRef.current) return;
-    lastQuickAddSignalRef.current = openQuickAddSignal;
+    if (quickAddHandled === openQuickAddSignal) return;
     setScheduleScreen("list");
     setActiveSession(null);
     setSection("sessions");
     setWeekScheduleMode("client");
     setWeekScheduleDate(selected);
     setShowWeekSchedule(true);
-  }, [openQuickAddSignal]);
+    onQuickAddHandled?.(openQuickAddSignal);
+  }, [openQuickAddSignal, quickAddHandled, onQuickAddHandled, selected]);
 
   useEffect(() => {
     if (!showWeekSchedule) {
