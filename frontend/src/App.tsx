@@ -4518,7 +4518,6 @@ function TrainerSchedule(props: {
     setScheduleScreen("list");
     setActiveSession(null);
     setSection("sessions");
-    setScheduleView("list");
     setWeekScheduleMode("client");
     setWeekScheduleDate(selected);
     setShowWeekSchedule(true);
@@ -4732,11 +4731,22 @@ function TrainerSchedule(props: {
   const gridStartHour = 7;
   const gridEndHour = 23;
   const gridRowHeight = 44;
+  const gridStepMinutes = 15;
+  const gridStepsPerHour = 60 / gridStepMinutes;
+  const gridStepHeight = gridRowHeight / gridStepsPerHour;
   const gridRows = gridEndHour - gridStartHour + 1;
+  const gridStepCount = (gridEndHour - gridStartHour) * gridStepsPerHour + 1;
   const activeClients = useMemo(
     () => clients.filter((c) => !c.archived && c.status === "active"),
     [clients]
   );
+
+  const minutesToTime = (totalMinutes: number) => {
+    const safe = Math.max(0, totalMinutes);
+    const h = Math.floor(safe / 60);
+    const m = safe % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     if (!selectedRef.current || !scrollerRef.current) return;
@@ -6098,13 +6108,36 @@ function TrainerSchedule(props: {
                         .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
                       return (
                         <div key={dateKey} style={styles.scheduleWeekDayCol}>
-                          <div style={{ ...styles.scheduleWeekDayBody, height: gridRowHeight * gridRows }}>
-                            {Array.from({ length: gridRows + 1 }, (_, idx) => (
-                              <div
-                                key={idx}
-                                style={{ ...styles.scheduleWeekHourLineTick, top: idx * gridRowHeight }}
-                              />
-                            ))}
+                          <div
+                            style={{ ...styles.scheduleWeekDayBody, height: gridRowHeight * gridRows }}
+                            onClick={(event) => {
+                              const target = event.target as HTMLElement | null;
+                              if (target?.closest?.("[data-session='true']")) return;
+                              const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
+                              const rawY = event.clientY - rect.top;
+                              const clampedY = Math.max(0, Math.min(rawY, rect.height));
+                              const stepIndex = Math.floor(clampedY / gridStepHeight);
+                              const minutesFromStart = stepIndex * gridStepMinutes;
+                              const minStart = gridStartHour * 60;
+                              const maxEnd = gridEndHour * 60;
+                              const startMinutes = Math.min(minStart + minutesFromStart, maxEnd - 60);
+                              const endMinutes = startMinutes + 60;
+                              setWeekScheduleMode("client");
+                              setWeekScheduleDate(d);
+                              setWeekScheduleStart(minutesToTime(startMinutes));
+                              setWeekScheduleEnd(minutesToTime(endMinutes));
+                              setShowWeekSchedule(true);
+                            }}
+                          >
+                            {Array.from({ length: gridStepCount }, (_, idx) => {
+                              if (idx % gridStepsPerHour !== 0) return null;
+                              return (
+                                <div
+                                  key={idx}
+                                  style={{ ...styles.scheduleWeekHourLineTick, top: idx * gridStepHeight }}
+                                />
+                              );
+                            })}
                             {daySessions.map((s) => {
                               const startMin = timeToMinutes(s.start);
                               const endMin = timeToMinutes(s.end);
@@ -6116,13 +6149,15 @@ function TrainerSchedule(props: {
                               <button
                                 key={s.id}
                                 type="button"
+                                data-session="true"
                                 style={{
                                   ...styles.scheduleWeekSession,
                                   ...(theme === "dark" ? styles.scheduleWeekSessionDark : null),
                                   top,
                                   height,
                                 }}
-                                onClick={() => {
+                                onClick={(event) => {
+                                  event.stopPropagation();
                                   setActiveSession(s);
                                   setScheduleScreen("session");
                                 }}
