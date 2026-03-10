@@ -4547,8 +4547,6 @@ function TrainerSchedule(props: {
     if (!openQuickFreeSignal) return;
     setScheduleScreen("list");
     setActiveSession(null);
-    setSection("free");
-    setScheduleView("list");
     setFreeError("");
     setShowFreeSchedule(true);
   }, [openQuickFreeSignal]);
@@ -6568,146 +6566,6 @@ function TrainerSchedule(props: {
             {tr("Добавить окно тренировки", "Add session slot")}
           </button>
 
-          {showFreeSchedule ? (
-            <div style={styles.clientScheduleOverlay} onClick={() => setShowFreeSchedule(false)}>
-              <button
-                type="button"
-                aria-label="close free slots"
-                style={styles.clientScheduleBackdrop}
-                onClick={() => setShowFreeSchedule(false)}
-              />
-              <div style={styles.clientScheduleSheet} onClick={(event) => event.stopPropagation()}>
-                <div style={styles.clientScheduleHandle} />
-                <div style={styles.clientScheduleTitleRow}>
-                  <div style={styles.clientScheduleTitle}>{tr("Добавить окно", "Add slot")}</div>
-                  <button type="button" onClick={() => setShowFreeSchedule(false)} style={styles.clientScheduleCloseBtn}>
-                    {tr("Закрыть", "Close")}
-                  </button>
-                </div>
-
-                <div ref={scrollerRef} style={styles.calendarStrip}>
-                  {days.map((d) => {
-                    const isToday = isSameDay(d.date, today);
-                    const isSelected = isSameDay(d.date, selected);
-                    const isPast = d.date.getTime() < today.getTime();
-
-                    return (
-                      <button
-                        key={d.key}
-                        ref={isSelected ? selectedRef : isToday ? todayRef : null}
-                        onClick={() => setSelected(d.date)}
-                        style={{
-                          ...styles.calendarDay,
-                          ...(isToday ? styles.calendarDayActive : {}),
-                          ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
-                          ...(isPast ? styles.calendarDayPast : {}),
-                        }}
-                        aria-current={isToday ? "date" : undefined}
-                        type="button"
-                      >
-                        <div style={styles.calendarDayDate}>{d.dateText}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div style={styles.clientScheduleFields}>
-                  <div style={styles.freeField}>
-                    <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                    <input
-                      type="time"
-                      value={freeStart}
-                      onChange={(e) => setFreeStart(e.target.value)}
-                      step={300}
-                      style={styles.input}
-                    />
-                  </div>
-                  <div style={styles.freeField}>
-                    <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                    <input
-                      type="time"
-                      value={freeEnd}
-                      onChange={(e) => setFreeEnd(e.target.value)}
-                      step={300}
-                      style={styles.input}
-                    />
-                  </div>
-                  {freeError ? <div style={styles.errorText}>{freeError}</div> : null}
-                  <button
-                    type="button"
-                    disabled={isCreatingSlot}
-                    onClick={async () => {
-                      if (isCreatingSlot) return;
-                      setIsCreatingSlot(true);
-                      const dateKey = formatDateKey(selected);
-                      const start = normalizeTimeInput(freeStart);
-                      const end = normalizeTimeInput(freeEnd);
-                      if (!start || !end) {
-                        setFreeError(tr("Укажите время в формате ЧЧ:ММ (например 10:00).", "Enter time in HH:MM (e.g., 10:00)."));
-                        setIsCreatingSlot(false);
-                        return;
-                      }
-                      if (end <= start) {
-                        setFreeError(tr("Время окончания должно быть больше времени начала.", "End time must be after start time."));
-                        setIsCreatingSlot(false);
-                        return;
-                      }
-                      const now = new Date();
-                      const selectedDay = startOfDay(selected);
-                      const todayDay = startOfDay(now);
-                      if (selectedDay.getTime() < todayDay.getTime()) {
-                        setFreeError(tr("Нельзя создавать окна в прошедших датах.", "You can't create slots in past dates."));
-                        setIsCreatingSlot(false);
-                        return;
-                      }
-                      if (selectedDay.getTime() === todayDay.getTime()) {
-                        const startMin = timeToMinutes(start);
-                        const nowMin = now.getHours() * 60 + now.getMinutes();
-                        if (startMin <= nowMin) {
-                          setFreeError(tr("Нельзя создавать окна в прошедшее время.", "You can't create slots in the past time."));
-                          setIsCreatingSlot(false);
-                          return;
-                        }
-                      }
-                      const startMin = timeToMinutes(start);
-                      const endMin = timeToMinutes(end);
-                      const existing = slotsByDate[dateKey] || [];
-                      const existingSessions = sessionsByDate[dateKey] || [];
-                      const overlaps = existing.some((w) => {
-                        const wStart = timeToMinutes(w.start);
-                        const wEnd = timeToMinutes(w.end);
-                        return startMin < wEnd && endMin > wStart;
-                      });
-                      const overlapsSession = existingSessions.some((s) => {
-                        const sStart = timeToMinutes(s.start);
-                        const sEnd = timeToMinutes(s.end);
-                        return startMin < sEnd && endMin > sStart;
-                      });
-                      if (overlaps || overlapsSession) {
-                        setFreeError(tr("Окна не должны пересекаться или дублироваться с занятиями.", "Slots must not overlap with each other or sessions."));
-                        setIsCreatingSlot(false);
-                        return;
-                      }
-                      const created = await createSlot(dateKey, start, end);
-                      if (!created) {
-                        setIsCreatingSlot(false);
-                        return;
-                      }
-                      setShowFreeSchedule(false);
-                      setFreeError("");
-                      setFreeStart("");
-                      setFreeEnd("");
-                      setIsCreatingSlot(false);
-                    }}
-                    style={styles.saveBtn}
-                  >
-                    {tr("Добавить", "Add")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
           {slotError ? <div style={styles.errorText}>{slotError}</div> : null}
 
           <div style={{ marginTop: 10 }}>
@@ -6882,6 +6740,146 @@ function TrainerSchedule(props: {
           </div>
         </div>
       )}
+
+      {showFreeSchedule ? (
+        <div style={styles.clientScheduleOverlay} onClick={() => setShowFreeSchedule(false)}>
+          <button
+            type="button"
+            aria-label="close free slots"
+            style={styles.clientScheduleBackdrop}
+            onClick={() => setShowFreeSchedule(false)}
+          />
+          <div style={styles.clientScheduleSheet} onClick={(event) => event.stopPropagation()}>
+            <div style={styles.clientScheduleHandle} />
+            <div style={styles.clientScheduleTitleRow}>
+              <div style={styles.clientScheduleTitle}>{tr("Добавить окно", "Add slot")}</div>
+              <button type="button" onClick={() => setShowFreeSchedule(false)} style={styles.clientScheduleCloseBtn}>
+                {tr("Закрыть", "Close")}
+              </button>
+            </div>
+
+            <div ref={scrollerRef} style={styles.calendarStrip}>
+              {days.map((d) => {
+                const isToday = isSameDay(d.date, today);
+                const isSelected = isSameDay(d.date, selected);
+                const isPast = d.date.getTime() < today.getTime();
+
+                return (
+                  <button
+                    key={d.key}
+                    ref={isSelected ? selectedRef : isToday ? todayRef : null}
+                    onClick={() => setSelected(d.date)}
+                    style={{
+                      ...styles.calendarDay,
+                      ...(isToday ? styles.calendarDayActive : {}),
+                      ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
+                      ...(isPast ? styles.calendarDayPast : {}),
+                    }}
+                    aria-current={isToday ? "date" : undefined}
+                    type="button"
+                  >
+                    <div style={styles.calendarDayDate}>{d.dateText}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={styles.clientScheduleFields}>
+              <div style={styles.freeField}>
+                <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
+                <input
+                  type="time"
+                  value={freeStart}
+                  onChange={(e) => setFreeStart(e.target.value)}
+                  step={300}
+                  style={styles.input}
+                />
+              </div>
+              <div style={styles.freeField}>
+                <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+                <input
+                  type="time"
+                  value={freeEnd}
+                  onChange={(e) => setFreeEnd(e.target.value)}
+                  step={300}
+                  style={styles.input}
+                />
+              </div>
+              {freeError ? <div style={styles.errorText}>{freeError}</div> : null}
+              <button
+                type="button"
+                disabled={isCreatingSlot}
+                onClick={async () => {
+                  if (isCreatingSlot) return;
+                  setIsCreatingSlot(true);
+                  const dateKey = formatDateKey(selected);
+                  const start = normalizeTimeInput(freeStart);
+                  const end = normalizeTimeInput(freeEnd);
+                  if (!start || !end) {
+                    setFreeError(tr("Укажите время в формате ЧЧ:ММ (например 10:00).", "Enter time in HH:MM (e.g., 10:00)."));
+                    setIsCreatingSlot(false);
+                    return;
+                  }
+                  if (end <= start) {
+                    setFreeError(tr("Время окончания должно быть больше времени начала.", "End time must be after start time."));
+                    setIsCreatingSlot(false);
+                    return;
+                  }
+                  const now = new Date();
+                  const selectedDay = startOfDay(selected);
+                  const todayDay = startOfDay(now);
+                  if (selectedDay.getTime() < todayDay.getTime()) {
+                    setFreeError(tr("Нельзя создавать окна в прошедших датах.", "You can't create slots in past dates."));
+                    setIsCreatingSlot(false);
+                    return;
+                  }
+                  if (selectedDay.getTime() === todayDay.getTime()) {
+                    const startMin = timeToMinutes(start);
+                    const nowMin = now.getHours() * 60 + now.getMinutes();
+                    if (startMin <= nowMin) {
+                      setFreeError(tr("Нельзя создавать окна в прошедшее время.", "You can't create slots in the past time."));
+                      setIsCreatingSlot(false);
+                      return;
+                    }
+                  }
+                  const startMin = timeToMinutes(start);
+                  const endMin = timeToMinutes(end);
+                  const existing = slotsByDate[dateKey] || [];
+                  const existingSessions = sessionsByDate[dateKey] || [];
+                  const overlaps = existing.some((w) => {
+                    const wStart = timeToMinutes(w.start);
+                    const wEnd = timeToMinutes(w.end);
+                    return startMin < wEnd && endMin > wStart;
+                  });
+                  const overlapsSession = existingSessions.some((s) => {
+                    const sStart = timeToMinutes(s.start);
+                    const sEnd = timeToMinutes(s.end);
+                    return startMin < sEnd && endMin > sStart;
+                  });
+                  if (overlaps || overlapsSession) {
+                    setFreeError(tr("Окна не должны пересекаться или дублироваться с занятиями.", "Slots must not overlap with each other or sessions."));
+                    setIsCreatingSlot(false);
+                    return;
+                  }
+                  const created = await createSlot(dateKey, start, end);
+                  if (!created) {
+                    setIsCreatingSlot(false);
+                    return;
+                  }
+                  setShowFreeSchedule(false);
+                  setFreeError("");
+                  setFreeStart("");
+                  setFreeEnd("");
+                  setIsCreatingSlot(false);
+                }}
+                style={styles.saveBtn}
+              >
+                {tr("Добавить", "Add")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
