@@ -4755,6 +4755,21 @@ function TrainerSchedule(props: {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
+  const hasSessionOverlap = (dateKey: string, start: string, end: string) => {
+    const startMin = timeToMinutes(start);
+    const endMin = timeToMinutes(end);
+    if (!startMin && start !== "00:00") return false;
+    if (!endMin && end !== "00:00") return false;
+    if (endMin <= startMin) return false;
+    const existing = sessionsByDate[dateKey] || [];
+    return existing.some((s) => {
+      const sStart = timeToMinutes(s.start);
+      const sEnd = timeToMinutes(s.end);
+      if (sEnd <= sStart) return false;
+      return startMin < sEnd && endMin > sStart;
+    });
+  };
+
   useEffect(() => {
     if (!selectedRef.current || !scrollerRef.current) return;
     const el = selectedRef.current;
@@ -5868,6 +5883,12 @@ function TrainerSchedule(props: {
                         );
                         return;
                       }
+                      if (hasSessionOverlap(dateKey, start, end)) {
+                        setWeekScheduleError(
+                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                        );
+                        return;
+                      }
                       const startMin = timeToMinutes(start);
                       const selectedDay = startOfDay(weekScheduleDate);
                       const todayDay = startOfDay(new Date());
@@ -6397,6 +6418,12 @@ function TrainerSchedule(props: {
                           if (end <= start) {
                             setWeekScheduleError(
                               tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                            );
+                            return;
+                          }
+                          if (hasSessionOverlap(dateKey, start, end)) {
+                            setWeekScheduleError(
+                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
                             );
                             return;
                           }
