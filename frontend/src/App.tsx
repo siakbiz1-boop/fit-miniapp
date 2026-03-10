@@ -4492,7 +4492,6 @@ function TrainerSchedule(props: {
   const [weekScheduleClientName, setWeekScheduleClientName] = useState("");
   const [weekOffset, setWeekOffset] = useState(0);
   const weekSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
-  const [showWeekAddMenu, setShowWeekAddMenu] = useState(false);
   const [showWeekSchedule, setShowWeekSchedule] = useState(false);
   const [weekScheduleDate, setWeekScheduleDate] = useState<Date>(() => startOfDay(new Date()));
   const [weekScheduleStart, setWeekScheduleStart] = useState("12:30");
@@ -6146,83 +6145,6 @@ function TrainerSchedule(props: {
                   </div>
                 </div>
               </div>
-              {!showWeekSchedule ? (
-                <button
-                  type="button"
-                  style={styles.scheduleWeekFabFixed}
-                  aria-label={tr("Добавить", "Add")}
-                  onClick={() => setShowWeekAddMenu(true)}
-                >
-                  <span style={styles.scheduleWeekFabIcon}>+</span>
-                </button>
-              ) : null}
-              {showWeekAddMenu ? (
-                <div
-                  style={{
-                    ...styles.scheduleWeekAddOverlay,
-                    ...(theme === "dark" ? styles.scheduleWeekAddOverlayDark : styles.scheduleWeekAddOverlayLight),
-                  }}
-                  onClick={() => setShowWeekAddMenu(false)}
-                >
-                  <div
-                    style={styles.scheduleWeekAddSheet}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <div
-                      style={{
-                        ...styles.scheduleWeekAddTitle,
-                        ...(theme === "dark" ? styles.scheduleWeekAddTitleDark : styles.scheduleWeekAddTitleLight),
-                      }}
-                    >
-                      {tr("Добавить", "Add")}
-                    </div>
-                    <button
-                      type="button"
-                      style={{
-                        ...styles.scheduleWeekAddBtn,
-                        ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
-                      }}
-                      onClick={() => {
-                        setShowWeekAddMenu(false);
-                        setWeekScheduleMode("client");
-                        setShowWeekSchedule(true);
-                      }}
-                    >
-                      {tr("Тренировку клиента", "Client session")}
-                    </button>
-                    <button
-                      type="button"
-                      style={{
-                        ...styles.scheduleWeekAddBtn,
-                        ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
-                      }}
-                      onClick={() => {
-                        setShowWeekAddMenu(false);
-                        setWeekScheduleMode("one_time");
-                        setWeekScheduleClientName("");
-                        setShowWeekSchedule(true);
-                      }}
-                    >
-                      {tr("Разовую тренировку", "One-time session")}
-                    </button>
-                    <button
-                      type="button"
-                      style={{
-                        ...styles.scheduleWeekAddBtn,
-                        ...(theme === "dark" ? styles.scheduleWeekAddBtnDark : styles.scheduleWeekAddBtnLight),
-                      }}
-                      onClick={() => {
-                        setShowWeekAddMenu(false);
-                        setWeekScheduleMode("group");
-                        setWeekScheduleGroupIds([]);
-                        setShowWeekSchedule(true);
-                      }}
-                    >
-                      {tr("Групповую тренировку", "Group session")}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
               {showWeekSchedule && scheduleView === "grid" ? (
                 <div
                   style={styles.clientScheduleOverlay}
@@ -13643,81 +13565,6 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-  },
-  scheduleWeekFabFixed: {
-    position: "fixed",
-    right: 18,
-    bottom: 92,
-    width: 56,
-    height: 56,
-    borderRadius: "50%",
-    border: "none",
-    background: "#1F6BFF",
-    color: "#fff",
-    cursor: "pointer",
-    zIndex: 50,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 10px 24px rgba(15, 23, 42, 0.25)",
-  },
-  scheduleWeekFabIcon: {
-    fontSize: 28,
-    lineHeight: 1,
-    fontWeight: 700,
-  },
-  scheduleWeekAddOverlay: {
-    position: "fixed",
-    inset: 0,
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    padding: "0 18px 24px",
-    zIndex: 60,
-  },
-  scheduleWeekAddOverlayLight: {
-    background: "rgba(255, 255, 255, 0.9)",
-  },
-  scheduleWeekAddOverlayDark: {
-    background: "rgba(15, 23, 42, 0.9)",
-  },
-  scheduleWeekAddSheet: {
-    width: "100%",
-    maxWidth: 360,
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-    alignItems: "flex-start",
-  },
-  scheduleWeekAddTitle: {
-    fontSize: 18,
-    fontWeight: 700,
-    marginBottom: 2,
-  },
-  scheduleWeekAddTitleLight: {
-    color: "#0f172a",
-  },
-  scheduleWeekAddTitleDark: {
-    color: "#fff",
-  },
-  scheduleWeekAddBtn: {
-    width: "100%",
-    height: 48,
-    borderRadius: 14,
-    border: "none",
-    fontWeight: 700,
-    fontSize: 15,
-    textAlign: "left",
-    padding: "0 18px",
-    cursor: "pointer",
-  },
-  scheduleWeekAddBtnLight: {
-    background: "rgba(15, 23, 42, 0.08)",
-    color: "#0f172a",
-  },
-  scheduleWeekAddBtnDark: {
-    background: "rgba(255,255,255,0.12)",
-    color: "#fff",
   },
   trainerSelectWrap: {
     display: "flex",
