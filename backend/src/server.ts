@@ -1949,6 +1949,7 @@ app.post("/sessions", async (req, reply) => {
   );
   const oneTime = body?.oneTime === true;
   const clientNameRaw = body?.clientName ? String(body.clientName) : "";
+  const tzOffset = typeof body?.tzOffset === "number" ? body.tzOffset : null;
   const isGroup = groupClientIds.length > 0;
   if (isGroup && groupClientIds.length < 2) {
     return reply.code(400).send({ message: "group requires at least 2 clients" });
@@ -1967,10 +1968,22 @@ app.post("/sessions", async (req, reply) => {
   if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
     return reply.code(400).send({ message: "time invalid" });
   }
-  const startAt = new Date(day);
-  startAt.setHours(sh, sm, 0, 0);
-  const endAt = new Date(day);
-  endAt.setHours(eh, em, 0, 0);
+  let startAt: Date;
+  let endAt: Date;
+  if (tzOffset !== null && Number.isFinite(tzOffset)) {
+    const parts = dateKey.split("-").map((x) => parseInt(x, 10));
+    const [y, m, d] = parts;
+    if (!y || !m || !d) return reply.code(400).send({ message: "dateKey invalid" });
+    const startUtc = Date.UTC(y, m - 1, d, sh, sm, 0, 0);
+    const endUtc = Date.UTC(y, m - 1, d, eh, em, 0, 0);
+    startAt = new Date(startUtc - tzOffset * 60 * 1000);
+    endAt = new Date(endUtc - tzOffset * 60 * 1000);
+  } else {
+    startAt = new Date(day);
+    startAt.setHours(sh, sm, 0, 0);
+    endAt = new Date(day);
+    endAt.setHours(eh, em, 0, 0);
+  }
   if (endAt.getTime() <= startAt.getTime()) {
     return reply.code(400).send({ message: "time range invalid" });
   }
