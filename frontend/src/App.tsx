@@ -1514,16 +1514,14 @@ export default function App() {
                 role="presentation"
               >
                 <div
-                  style={styles.addMenuArc}
+                  style={styles.addMenuGlass}
                   onClick={(event) => event.stopPropagation()}
                   role="presentation"
                 >
-                  <div style={{ ...styles.addMenuArcDivider, ...styles.addMenuArcDividerLeft }} />
-                  <div style={{ ...styles.addMenuArcDivider, ...styles.addMenuArcDividerRight }} />
-                  <div style={styles.addMenuArcActions}>
+                  <div style={styles.addMenuGlassRow}>
                     <button
                       type="button"
-                      style={styles.addMenuArcBtn}
+                      style={styles.addMenuGlassBtn}
                       aria-label={tr("Добавить тренировку", "Add session")}
                       onClick={() => {
                         setAddMenuOpen(false);
@@ -1533,16 +1531,18 @@ export default function App() {
                     >
                       {tr("Добавить тренировку", "Add session")}
                     </button>
+                    <div style={styles.addMenuGlassDivider} aria-hidden="true" />
                     <button
                       type="button"
-                      style={styles.addMenuArcBtn}
+                      style={styles.addMenuGlassBtn}
                       aria-label={tr("Шаблон", "Template")}
                     >
                       {tr("Шаблон", "Template")}
                     </button>
+                    <div style={styles.addMenuGlassDivider} aria-hidden="true" />
                     <button
                       type="button"
-                      style={styles.addMenuArcBtn}
+                      style={styles.addMenuGlassBtn}
                       aria-label={tr("Повторить тренировку", "Repeat session")}
                     >
                       {tr("Повторить тренировку", "Repeat session")}
@@ -13975,59 +13975,39 @@ const styles: Record<string, any> = {
     paddingBottom: 58,
     zIndex: 30,
   },
-  addMenuArc: {
-    width: "88vw",
-    maxWidth: 360,
-    height: "38vw",
-    maxHeight: 180,
-    minHeight: 140,
-    borderTopLeftRadius: 999,
-    borderTopRightRadius: 999,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    background: "linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%)",
-    border: "1px solid rgba(15, 23, 42, 0.08)",
-    boxShadow: "0 20px 40px rgba(15, 23, 42, 0.18)",
-    position: "relative",
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    paddingBottom: 22,
-    overflow: "hidden",
+  addMenuGlass: {
+    width: "92vw",
+    maxWidth: 420,
+    borderRadius: 999,
+    padding: "10px 12px",
+    background: "rgba(255, 255, 255, 0.72)",
+    border: "1px solid rgba(255, 255, 255, 0.6)",
+    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.22)",
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
   },
-  addMenuArcDivider: {
-    position: "absolute",
-    width: 1,
-    height: "42%",
-    background: "rgba(15, 23, 42, 0.12)",
-    bottom: 12,
-  },
-  addMenuArcDividerLeft: {
-    left: "33.33%",
-  },
-  addMenuArcDividerRight: {
-    left: "66.66%",
-  },
-  addMenuArcActions: {
-    position: "absolute",
-    bottom: 10,
-    left: 0,
-    right: 0,
+  addMenuGlassRow: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 10,
-    padding: "0 18px",
-    boxSizing: "border-box",
+    gridTemplateColumns: "1fr auto 1fr auto 1fr",
+    alignItems: "center",
+    gap: 8,
   },
-  addMenuArcBtn: {
+  addMenuGlassBtn: {
     border: "none",
-    background: "transparent",
+    background: "rgba(255, 255, 255, 0.55)",
     color: "var(--text)",
     fontSize: 12,
     fontWeight: 700,
     lineHeight: 1.2,
     textAlign: "center",
-    padding: "6px 4px",
+    padding: "10px 6px",
+    borderRadius: 999,
     cursor: "pointer",
+    boxShadow: "inset 0 1px 2px rgba(255, 255, 255, 0.8)",
+  },
+  addMenuGlassDivider: {
+    width: 1,
+    height: 26,
+    background: "rgba(15, 23, 42, 0.12)",
   },
 };
