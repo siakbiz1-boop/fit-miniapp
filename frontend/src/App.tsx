@@ -13970,14 +13970,14 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "flex-end",
     justifyContent: "center",
-    paddingBottom: 54,
+    paddingBottom: 6,
     zIndex: 30,
   },
   addMenuGlass: {
     width: "92vw",
     maxWidth: 420,
     borderRadius: 999,
-    padding: "8px 10px",
+    padding: "12px 12px",
     background:
       "linear-gradient(140deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 45%, rgba(255,255,255,0.5) 100%)",
     border: "1px solid rgba(255, 255, 255, 0.7)",
@@ -13999,7 +13999,8 @@ const styles: Record<string, any> = {
     fontWeight: 700,
     lineHeight: 1.2,
     textAlign: "center",
-    padding: "8px 6px",
+    padding: "10px 6px",
+    minHeight: 40,
     borderRadius: 999,
     cursor: "pointer",
     boxShadow:
