@@ -6123,19 +6123,23 @@ function TrainerSchedule(props: {
                               const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
                               const rawY = event.clientY - rect.top;
                               const clampedY = Math.max(0, Math.min(rawY, rect.height));
-                              const offsetY = clampedY - gridRowHeight;
-                              const safeY = Math.max(0, Math.min(offsetY, gridRowHeight * (gridRows - 1)));
+                              const safeY = Math.max(0, Math.min(clampedY, gridRowHeight * (gridRows - 1)));
                               const stepIndex = Math.floor(safeY / gridStepHeight);
                               const minutesFromStart = stepIndex * gridStepMinutes;
                               const minStart = gridStartHour * 60;
                               const maxStart = gridEndHour * 60 - 60;
                               const startMinutes = Math.min(minStart + minutesFromStart, maxStart);
                               const endMinutes = startMinutes + 60;
+                              const isSameDraft =
+                                gridDraft?.dateKey === dateKey && gridDraft?.startMin === startMinutes;
+                              if (!isSameDraft) {
+                                setGridDraft({ dateKey, startMin: startMinutes, endMin: endMinutes });
+                                return;
+                              }
                               setWeekScheduleMode("client");
                               setWeekScheduleDate(d);
                               setWeekScheduleStart(minutesToTime(startMinutes));
                               setWeekScheduleEnd(minutesToTime(endMinutes));
-                              setGridDraft({ dateKey, startMin: startMinutes, endMin: endMinutes });
                               setShowWeekSchedule(true);
                             }}
                           >
