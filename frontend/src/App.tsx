@@ -308,7 +308,6 @@ export default function App() {
   const [clientTab, setClientTab] = useState<ClientTab>("home");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [quickAddScheduleSignal, setQuickAddScheduleSignal] = useState(0);
-  const [quickAddFreeSignal, setQuickAddFreeSignal] = useState(0);
   const [clientConnected, setClientConnected] = useState<boolean>(() => {
     try {
       return localStorage.getItem("clientConnected") === "true";
@@ -1460,7 +1459,6 @@ export default function App() {
                     onLoadHistory={loadClientHistory}
                     onSaveExercises={saveClientExercises}
                     openQuickAddSignal={quickAddScheduleSignal}
-                    openQuickFreeSignal={quickAddFreeSignal}
                   />
               )}
               {activeTab === "clients" && (
@@ -1536,34 +1534,20 @@ export default function App() {
                       </button>
                     </div>
                     <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnTR }}>
-                      <button
-                        type="button"
-                        style={styles.addMenuBtn}
-                        aria-label={tr("Добавить окно", "Add slot")}
-                        onClick={() => {
-                          setAddMenuOpen(false);
-                          setActiveTab("schedule");
-                          setQuickAddFreeSignal((prev) => prev + 1);
-                        }}
-                      >
-                        {tr("Добавить окно", "Add slot")}
+                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Шаблон", "Template")}>
+                        {tr("Шаблон", "Template")}
                       </button>
                     </div>
                     <div style={styles.addMenuLogo} aria-hidden="true">
                       <span style={styles.addMenuLogoText}>MF</span>
                     </div>
-                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBL }}>
+                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBC }}>
                       <button
                         type="button"
                         style={styles.addMenuBtn}
                         aria-label={tr("Повторить тренировку", "Repeat session")}
                       >
                         {tr("Повторить тренировку", "Repeat session")}
-                      </button>
-                    </div>
-                    <div style={{ ...styles.addMenuItem, ...styles.addMenuBtnBR }}>
-                      <button type="button" style={styles.addMenuBtn} aria-label={tr("Шаблон", "Template")}>
-                        {tr("Шаблон", "Template")}
                       </button>
                     </div>
                   </div>
@@ -4464,7 +4448,6 @@ function TrainerSchedule(props: {
     exercises: { id: string; name: string; weight: string }[]
   ) => Promise<TrainerClientInvite | null> | void;
   openQuickAddSignal?: number;
-  openQuickFreeSignal?: number;
 }) {
   const {
     clients,
@@ -4482,7 +4465,6 @@ function TrainerSchedule(props: {
     onLoadHistory,
     onSaveExercises,
     openQuickAddSignal,
-    openQuickFreeSignal,
   } = props;
   const tr = useTr();
   const language = React.useContext(LanguageContext);
@@ -4542,14 +4524,6 @@ function TrainerSchedule(props: {
     setWeekScheduleDate(selected);
     setShowWeekSchedule(true);
   }, [openQuickAddSignal, selected]);
-
-  useEffect(() => {
-    if (!openQuickFreeSignal) return;
-    setScheduleScreen("list");
-    setActiveSession(null);
-    setFreeError("");
-    setShowFreeSchedule(true);
-  }, [openQuickFreeSignal]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -4713,6 +4687,12 @@ function TrainerSchedule(props: {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (bookingMode !== "both" && section !== "sessions") {
+      setSection("sessions");
+    }
+  }, [bookingMode, section]);
 
   const applySlots = useCallback(
     (dateKey: string, nextSlots: TrainingSlot[]) => {
@@ -5645,18 +5625,18 @@ function TrainerSchedule(props: {
             })}
           </div>
 
-          <div style={styles.scheduleTabs}>
-            <button
-              type="button"
-              onClick={() => setSection("sessions")}
-              style={{
-                ...styles.scheduleTab,
-                ...(section === "sessions" ? styles.scheduleTabActive : null),
-              }}
-            >
-              {tr("Занятия сегодня", "Today's sessions")}
-            </button>
-            {bookingMode === "both" ? (
+          {bookingMode === "both" ? (
+            <div style={styles.scheduleTabs}>
+              <button
+                type="button"
+                onClick={() => setSection("sessions")}
+                style={{
+                  ...styles.scheduleTab,
+                  ...(section === "sessions" ? styles.scheduleTabActive : null),
+                }}
+              >
+                {tr("Занятия сегодня", "Today's sessions")}
+              </button>
               <button
                 type="button"
                 onClick={() => setSection("free")}
@@ -5667,20 +5647,8 @@ function TrainerSchedule(props: {
               >
                 {tr("Свободные окна", "Available slots")}
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setWeekScheduleMode("client");
-                  setWeekScheduleDate(selected);
-                  setShowWeekSchedule(true);
-                }}
-                style={styles.scheduleTab}
-              >
-                {tr("Добавить тренировку", "Add session")}
-              </button>
-            )}
-          </div>
+            </div>
+          ) : null}
           {showWeekSchedule && scheduleView === "list" ? (
             <div
               style={styles.clientScheduleOverlay}
@@ -14084,6 +14052,5 @@ const styles: Record<string, any> = {
   },
   addMenuBtnTL: { gridColumn: 1, gridRow: 1 },
   addMenuBtnTR: { gridColumn: 3, gridRow: 1 },
-  addMenuBtnBL: { gridColumn: 1, gridRow: 3 },
-  addMenuBtnBR: { gridColumn: 3, gridRow: 3 },
+  addMenuBtnBC: { gridColumn: 2, gridRow: 3 },
 };
