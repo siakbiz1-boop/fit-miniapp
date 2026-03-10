@@ -4504,6 +4504,7 @@ function TrainerSchedule(props: {
   const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
   const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
   const weekScheduleTodayRef = useRef<HTMLButtonElement | null>(null);
+  const lastQuickAddSignalRef = useRef<number>(openQuickAddSignal || 0);
   const bookingMode = trainerProfile?.bookingMode === "both" ? "both" : "trainer";
 
   useEffect(() => {
@@ -4516,6 +4517,8 @@ function TrainerSchedule(props: {
 
   useEffect(() => {
     if (!openQuickAddSignal) return;
+    if (openQuickAddSignal === lastQuickAddSignalRef.current) return;
+    lastQuickAddSignalRef.current = openQuickAddSignal;
     setScheduleScreen("list");
     setActiveSession(null);
     setSection("sessions");
