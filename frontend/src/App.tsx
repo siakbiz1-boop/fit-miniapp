@@ -4499,6 +4499,7 @@ function TrainerSchedule(props: {
   const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
   const [weekScheduleGroupIds, setWeekScheduleGroupIds] = useState<string[]>([]);
   const [weekScheduleError, setWeekScheduleError] = useState("");
+  const [gridDraft, setGridDraft] = useState<{ dateKey: string; startMin: number; endMin: number } | null>(null);
   const weekScheduleDays = useMemo(() => buildCalendarStrip(today, 14, 30), [today]);
   const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
   const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
@@ -4522,6 +4523,12 @@ function TrainerSchedule(props: {
     setWeekScheduleDate(selected);
     setShowWeekSchedule(true);
   }, [openQuickAddSignal, selected]);
+
+  useEffect(() => {
+    if (!showWeekSchedule) {
+      setGridDraft(null);
+    }
+  }, [showWeekSchedule]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -6116,19 +6123,36 @@ function TrainerSchedule(props: {
                               const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
                               const rawY = event.clientY - rect.top;
                               const clampedY = Math.max(0, Math.min(rawY, rect.height));
-                              const stepIndex = Math.floor(clampedY / gridStepHeight);
+                              const offsetY = clampedY - gridRowHeight;
+                              const safeY = Math.max(0, Math.min(offsetY, gridRowHeight * (gridRows - 1)));
+                              const stepIndex = Math.floor(safeY / gridStepHeight);
                               const minutesFromStart = stepIndex * gridStepMinutes;
                               const minStart = gridStartHour * 60;
-                              const maxEnd = gridEndHour * 60;
-                              const startMinutes = Math.min(minStart + minutesFromStart, maxEnd - 60);
+                              const maxStart = gridEndHour * 60 - 60;
+                              const startMinutes = Math.min(minStart + minutesFromStart, maxStart);
                               const endMinutes = startMinutes + 60;
                               setWeekScheduleMode("client");
                               setWeekScheduleDate(d);
                               setWeekScheduleStart(minutesToTime(startMinutes));
                               setWeekScheduleEnd(minutesToTime(endMinutes));
+                              setGridDraft({ dateKey, startMin: startMinutes, endMin: endMinutes });
                               setShowWeekSchedule(true);
                             }}
                           >
+                            {gridDraft && gridDraft.dateKey === dateKey ? (
+                              <div
+                                style={{
+                                  ...styles.scheduleWeekDraft,
+                                  top:
+                                    (gridDraft.startMin - gridStartHour * 60) * (gridRowHeight / 60) +
+                                    gridRowHeight,
+                                  height: Math.max(
+                                    28,
+                                    (gridDraft.endMin - gridDraft.startMin) * (gridRowHeight / 60)
+                                  ),
+                                }}
+                              />
+                            ) : null}
                             {Array.from({ length: gridStepCount }, (_, idx) => {
                               if (idx % gridStepsPerHour !== 0) return null;
                               return (
@@ -6207,6 +6231,41 @@ function TrainerSchedule(props: {
                       </button>
                     </div>
 
+                    <div style={styles.scheduleModeScroll}>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMode("client")}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMode === "client" ? styles.scheduleTabActive : null),
+                        }}
+                      >
+                        {tr("Тренировка клиента", "Client session")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMode("one_time")}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMode === "one_time" ? styles.scheduleTabActive : null),
+                        }}
+                      >
+                        {tr("Разовая тренировка", "One-time session")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeekScheduleMode("group");
+                          setWeekScheduleGroupIds([]);
+                        }}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
+                        }}
+                      >
+                        {tr("Групповая тренировка", "Group session")}
+                      </button>
+                    </div>
 
 
                     <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
@@ -13556,6 +13615,16 @@ const styles: Record<string, any> = {
     padding: "6px 6px",
     textAlign: "left",
     cursor: "pointer",
+  },
+  scheduleWeekDraft: {
+    position: "absolute",
+    left: 4,
+    right: 4,
+    border: "2px solid #1F6BFF",
+    borderRadius: 12,
+    background: "transparent",
+    zIndex: 1,
+    pointerEvents: "none",
   },
   scheduleWeekSessionDark: {
     border: "1px solid rgba(31, 107, 255, 0.35)",
