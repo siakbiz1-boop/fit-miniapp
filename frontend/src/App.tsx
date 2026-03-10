@@ -1531,7 +1531,6 @@ export default function App() {
                     >
                       {tr("Добавить тренировку", "Add session")}
                     </button>
-                    <div style={styles.addMenuGlassDivider} aria-hidden="true" />
                     <button
                       type="button"
                       style={styles.addMenuGlassBtn}
@@ -1539,7 +1538,6 @@ export default function App() {
                     >
                       {tr("Шаблон", "Template")}
                     </button>
-                    <div style={styles.addMenuGlassDivider} aria-hidden="true" />
                     <button
                       type="button"
                       style={styles.addMenuGlassBtn}
@@ -13972,42 +13970,39 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "flex-end",
     justifyContent: "center",
-    paddingBottom: 58,
+    paddingBottom: 54,
     zIndex: 30,
   },
   addMenuGlass: {
     width: "92vw",
     maxWidth: 420,
     borderRadius: 999,
-    padding: "10px 12px",
-    background: "rgba(255, 255, 255, 0.72)",
-    border: "1px solid rgba(255, 255, 255, 0.6)",
-    boxShadow: "0 18px 40px rgba(15, 23, 42, 0.22)",
+    padding: "8px 10px",
+    background:
+      "linear-gradient(140deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 45%, rgba(255,255,255,0.5) 100%)",
+    border: "1px solid rgba(255, 255, 255, 0.7)",
+    boxShadow: "0 16px 32px rgba(15, 23, 42, 0.2)",
     backdropFilter: "blur(18px)",
     WebkitBackdropFilter: "blur(18px)",
   },
   addMenuGlassRow: {
     display: "grid",
-    gridTemplateColumns: "1fr auto 1fr auto 1fr",
+    gridTemplateColumns: "1fr 1fr 1fr",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   addMenuGlassBtn: {
     border: "none",
-    background: "rgba(255, 255, 255, 0.55)",
+    background: "rgba(255, 255, 255, 0.62)",
     color: "var(--text)",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 700,
     lineHeight: 1.2,
     textAlign: "center",
-    padding: "10px 6px",
+    padding: "8px 6px",
     borderRadius: 999,
     cursor: "pointer",
-    boxShadow: "inset 0 1px 2px rgba(255, 255, 255, 0.8)",
-  },
-  addMenuGlassDivider: {
-    width: 1,
-    height: 26,
-    background: "rgba(15, 23, 42, 0.12)",
+    boxShadow:
+      "inset 0 1px 2px rgba(255, 255, 255, 0.9), 0 6px 12px rgba(15, 23, 42, 0.08)",
   },
 };
