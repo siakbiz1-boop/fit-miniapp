@@ -5869,7 +5869,6 @@ function TrainerSchedule(props: {
                         return;
                       }
                       const startMin = timeToMinutes(start);
-                      const endMin = timeToMinutes(end);
                       const selectedDay = startOfDay(weekScheduleDate);
                       const todayDay = startOfDay(new Date());
                       if (selectedDay.getTime() < todayDay.getTime()) {
@@ -5887,18 +5886,6 @@ function TrainerSchedule(props: {
                           );
                           return;
                         }
-                      }
-                      const existingSessions = sessionsByDate[dateKey] || [];
-                      const overlapsSession = existingSessions.some((s) => {
-                        const sStart = timeToMinutes(s.start);
-                        const sEnd = timeToMinutes(s.end);
-                        return startMin < sEnd && endMin > sStart;
-                      });
-                      if (overlapsSession) {
-                        setWeekScheduleError(
-                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                        );
-                        return;
                       }
                       let client: TrainerClientInvite | null = null;
                       let groupClients: TrainerClientInvite[] = [];
@@ -6123,7 +6110,8 @@ function TrainerSchedule(props: {
                               const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
                               const rawY = event.clientY - rect.top;
                               const clampedY = Math.max(0, Math.min(rawY, rect.height));
-                              const safeY = Math.max(0, Math.min(clampedY, gridRowHeight * (gridRows - 1)));
+                              const offsetY = clampedY - gridRowHeight;
+                              const safeY = Math.max(0, Math.min(offsetY, gridRowHeight * (gridRows - 1)));
                               const stepIndex = Math.floor(safeY / gridStepHeight);
                               const minutesFromStart = stepIndex * gridStepMinutes;
                               const minStart = gridStartHour * 60;
@@ -6413,7 +6401,6 @@ function TrainerSchedule(props: {
                             return;
                           }
                           const startMin = timeToMinutes(start);
-                          const endMin = timeToMinutes(end);
                           const selectedDay = startOfDay(weekScheduleDate);
                           const todayDay = startOfDay(new Date());
                           if (selectedDay.getTime() < todayDay.getTime()) {
@@ -6431,18 +6418,6 @@ function TrainerSchedule(props: {
                               );
                               return;
                             }
-                          }
-                          const existingSessions = sessionsByDate[dateKey] || [];
-                          const overlapsSession = existingSessions.some((s) => {
-                            const sStart = timeToMinutes(s.start);
-                            const sEnd = timeToMinutes(s.end);
-                            return startMin < sEnd && endMin > sStart;
-                          });
-                          if (overlapsSession) {
-                            setWeekScheduleError(
-                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                            );
-                            return;
                           }
                           let client: TrainerClientInvite | null = null;
                           let groupClients: TrainerClientInvite[] = [];
