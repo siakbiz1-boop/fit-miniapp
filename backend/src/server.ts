@@ -1882,8 +1882,8 @@ app.post("/book", async (req, reply) => {
     if (!y || !m || !d) return reply.code(400).send({ message: "dateKey invalid" });
     const startUtc = Date.UTC(y, m - 1, d, sh, sm, 0, 0);
     const endUtc = Date.UTC(y, m - 1, d, eh, em, 0, 0);
-    startAt = new Date(startUtc - tzOffset * 60 * 1000);
-    endAt = new Date(endUtc - tzOffset * 60 * 1000);
+    startAt = new Date(startUtc + tzOffset * 60 * 1000);
+    endAt = new Date(endUtc + tzOffset * 60 * 1000);
   } else {
     startAt = new Date(day);
     startAt.setHours(sh, sm, 0, 0);
@@ -1976,8 +1976,8 @@ app.post("/sessions", async (req, reply) => {
     if (!y || !m || !d) return reply.code(400).send({ message: "dateKey invalid" });
     const startUtc = Date.UTC(y, m - 1, d, sh, sm, 0, 0);
     const endUtc = Date.UTC(y, m - 1, d, eh, em, 0, 0);
-    startAt = new Date(startUtc - tzOffset * 60 * 1000);
-    endAt = new Date(endUtc - tzOffset * 60 * 1000);
+    startAt = new Date(startUtc + tzOffset * 60 * 1000);
+    endAt = new Date(endUtc + tzOffset * 60 * 1000);
   } else {
     startAt = new Date(day);
     startAt.setHours(sh, sm, 0, 0);
