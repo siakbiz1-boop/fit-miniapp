@@ -4522,7 +4522,7 @@ function TrainerSchedule(props: {
     setWeekScheduleMode("client");
     setWeekScheduleDate(selected);
     setShowWeekSchedule(true);
-  }, [openQuickAddSignal, selected]);
+  }, [openQuickAddSignal]);
 
   useEffect(() => {
     if (!showWeekSchedule) {
