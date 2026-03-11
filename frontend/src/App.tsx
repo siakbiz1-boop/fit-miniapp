@@ -6033,33 +6033,6 @@ function TrainerSchedule(props: {
                   </button>
                 </div>
 
-                {weekScheduleMode === "client" ? (
-                  <div style={{ marginTop: 8 }}>
-                    <div style={styles.scheduleTabs}>
-                      <button
-                        type="button"
-                        onClick={() => setWeekScheduleMulti(false)}
-                        style={{
-                          ...styles.scheduleTab,
-                          ...(weekScheduleMulti ? null : styles.scheduleTabActive),
-                        }}
-                      >
-                        {tr("Одна дата", "Single date")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWeekScheduleMulti(true)}
-                        style={{
-                          ...styles.scheduleTab,
-                          ...(weekScheduleMulti ? styles.scheduleTabActive : null),
-                        }}
-                      >
-                        {tr("Несколько", "Multiple")}
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
                 <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
                   {weekScheduleDays.map((d) => {
                     const isToday = isSameDay(d.date, today);
@@ -6084,8 +6057,9 @@ function TrainerSchedule(props: {
                         }}
                         style={{
                           ...styles.calendarDay,
-                          ...(isToday ? styles.calendarDayActive : {}),
+                          ...(isToday && !weekScheduleMulti ? styles.calendarDayActive : {}),
                           ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
+                          ...(isSelected && weekScheduleMulti ? styles.calendarDaySelected : {}),
                           ...(isPast ? styles.calendarDayPast : {}),
                         }}
                         aria-current={isToday ? "date" : undefined}
@@ -6096,6 +6070,33 @@ function TrainerSchedule(props: {
                     );
                   })}
                 </div>
+
+                {weekScheduleMode === "client" ? (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={styles.scheduleViewSwitch}>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMulti(false)}
+                        style={{
+                          ...styles.scheduleViewSwitchBtn,
+                          ...(weekScheduleMulti ? null : styles.scheduleViewSwitchBtnActive),
+                        }}
+                      >
+                        {tr("Одна дата", "Single date")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMulti(true)}
+                        style={{
+                          ...styles.scheduleViewSwitchBtn,
+                          ...(weekScheduleMulti ? styles.scheduleViewSwitchBtnActive : null),
+                        }}
+                      >
+                        {tr("Несколько", "Multiple")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div style={styles.clientScheduleFields}>
                   <div style={styles.freeField}>
@@ -6638,34 +6639,6 @@ function TrainerSchedule(props: {
                     </button>
                   </div>
 
-                  {weekScheduleMode === "client" ? (
-                    <div style={{ marginTop: 8 }}>
-                      <div style={styles.scheduleTabs}>
-                        <button
-                          type="button"
-                          onClick={() => setWeekScheduleMulti(false)}
-                          style={{
-                            ...styles.scheduleTab,
-                            ...(weekScheduleMulti ? null : styles.scheduleTabActive),
-                          }}
-                        >
-                          {tr("Одна дата", "Single date")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setWeekScheduleMulti(true)}
-                          style={{
-                            ...styles.scheduleTab,
-                            ...(weekScheduleMulti ? styles.scheduleTabActive : null),
-                          }}
-                        >
-                          {tr("Несколько", "Multiple")}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-
-
                     <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
                       {weekScheduleDays.map((d) => {
                         const isToday = isSameDay(d.date, today);
@@ -6690,8 +6663,9 @@ function TrainerSchedule(props: {
                             }}
                             style={{
                               ...styles.calendarDay,
-                              ...(isToday ? styles.calendarDayActive : {}),
+                              ...(isToday && !weekScheduleMulti ? styles.calendarDayActive : {}),
                               ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
+                              ...(isSelected && weekScheduleMulti ? styles.calendarDaySelected : {}),
                               ...(isPast ? styles.calendarDayPast : {}),
                             }}
                             aria-current={isToday ? "date" : undefined}
@@ -6702,6 +6676,33 @@ function TrainerSchedule(props: {
                         );
                       })}
                     </div>
+
+                  {weekScheduleMode === "client" ? (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={styles.scheduleViewSwitch}>
+                        <button
+                          type="button"
+                          onClick={() => setWeekScheduleMulti(false)}
+                          style={{
+                            ...styles.scheduleViewSwitchBtn,
+                            ...(weekScheduleMulti ? null : styles.scheduleViewSwitchBtnActive),
+                          }}
+                        >
+                          {tr("Одна дата", "Single date")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setWeekScheduleMulti(true)}
+                          style={{
+                            ...styles.scheduleViewSwitchBtn,
+                            ...(weekScheduleMulti ? styles.scheduleViewSwitchBtnActive : null),
+                          }}
+                        >
+                          {tr("Несколько", "Multiple")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
 
                     <div style={styles.clientScheduleFields}>
                       <div style={styles.freeField}>
