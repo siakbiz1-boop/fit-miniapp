@@ -5392,6 +5392,49 @@ function TrainerSchedule(props: {
                 </div>
               ) : null}
               <div style={{ marginTop: 16 }} />
+              <div>
+                <div style={styles.fieldLabel}>{tr("Дата", "Date")}</div>
+                {canEditTime ? (
+                  <input
+                    type="date"
+                    value={draftSessionDate}
+                    onChange={(e) => {
+                      setDraftSessionDate(e.target.value);
+                      if (sessionTimeError) setSessionTimeError("");
+                    }}
+                    onBlur={() => {
+                      if (!activeSession) return;
+                      if (!draftSessionDate) return;
+                      const start = normalizeTimeInput(draftSessionStart);
+                      const end = normalizeTimeInput(draftSessionEnd);
+                      if (!start || !end) return;
+                      const nextKey = draftSessionDate;
+                      if (nextKey === activeSession.dateKey && start === activeSession.start && end === activeSession.end) {
+                        return;
+                      }
+                      if (end <= start) {
+                        setSessionTimeError(
+                          tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                        );
+                        return;
+                      }
+                      if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
+                        setSessionTimeError(
+                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                        );
+                        return;
+                      }
+                      void saveSessionTimePatch(activeSession.id, start, end, nextKey);
+                    }}
+                    style={styles.input}
+                  />
+                ) : (
+                  <div style={styles.readOnlyValue}>
+                    {formatDateShort(parseDateKey(draftSessionDate || activeSession.dateKey))}
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: 16 }} />
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
