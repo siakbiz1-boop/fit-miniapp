@@ -10295,10 +10295,10 @@ function PersonalDataScreen(props: {
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
                   <input
-                    inputMode="numeric"
-                    pattern="[0-9]*"
+                    inputMode="decimal"
+                    pattern="[0-9.,]*"
                     value={weight}
-                    onChange={(e) => setWeight(e.target.value.replace(/[^\d]/g, ""))}
+                    onChange={(e) => setWeight(e.target.value.replace(/[^0-9.,]/g, ""))}
                     onBlur={() => {
                       const v = normalizeNumberWithUnit(weight, "кг");
                       if (v) setWeight(v);
