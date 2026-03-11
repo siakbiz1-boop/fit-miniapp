@@ -6645,12 +6645,7 @@ function TrainerSchedule(props: {
                               const maxStart = gridEndHour * 60 - 60;
                               const startMinutes = Math.min(minStart + minutesFromStart, maxStart);
                               const endMinutes = startMinutes + 60;
-                              const isSameDraft =
-                                gridDraft?.dateKey === dateKey && gridDraft?.startMin === startMinutes;
-                              if (!isSameDraft) {
-                                setGridDraft({ dateKey, startMin: startMinutes, endMin: endMinutes });
-                                return;
-                              }
+                              setGridDraft({ dateKey, startMin: startMinutes, endMin: endMinutes });
                               setWeekScheduleMode("client");
                               setWeekScheduleDate(d);
                               setWeekScheduleStart(minutesToTime(startMinutes));
