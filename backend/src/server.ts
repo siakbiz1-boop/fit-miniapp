@@ -175,6 +175,13 @@ function parseDateKey(value: string) {
   return new Date(y, m - 1, d, 0, 0, 0, 0);
 }
 
+function formatDateKey(value: Date) {
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, "0");
+  const d = String(value.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function computeRemindAt(startAt: Date, hours: number | null | undefined) {
   if (!hours || hours <= 0) return FAR_FUTURE;
   return new Date(startAt.getTime() - hours * 60 * 60 * 1000);
@@ -2227,7 +2234,7 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
   return { ok: true };
 });
 
-// Update trainer session info (type/price/comment)
+// Update trainer session info (type/price/comment/time)
 app.patch("/sessions/:id", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
@@ -2241,14 +2248,70 @@ app.patch("/sessions/:id", async (req, reply) => {
   if (body?.price !== undefined) data.price = body.price;
   if (body?.comment !== undefined) data.comment = body.comment;
   if (body?.clientName !== undefined) data.clientName = body.clientName;
+  const startRaw = body?.start !== undefined ? String(body.start) : "";
+  const endRaw = body?.end !== undefined ? String(body.end) : "";
+  const dateKeyRaw = body?.dateKey ? String(body.dateKey) : "";
+  const tzOffset = typeof body?.tzOffset === "number" ? body.tzOffset : null;
 
-  if (Object.keys(data).length === 0) {
+  if (Object.keys(data).length === 0 && !startRaw && !endRaw) {
     return reply.code(400).send({ message: "Nothing to update" });
   }
 
   const tryUpdate = async (sessionId: string) => {
     const session = await prismaAny.trainingSession.findUnique({ where: { id: sessionId } });
     if (!session || session.trainerTgUserId !== dbUser.tgUserId) return null;
+
+    if (startRaw || endRaw) {
+      const start = startRaw || String(session.startTime || "");
+      const end = endRaw || String(session.endTime || "");
+      const [sh, sm] = start.split(":").map((x) => parseInt(x, 10));
+      const [eh, em] = end.split(":").map((x) => parseInt(x, 10));
+      if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
+        return reply.code(400).send({ message: "time invalid" });
+      }
+      const inferredKey = dateKeyRaw || formatDateKey(new Date(session.startAt));
+      const day = parseDateKey(inferredKey);
+      if (!day) return reply.code(400).send({ message: "dateKey invalid" });
+      let startAt: Date;
+      let endAt: Date;
+      if (tzOffset !== null && Number.isFinite(tzOffset)) {
+        const parts = inferredKey.split("-").map((x) => parseInt(x, 10));
+        const [y, m, d] = parts;
+        if (!y || !m || !d) return reply.code(400).send({ message: "dateKey invalid" });
+        const startUtc = Date.UTC(y, m - 1, d, sh, sm, 0, 0);
+        const endUtc = Date.UTC(y, m - 1, d, eh, em, 0, 0);
+        startAt = new Date(startUtc + tzOffset * 60 * 1000);
+        endAt = new Date(endUtc + tzOffset * 60 * 1000);
+      } else {
+        startAt = new Date(day);
+        startAt.setHours(sh, sm, 0, 0);
+        endAt = new Date(day);
+        endAt.setHours(eh, em, 0, 0);
+      }
+      if (endAt.getTime() <= startAt.getTime()) {
+        return reply.code(400).send({ message: "time range invalid" });
+      }
+      if (Date.now() >= startAt.getTime()) {
+        return reply.code(403).send({ message: "session already started" });
+      }
+      const overlap = await prismaAny.trainingSession.findFirst({
+        where: {
+          trainerTgUserId: dbUser.tgUserId,
+          id: { not: sessionId },
+          startAt: { lt: endAt },
+          endAt: { gt: startAt },
+        },
+      });
+      if (overlap) return reply.code(409).send({ message: "session overlaps" });
+      const reminderHours = (dbUser as any)?.reminderHours ?? 1;
+      data.startAt = startAt;
+      data.endAt = endAt;
+      data.startTime = start;
+      data.endTime = end;
+      data.remindAt = computeRemindAt(startAt, reminderHours);
+    }
+
+    if (Object.keys(data).length === 0) return session;
     const updated = await prismaAny.trainingSession.update({
       where: { id: sessionId },
       data,

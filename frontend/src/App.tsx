@@ -4484,6 +4484,9 @@ function TrainerSchedule(props: {
   const [draftSessionPrice, setDraftSessionPrice] = useState("");
   const [draftSessionComment, setDraftSessionComment] = useState("");
   const [draftSessionClientName, setDraftSessionClientName] = useState("");
+  const [draftSessionStart, setDraftSessionStart] = useState("");
+  const [draftSessionEnd, setDraftSessionEnd] = useState("");
+  const [sessionTimeError, setSessionTimeError] = useState("");
   const [groupEditMode, setGroupEditMode] = useState(false);
   const [groupAddOpen, setGroupAddOpen] = useState(false);
   const [groupAddClientId, setGroupAddClientId] = useState("");
@@ -4545,6 +4548,9 @@ function TrainerSchedule(props: {
     setDraftSessionPrice(rawPrice ? normalizePriceRUB(rawPrice) : "");
     setDraftSessionComment(activeSession.comment ?? "");
     setDraftSessionClientName(activeSession.clientName ?? "");
+    setDraftSessionStart(activeSession.start ?? "");
+    setDraftSessionEnd(activeSession.end ?? "");
+    setSessionTimeError("");
     if (isOneTime || isGroup) setSessionTab("info");
   }, [
     activeSession?.id,
@@ -4623,6 +4629,70 @@ function TrainerSchedule(props: {
       });
     } catch {
       // ignore
+    }
+  };
+
+  const saveSessionTimePatch = async (sessionId: string, start: string, end: string, dateKey: string) => {
+    if (!token) return;
+    try {
+      let res = await fetch(`${apiBase}/sessions/${encodeURIComponent(sessionId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          start,
+          end,
+          dateKey,
+          tzOffset: new Date().getTimezoneOffset(),
+        }),
+      });
+      if (res.status === 404) {
+        const derivedId = sessionId.startsWith(`${trainerTgUserId}_`)
+          ? sessionId
+          : `${trainerTgUserId}_${sessionId}`;
+        if (derivedId !== sessionId) {
+          res = await fetch(`${apiBase}/sessions/${encodeURIComponent(derivedId)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              start,
+              end,
+              dateKey,
+              tzOffset: new Date().getTimezoneOffset(),
+            }),
+          });
+        }
+      }
+      if (!res.ok) {
+        if (res.status === 409) {
+          setSessionTimeError(
+            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+          );
+        } else if (res.status === 403) {
+          setSessionTimeError(tr("Нельзя менять время начавшейся тренировки.", "You can't edit a started session."));
+        } else {
+          setSessionTimeError(tr("Не удалось обновить время.", "Failed to update time."));
+        }
+        return;
+      }
+      const data = (await res.json()) as { ok: boolean; session?: any };
+      if (!data?.session) return;
+      const mapped = mapSessionFromApi(data.session);
+      setSessionTimeError("");
+      setActiveSession((prev) => (prev && prev.id === mapped.id ? { ...prev, ...mapped } : prev));
+      setSessionsByDate((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((key) => {
+          next[key] = next[key].filter((item) => item.id !== mapped.id);
+          if (next[key].length === 0) delete next[key];
+        });
+        const list = next[mapped.dateKey] ? [...next[mapped.dateKey]] : [];
+        list.push(mapped);
+        list.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+        next[mapped.dateKey] = list;
+        return next;
+      });
+    } catch {
+      setSessionTimeError(tr("Не удалось обновить время.", "Failed to update time."));
     }
   };
 
@@ -4763,7 +4833,8 @@ function TrainerSchedule(props: {
     dateKey: string,
     start: string,
     end: string,
-    mapOverride?: Record<string, SessionItem[]>
+    mapOverride?: Record<string, SessionItem[]>,
+    excludeId?: string | null
   ) => {
     const startMin = timeToMinutes(start);
     const endMin = timeToMinutes(end);
@@ -4773,6 +4844,7 @@ function TrainerSchedule(props: {
     const source = mapOverride || sessionsByDate;
     const existing = source[dateKey] || [];
     return existing.some((s) => {
+      if (excludeId && s.id === excludeId) return false;
       const sStart = timeToMinutes(s.start);
       const sEnd = timeToMinutes(s.end);
       if (sEnd <= sStart) return false;
@@ -5315,13 +5387,72 @@ function TrainerSchedule(props: {
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                  <div style={styles.readOnlyValue}>{activeSession.start}</div>
+                  <input
+                    type="time"
+                    value={draftSessionStart}
+                    step={300}
+                    onChange={(e) => {
+                      setDraftSessionStart(e.target.value);
+                      if (sessionTimeError) setSessionTimeError("");
+                    }}
+                    onBlur={() => {
+                      if (!activeSession) return;
+                      const start = normalizeTimeInput(draftSessionStart);
+                      const end = normalizeTimeInput(draftSessionEnd);
+                      if (!start || !end) return;
+                      if (start === activeSession.start && end === activeSession.end) return;
+                      if (end <= start) {
+                        setSessionTimeError(
+                          tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                        );
+                        return;
+                      }
+                      if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
+                        setSessionTimeError(
+                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                        );
+                        return;
+                      }
+                      void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
+                    }}
+                    style={styles.input}
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                  <div style={styles.readOnlyValue}>{activeSession.end}</div>
+                  <input
+                    type="time"
+                    value={draftSessionEnd}
+                    step={300}
+                    onChange={(e) => {
+                      setDraftSessionEnd(e.target.value);
+                      if (sessionTimeError) setSessionTimeError("");
+                    }}
+                    onBlur={() => {
+                      if (!activeSession) return;
+                      const start = normalizeTimeInput(draftSessionStart);
+                      const end = normalizeTimeInput(draftSessionEnd);
+                      if (!start || !end) return;
+                      if (start === activeSession.start && end === activeSession.end) return;
+                      if (end <= start) {
+                        setSessionTimeError(
+                          tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                        );
+                        return;
+                      }
+                      if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
+                        setSessionTimeError(
+                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                        );
+                        return;
+                      }
+                      void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
+                    }}
+                    style={styles.input}
+                  />
                 </div>
               </div>
+              {sessionTimeError ? <div style={styles.errorText}>{sessionTimeError}</div> : null}
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
                 {isOneTimeSession ? (
