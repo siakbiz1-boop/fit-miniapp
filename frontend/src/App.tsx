@@ -5114,6 +5114,7 @@ function TrainerSchedule(props: {
   if (scheduleScreen === "session" && activeSession) {
     const sessionClient = clients.find((c) => c.username === activeSession.clientUsername) || null;
     const canDeleteByTime = sessionStartTime(activeSession).getTime() > nowTs;
+    const canEditTime = canDeleteByTime;
     const isOneTimeSession = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
     const isGroupSession = activeSession.clientUsername === "group" || activeSession.type === "group";
     const participantClients = (activeSession.participants || [])
@@ -5387,72 +5388,80 @@ function TrainerSchedule(props: {
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                  <input
-                    type="time"
-                    value={draftSessionStart}
-                    step={300}
-                    onChange={(e) => {
-                      setDraftSessionStart(e.target.value);
-                      if (sessionTimeError) setSessionTimeError("");
-                    }}
-                    onBlur={() => {
-                      if (!activeSession) return;
-                      const start = normalizeTimeInput(draftSessionStart);
-                      const end = normalizeTimeInput(draftSessionEnd);
-                      if (!start || !end) return;
-                      if (start === activeSession.start && end === activeSession.end) return;
-                      if (end <= start) {
-                        setSessionTimeError(
-                          tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
-                        );
-                        return;
-                      }
-                      if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
-                        setSessionTimeError(
-                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                        );
-                        return;
-                      }
-                      void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
-                    }}
-                    style={styles.input}
-                  />
+                  {canEditTime ? (
+                    <input
+                      type="time"
+                      value={draftSessionStart}
+                      step={300}
+                      onChange={(e) => {
+                        setDraftSessionStart(e.target.value);
+                        if (sessionTimeError) setSessionTimeError("");
+                      }}
+                      onBlur={() => {
+                        if (!activeSession) return;
+                        const start = normalizeTimeInput(draftSessionStart);
+                        const end = normalizeTimeInput(draftSessionEnd);
+                        if (!start || !end) return;
+                        if (start === activeSession.start && end === activeSession.end) return;
+                        if (end <= start) {
+                          setSessionTimeError(
+                            tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                          );
+                          return;
+                        }
+                        if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
+                          setSessionTimeError(
+                            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                          );
+                          return;
+                        }
+                        void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
+                      }}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <div style={styles.readOnlyValue}>{activeSession.start}</div>
+                  )}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                  <input
-                    type="time"
-                    value={draftSessionEnd}
-                    step={300}
-                    onChange={(e) => {
-                      setDraftSessionEnd(e.target.value);
-                      if (sessionTimeError) setSessionTimeError("");
-                    }}
-                    onBlur={() => {
-                      if (!activeSession) return;
-                      const start = normalizeTimeInput(draftSessionStart);
-                      const end = normalizeTimeInput(draftSessionEnd);
-                      if (!start || !end) return;
-                      if (start === activeSession.start && end === activeSession.end) return;
-                      if (end <= start) {
-                        setSessionTimeError(
-                          tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
-                        );
-                        return;
-                      }
-                      if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
-                        setSessionTimeError(
-                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                        );
-                        return;
-                      }
-                      void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
-                    }}
-                    style={styles.input}
-                  />
+                  {canEditTime ? (
+                    <input
+                      type="time"
+                      value={draftSessionEnd}
+                      step={300}
+                      onChange={(e) => {
+                        setDraftSessionEnd(e.target.value);
+                        if (sessionTimeError) setSessionTimeError("");
+                      }}
+                      onBlur={() => {
+                        if (!activeSession) return;
+                        const start = normalizeTimeInput(draftSessionStart);
+                        const end = normalizeTimeInput(draftSessionEnd);
+                        if (!start || !end) return;
+                        if (start === activeSession.start && end === activeSession.end) return;
+                        if (end <= start) {
+                          setSessionTimeError(
+                            tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                          );
+                          return;
+                        }
+                        if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
+                          setSessionTimeError(
+                            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                          );
+                          return;
+                        }
+                        void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
+                      }}
+                      style={styles.input}
+                    />
+                  ) : (
+                    <div style={styles.readOnlyValue}>{activeSession.end}</div>
+                  )}
                 </div>
               </div>
-              {sessionTimeError ? <div style={styles.errorText}>{sessionTimeError}</div> : null}
+              {canEditTime && sessionTimeError ? <div style={styles.errorText}>{sessionTimeError}</div> : null}
               <div style={{ marginTop: 16 }}>
                 <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
                 {isOneTimeSession ? (
