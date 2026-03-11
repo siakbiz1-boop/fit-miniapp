@@ -3806,6 +3806,11 @@ function ClientSchedule(props: {
                 {activeSession.clientUsername ? sessionClientLabel(activeSession, tr, invites) : "—"}
               </div>
               <div style={{ marginTop: 16 }} />
+              <div>
+                <div style={styles.fieldLabel}>{tr("Дата", "Date")}</div>
+                <div style={styles.readOnlyValue}>{formatDateShort(parseDateKey(activeSession.dateKey))}</div>
+              </div>
+              <div style={{ marginTop: 16 }} />
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
                   <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
@@ -4486,6 +4491,7 @@ function TrainerSchedule(props: {
   const [draftSessionClientName, setDraftSessionClientName] = useState("");
   const [draftSessionStart, setDraftSessionStart] = useState("");
   const [draftSessionEnd, setDraftSessionEnd] = useState("");
+  const [draftSessionDate, setDraftSessionDate] = useState("");
   const [sessionTimeError, setSessionTimeError] = useState("");
   const [groupEditMode, setGroupEditMode] = useState(false);
   const [groupAddOpen, setGroupAddOpen] = useState(false);
@@ -4550,6 +4556,7 @@ function TrainerSchedule(props: {
     setDraftSessionClientName(activeSession.clientName ?? "");
     setDraftSessionStart(activeSession.start ?? "");
     setDraftSessionEnd(activeSession.end ?? "");
+    setDraftSessionDate(activeSession.dateKey ?? "");
     setSessionTimeError("");
     if (isOneTime || isGroup) setSessionTab("info");
   }, [
@@ -5409,13 +5416,14 @@ function TrainerSchedule(props: {
                           );
                           return;
                         }
-                        if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
+                        const nextKey = draftSessionDate || activeSession.dateKey;
+                        if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
                           setSessionTimeError(
                             tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
                           );
                           return;
                         }
-                        void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
+                        void saveSessionTimePatch(activeSession.id, start, end, nextKey);
                       }}
                       style={styles.input}
                     />
@@ -5446,13 +5454,14 @@ function TrainerSchedule(props: {
                           );
                           return;
                         }
-                        if (hasSessionOverlap(activeSession.dateKey, start, end, undefined, activeSession.id)) {
+                        const nextKey = draftSessionDate || activeSession.dateKey;
+                        if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
                           setSessionTimeError(
                             tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
                           );
                           return;
                         }
-                        void saveSessionTimePatch(activeSession.id, start, end, activeSession.dateKey);
+                        void saveSessionTimePatch(activeSession.id, start, end, nextKey);
                       }}
                       style={styles.input}
                     />
