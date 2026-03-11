@@ -5986,16 +5986,7 @@ function TrainerSchedule(props: {
                     setWeekScheduleDragging(true);
                   }}
                 />
-                <div style={styles.clientScheduleTitleRow}>
-                  <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
-                  <button
-                    type="button"
-                    onClick={() => setShowWeekSchedule(false)}
-                    style={styles.clientScheduleCloseBtn}
-                  >
-                    {tr("Закрыть", "Close")}
-                  </button>
-                </div>
+                <div style={{ height: 2 }} />
 
                 <div style={styles.scheduleModeScroll}>
                   <button
@@ -6592,16 +6583,7 @@ function TrainerSchedule(props: {
                         setWeekScheduleDragging(true);
                       }}
                     />
-                    <div style={styles.clientScheduleTitleRow}>
-                      <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
-                      <button
-                        type="button"
-                        onClick={() => setShowWeekSchedule(false)}
-                        style={styles.clientScheduleCloseBtn}
-                      >
-                        {tr("Закрыть", "Close")}
-                      </button>
-                    </div>
+                  <div style={{ height: 2 }} />
 
                     <div style={styles.scheduleModeScroll}>
                       <button
@@ -6678,8 +6660,16 @@ function TrainerSchedule(props: {
                     </div>
 
                   {weekScheduleMode === "client" ? (
-                    <div style={{ marginTop: 8 }}>
-                      <div style={styles.scheduleViewSwitch}>
+                    <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-start" }}>
+                      <div
+                        style={{
+                          ...styles.scheduleViewSwitch,
+                          width: "auto",
+                          alignSelf: "flex-start",
+                          justifyContent: "flex-start",
+                          display: "inline-flex",
+                        }}
+                      >
                         <button
                           type="button"
                           onClick={() => setWeekScheduleMulti(false)}
