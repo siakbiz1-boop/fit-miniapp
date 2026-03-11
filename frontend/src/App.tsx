@@ -13143,6 +13143,8 @@ const styles: Record<string, any> = {
     boxSizing: "border-box",
     boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
     overflowY: "auto",
+    overscrollBehavior: "contain",
+    touchAction: "pan-x",
   },
   clientScheduleHandle: {
     width: 46,
