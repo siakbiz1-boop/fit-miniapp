@@ -4497,6 +4497,10 @@ function TrainerSchedule(props: {
   const [draftSessionEnd, setDraftSessionEnd] = useState("");
   const [draftSessionDate, setDraftSessionDate] = useState("");
   const [sessionTimeError, setSessionTimeError] = useState("");
+  const [repeatOpen, setRepeatOpen] = useState(false);
+  const [repeatDate, setRepeatDate] = useState("");
+  const [repeatError, setRepeatError] = useState("");
+  const [repeatSaving, setRepeatSaving] = useState(false);
   const [groupEditMode, setGroupEditMode] = useState(false);
   const [groupAddOpen, setGroupAddOpen] = useState(false);
   const [groupAddClientId, setGroupAddClientId] = useState("");
@@ -4611,6 +4615,10 @@ function TrainerSchedule(props: {
     const fallbackKey = activeSession.dateKey || formatDateKey(sessionStartTime(activeSession));
     setDraftSessionDate(formatDateInputValue(fallbackKey));
     setSessionTimeError("");
+    setRepeatError("");
+    setRepeatSaving(false);
+    const nextRepeat = addDays(sessionStartTime(activeSession), 1);
+    setRepeatDate(formatDateInputValue(formatDateKey(nextRepeat)));
     if (isOneTime || isGroup) setSessionTab("info");
   }, [
     activeSession?.id,
@@ -5690,6 +5698,16 @@ function TrainerSchedule(props: {
                   style={{ ...styles.input, resize: "none", overflow: "hidden" }}
                 />
               </div>
+              <button
+                type="button"
+                style={{ ...styles.saveBtn, marginTop: 16 }}
+                onClick={() => {
+                  setRepeatOpen(true);
+                  setRepeatError("");
+                }}
+              >
+                {tr("Повторить тренировку", "Repeat session")}
+              </button>
               {canDeleteByTime ? (
                 <button
                   type="button"
@@ -5839,6 +5857,148 @@ function TrainerSchedule(props: {
                   "Example: 4 clients and 2000 ₽ — 500 ₽ per client."
                 )}
               </div>
+            </div>
+          </div>
+        ) : null}
+        {repeatOpen ? (
+          <div style={styles.statsInfoOverlay} onClick={() => setRepeatOpen(false)}>
+            <div style={styles.statsInfoSheet} onClick={(event) => event.stopPropagation()}>
+              <button type="button" style={styles.statsInfoClose} onClick={() => setRepeatOpen(false)}>
+                ×
+              </button>
+              <div style={styles.statsInfoTitle}>{tr("Повторить тренировку", "Repeat session")}</div>
+              <div style={{ marginTop: 12 }}>
+                <div style={styles.fieldLabel}>{tr("Дата", "Date")}</div>
+                <input
+                  type="date"
+                  value={repeatDate}
+                  onChange={(e) => {
+                    setRepeatDate(e.target.value);
+                    if (repeatError) setRepeatError("");
+                  }}
+                  style={styles.input}
+                />
+              </div>
+              {repeatError ? <div style={{ ...styles.errorText, marginTop: 8 }}>{repeatError}</div> : null}
+              <button
+                type="button"
+                style={{ ...styles.saveBtn, marginTop: 14 }}
+                disabled={repeatSaving}
+                onClick={async () => {
+                  if (!activeSession || repeatSaving) return;
+                  const dateKey = normalizeDateKeyInput(repeatDate);
+                  if (!dateKey) {
+                    setRepeatError(tr("Выберите дату.", "Select a date."));
+                    return;
+                  }
+                  const start = normalizeTimeInput(activeSession.start);
+                  const end = normalizeTimeInput(activeSession.end);
+                  if (!start || !end || end <= start) {
+                    setRepeatError(tr("Неверное время тренировки.", "Invalid session time."));
+                    return;
+                  }
+                  const now = new Date();
+                  const selectedDay = startOfDay(parseDateKey(dateKey));
+                  const todayDay = startOfDay(now);
+                  if (selectedDay.getTime() < todayDay.getTime()) {
+                    setRepeatError(tr("Нельзя выбрать прошедшую дату.", "Can't select a past date."));
+                    return;
+                  }
+                  if (selectedDay.getTime() === todayDay.getTime()) {
+                    const startMin = timeToMinutes(start);
+                    const nowMin = now.getHours() * 60 + now.getMinutes();
+                    if (startMin <= nowMin) {
+                      setRepeatError(tr("Время начала уже прошло.", "Start time has already passed."));
+                      return;
+                    }
+                  }
+                  if (hasSessionOverlap(dateKey, start, end)) {
+                    const refreshed = await refreshSessions();
+                    if (!refreshed || hasSessionOverlap(dateKey, start, end, refreshed)) {
+                      setRepeatError(
+                        tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                      );
+                      return;
+                    }
+                  }
+                  let payload: any = {};
+                  const isOneTime = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
+                  const isGroup = activeSession.clientUsername === "group" || activeSession.type === "group";
+                  if (isGroup) {
+                    const ids = (activeSession.participants || [])
+                      .map((p) => p.clientId)
+                      .filter((id) => id);
+                    const unique = Array.from(new Set(ids));
+                    if (unique.length < 2) {
+                      setRepeatError(tr("Недостаточно клиентов для группы.", "Not enough clients for group."));
+                      return;
+                    }
+                    payload = { groupClientIds: unique };
+                  } else if (isOneTime) {
+                    const name = activeSession.clientName?.trim();
+                    if (!name) {
+                      setRepeatError(tr("Имя клиента не найдено.", "Client name missing."));
+                      return;
+                    }
+                    payload = { oneTime: true, clientName: name };
+                  } else {
+                    const client = clients.find((c) => c.username === activeSession.clientUsername);
+                    if (!client?.id) {
+                      setRepeatError(tr("Клиент не найден.", "Client not found."));
+                      return;
+                    }
+                    payload = { clientId: client.id };
+                  }
+                  if (!token) {
+                    setRepeatError(tr("Сначала войдите в аккаунт.", "Please login first."));
+                    return;
+                  }
+                  setRepeatSaving(true);
+                  try {
+                    const res = await fetch(`${apiBase}/sessions`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({
+                        dateKey,
+                        start,
+                        end,
+                        tzOffset: new Date().getTimezoneOffset(),
+                        ...payload,
+                      }),
+                    });
+                    if (!res.ok) {
+                      if (res.status === 409) {
+                        setRepeatError(
+                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                        );
+                      } else if (res.status === 404) {
+                        setRepeatError(tr("Клиент не найден.", "Client not found."));
+                      } else if (res.status === 403) {
+                        setRepeatError(tr("Нельзя создать тренировку.", "Can't create session."));
+                      } else {
+                        setRepeatError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                      }
+                      setRepeatSaving(false);
+                      return;
+                    }
+                    const data = (await res.json()) as { ok: boolean; session?: any };
+                    if (!data?.session) throw new Error("session missing");
+                    const mapped = mapSessionFromApi(data.session);
+                    setSessionsByDate((prev) => {
+                      const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                      list.push(mapped);
+                      return { ...prev, [mapped.dateKey]: list };
+                    });
+                    setRepeatSaving(false);
+                    setRepeatOpen(false);
+                  } catch {
+                    setRepeatSaving(false);
+                    setRepeatError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                  }
+                }}
+              >
+                {tr("Создать", "Create")}
+              </button>
             </div>
           </div>
         ) : null}
