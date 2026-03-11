@@ -6661,15 +6661,7 @@ function TrainerSchedule(props: {
 
                   {weekScheduleMode === "client" ? (
                     <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-start" }}>
-                      <div
-                        style={{
-                          ...styles.scheduleViewSwitch,
-                          width: "auto",
-                          alignSelf: "flex-start",
-                          justifyContent: "flex-start",
-                          display: "inline-flex",
-                        }}
-                      >
+                      <div style={{ ...styles.scheduleViewSwitch, display: "inline-flex" }}>
                         <button
                           type="button"
                           onClick={() => setWeekScheduleMulti(false)}
