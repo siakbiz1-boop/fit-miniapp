@@ -4509,6 +4509,8 @@ function TrainerSchedule(props: {
   const weekSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [showWeekSchedule, setShowWeekSchedule] = useState(false);
   const [weekScheduleDate, setWeekScheduleDate] = useState<Date>(() => startOfDay(new Date()));
+  const [weekScheduleMulti, setWeekScheduleMulti] = useState(false);
+  const [weekScheduleDates, setWeekScheduleDates] = useState<string[]>([]);
   const [weekScheduleStart, setWeekScheduleStart] = useState("12:30");
   const [weekScheduleEnd, setWeekScheduleEnd] = useState("13:30");
   const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
@@ -4550,6 +4552,22 @@ function TrainerSchedule(props: {
       setGridDraft(null);
     }
   }, [showWeekSchedule]);
+
+  useEffect(() => {
+    if (!showWeekSchedule) return;
+    if (weekScheduleMode !== "client") {
+      if (weekScheduleMulti) setWeekScheduleMulti(false);
+      if (weekScheduleDates.length) setWeekScheduleDates([]);
+      return;
+    }
+    if (!weekScheduleMulti) {
+      if (weekScheduleDates.length) setWeekScheduleDates([]);
+      return;
+    }
+    if (weekScheduleDates.length === 0) {
+      setWeekScheduleDates([formatDateKey(weekScheduleDate)]);
+    }
+  }, [showWeekSchedule, weekScheduleMode, weekScheduleMulti, weekScheduleDates, weekScheduleDate]);
 
   useEffect(() => {
     if (!weekScheduleDragging) return;
@@ -6015,10 +6033,40 @@ function TrainerSchedule(props: {
                   </button>
                 </div>
 
+                {weekScheduleMode === "client" ? (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={styles.scheduleTabs}>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMulti(false)}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMulti ? null : styles.scheduleTabActive),
+                        }}
+                      >
+                        {tr("Одна дата", "Single date")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWeekScheduleMulti(true)}
+                        style={{
+                          ...styles.scheduleTab,
+                          ...(weekScheduleMulti ? styles.scheduleTabActive : null),
+                        }}
+                      >
+                        {tr("Несколько", "Multiple")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
                 <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
                   {weekScheduleDays.map((d) => {
                     const isToday = isSameDay(d.date, today);
-                    const isSelected = isSameDay(d.date, weekScheduleDate);
+                    const dateKey = formatDateKey(d.date);
+                    const isSelected = weekScheduleMulti
+                      ? weekScheduleDates.includes(dateKey)
+                      : isSameDay(d.date, weekScheduleDate);
                     const isPast = d.date.getTime() < today.getTime();
                     return (
                       <button
@@ -6027,6 +6075,11 @@ function TrainerSchedule(props: {
                         onClick={() => {
                           if (isPast) return;
                           setWeekScheduleDate(d.date);
+                          if (weekScheduleMode === "client" && weekScheduleMulti) {
+                            setWeekScheduleDates((prev) =>
+                              prev.includes(dateKey) ? prev.filter((k) => k !== dateKey) : [...prev, dateKey]
+                            );
+                          }
                           if (weekScheduleError) setWeekScheduleError("");
                         }}
                         style={{
@@ -6140,7 +6193,6 @@ function TrainerSchedule(props: {
                     type="button"
                     style={styles.saveBtn}
                     onClick={async () => {
-                      const dateKey = formatDateKey(weekScheduleDate);
                       const start = normalizeTimeInput(weekScheduleStart);
                       const end = normalizeTimeInput(weekScheduleEnd);
                       if (!start || !end) {
@@ -6155,32 +6207,43 @@ function TrainerSchedule(props: {
                         );
                         return;
                       }
-                      if (hasSessionOverlap(dateKey, start, end)) {
-                        const refreshed = await refreshSessions();
-                        if (!refreshed || hasSessionOverlap(dateKey, start, end, refreshed)) {
+                      const now = new Date();
+                      const targetDateKeys =
+                        weekScheduleMode === "client" && weekScheduleMulti
+                          ? Array.from(new Set(weekScheduleDates))
+                          : [formatDateKey(weekScheduleDate)];
+                      if (targetDateKeys.length === 0) {
+                        setWeekScheduleError(tr("Выберите дату.", "Select a date."));
+                        return;
+                      }
+                      for (const key of targetDateKeys) {
+                        const day = parseDateKey(key);
+                        const selectedDay = startOfDay(day);
+                        const todayDay = startOfDay(now);
+                        if (selectedDay.getTime() < todayDay.getTime()) {
                           setWeekScheduleError(
-                            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                            tr("Нельзя создавать тренировки в прошедших датах.", "You can't schedule sessions in past dates.")
                           );
                           return;
                         }
-                      }
-                      const startMin = timeToMinutes(start);
-                      const selectedDay = startOfDay(weekScheduleDate);
-                      const todayDay = startOfDay(new Date());
-                      if (selectedDay.getTime() < todayDay.getTime()) {
-                        setWeekScheduleError(
-                          tr("Нельзя создавать тренировки в прошедших датах.", "You can't schedule sessions in past dates.")
-                        );
-                        return;
-                      }
-                      if (selectedDay.getTime() === todayDay.getTime()) {
-                        const now = new Date();
-                        const nowMinutes = now.getHours() * 60 + now.getMinutes();
-                        if (startMin <= nowMinutes) {
-                          setWeekScheduleError(
-                            tr("Время начала уже прошло.", "Start time has already passed.")
-                          );
-                          return;
+                        if (selectedDay.getTime() === todayDay.getTime()) {
+                          const startMin = timeToMinutes(start);
+                          const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                          if (startMin <= nowMinutes) {
+                            setWeekScheduleError(
+                              tr("Время начала уже прошло.", "Start time has already passed.")
+                            );
+                            return;
+                          }
+                        }
+                        if (hasSessionOverlap(key, start, end)) {
+                          const refreshed = await refreshSessions();
+                          if (!refreshed || hasSessionOverlap(key, start, end, refreshed)) {
+                            setWeekScheduleError(
+                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                            );
+                            return;
+                          }
                         }
                       }
                       let client: TrainerClientInvite | null = null;
@@ -6222,50 +6285,58 @@ function TrainerSchedule(props: {
                             : weekScheduleMode === "one_time"
                               ? { oneTime: true, clientName: weekScheduleClientName.trim() }
                               : { groupClientIds: groupClients.map((c) => c.id) };
-                        const res = await fetch(`${apiBase}/sessions`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                          body: JSON.stringify({
-                            dateKey,
-                            start,
-                            end,
-                            tzOffset: new Date().getTimezoneOffset(),
-                            ...payload,
-                          }),
-                        });
-                        if (!res.ok) {
-                          if (res.status === 409) {
-                            setWeekScheduleError(
-                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                            );
-                          } else if (res.status === 404) {
-                            setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
-                          } else if (res.status === 403) {
-                            setWeekScheduleError(
-                              tr("Нельзя создать тренировку для этого клиента.", "You can't schedule this client.")
-                            );
-                          } else {
-                            setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                        const createdSessions: SessionItem[] = [];
+                        for (const key of targetDateKeys) {
+                          const res = await fetch(`${apiBase}/sessions`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({
+                              dateKey: key,
+                              start,
+                              end,
+                              tzOffset: new Date().getTimezoneOffset(),
+                              ...payload,
+                            }),
+                          });
+                          if (!res.ok) {
+                            if (res.status === 409) {
+                              setWeekScheduleError(
+                                tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                              );
+                            } else if (res.status === 404) {
+                              setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                            } else if (res.status === 403) {
+                              setWeekScheduleError(
+                                tr("Нельзя создать тренировку для этого клиента.", "You can't schedule this client.")
+                              );
+                            } else {
+                              setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                            }
+                            return;
                           }
-                          return;
+                          const data = (await res.json()) as { ok: boolean; session?: any };
+                          if (!data?.session) throw new Error("session missing");
+                          const mapped = mapSessionFromApi(data.session);
+                          if (weekScheduleMode === "group" && groupClients.length && (!mapped.participants || mapped.participants.length === 0)) {
+                            mapped.participants = groupClients.map((c) => ({
+                              clientId: c.id,
+                              clientUsername: c.username,
+                              clientName: c.fullName || c.clientName || "",
+                            }));
+                          }
+                          createdSessions.push(mapped);
                         }
-                        const data = (await res.json()) as { ok: boolean; session?: any };
-                        if (!data?.session) {
-                          throw new Error("session missing");
+                        if (createdSessions.length) {
+                          setSessionsByDate((prev) => {
+                            const next = { ...prev };
+                            createdSessions.forEach((mapped) => {
+                              const list = next[mapped.dateKey] ? [...next[mapped.dateKey]] : [];
+                              list.push(mapped);
+                              next[mapped.dateKey] = list;
+                            });
+                            return next;
+                          });
                         }
-                        const mapped = mapSessionFromApi(data.session);
-                        if (weekScheduleMode === "group" && groupClients.length && (!mapped.participants || mapped.participants.length === 0)) {
-                          mapped.participants = groupClients.map((c) => ({
-                            clientId: c.id,
-                            clientUsername: c.username,
-                            clientName: c.fullName || c.clientName || "",
-                          }));
-                        }
-                        setSessionsByDate((prev) => {
-                          const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
-                          list.push(mapped);
-                          return { ...prev, [mapped.dateKey]: list };
-                        });
                         setShowWeekSchedule(false);
                       } catch {
                         setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
@@ -6563,15 +6634,45 @@ function TrainerSchedule(props: {
                           ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
                         }}
                       >
-                        {tr("Групповая тренировка", "Group session")}
-                      </button>
+                      {tr("Групповая тренировка", "Group session")}
+                    </button>
+                  </div>
+
+                  {weekScheduleMode === "client" ? (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={styles.scheduleTabs}>
+                        <button
+                          type="button"
+                          onClick={() => setWeekScheduleMulti(false)}
+                          style={{
+                            ...styles.scheduleTab,
+                            ...(weekScheduleMulti ? null : styles.scheduleTabActive),
+                          }}
+                        >
+                          {tr("Одна дата", "Single date")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setWeekScheduleMulti(true)}
+                          style={{
+                            ...styles.scheduleTab,
+                            ...(weekScheduleMulti ? styles.scheduleTabActive : null),
+                          }}
+                        >
+                          {tr("Несколько", "Multiple")}
+                        </button>
+                      </div>
                     </div>
+                  ) : null}
 
 
                     <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
                       {weekScheduleDays.map((d) => {
                         const isToday = isSameDay(d.date, today);
-                        const isSelected = isSameDay(d.date, weekScheduleDate);
+                        const dateKey = formatDateKey(d.date);
+                        const isSelected = weekScheduleMulti
+                          ? weekScheduleDates.includes(dateKey)
+                          : isSameDay(d.date, weekScheduleDate);
                         const isPast = d.date.getTime() < today.getTime();
                         return (
                           <button
@@ -6580,6 +6681,11 @@ function TrainerSchedule(props: {
                             onClick={() => {
                               if (isPast) return;
                               setWeekScheduleDate(d.date);
+                              if (weekScheduleMode === "client" && weekScheduleMulti) {
+                                setWeekScheduleDates((prev) =>
+                                  prev.includes(dateKey) ? prev.filter((k) => k !== dateKey) : [...prev, dateKey]
+                                );
+                              }
                               if (weekScheduleError) setWeekScheduleError("");
                             }}
                             style={{
@@ -6693,7 +6799,6 @@ function TrainerSchedule(props: {
                         type="button"
                         style={styles.saveBtn}
                         onClick={async () => {
-                          const dateKey = formatDateKey(weekScheduleDate);
                           const start = normalizeTimeInput(weekScheduleStart);
                           const end = normalizeTimeInput(weekScheduleEnd);
                           if (!start || !end) {
@@ -6708,32 +6813,43 @@ function TrainerSchedule(props: {
                             );
                             return;
                           }
-                          if (hasSessionOverlap(dateKey, start, end)) {
-                            const refreshed = await refreshSessions();
-                            if (!refreshed || hasSessionOverlap(dateKey, start, end, refreshed)) {
+                          const now = new Date();
+                          const targetDateKeys =
+                            weekScheduleMode === "client" && weekScheduleMulti
+                              ? Array.from(new Set(weekScheduleDates))
+                              : [formatDateKey(weekScheduleDate)];
+                          if (targetDateKeys.length === 0) {
+                            setWeekScheduleError(tr("Выберите дату.", "Select a date."));
+                            return;
+                          }
+                          for (const key of targetDateKeys) {
+                            const day = parseDateKey(key);
+                            const selectedDay = startOfDay(day);
+                            const todayDay = startOfDay(now);
+                            if (selectedDay.getTime() < todayDay.getTime()) {
                               setWeekScheduleError(
-                                tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                                tr("Нельзя создавать тренировки в прошедших датах.", "You can't schedule sessions in past dates.")
                               );
                               return;
                             }
-                          }
-                          const startMin = timeToMinutes(start);
-                          const selectedDay = startOfDay(weekScheduleDate);
-                          const todayDay = startOfDay(new Date());
-                          if (selectedDay.getTime() < todayDay.getTime()) {
-                            setWeekScheduleError(
-                              tr("Нельзя создавать тренировки в прошедших датах.", "You can't schedule sessions in past dates.")
-                            );
-                            return;
-                          }
-                          if (selectedDay.getTime() === todayDay.getTime()) {
-                            const now = new Date();
-                            const nowMinutes = now.getHours() * 60 + now.getMinutes();
-                            if (startMin <= nowMinutes) {
-                              setWeekScheduleError(
-                                tr("Время начала уже прошло.", "Start time has already passed.")
-                              );
-                              return;
+                            if (selectedDay.getTime() === todayDay.getTime()) {
+                              const startMin = timeToMinutes(start);
+                              const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                              if (startMin <= nowMinutes) {
+                                setWeekScheduleError(
+                                  tr("Время начала уже прошло.", "Start time has already passed.")
+                                );
+                                return;
+                              }
+                            }
+                            if (hasSessionOverlap(key, start, end)) {
+                              const refreshed = await refreshSessions();
+                              if (!refreshed || hasSessionOverlap(key, start, end, refreshed)) {
+                                setWeekScheduleError(
+                                  tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                                );
+                                return;
+                              }
                             }
                           }
                           let client: TrainerClientInvite | null = null;
@@ -6775,50 +6891,58 @@ function TrainerSchedule(props: {
                                 : weekScheduleMode === "one_time"
                                   ? { oneTime: true, clientName: weekScheduleClientName.trim() }
                                   : { groupClientIds: groupClients.map((c) => c.id) };
-                            const res = await fetch(`${apiBase}/sessions`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({
-                                dateKey,
-                                start,
-                                end,
-                                tzOffset: new Date().getTimezoneOffset(),
-                                ...payload,
-                              }),
-                            });
-                            if (!res.ok) {
-                              if (res.status === 409) {
-                                setWeekScheduleError(
-                                  tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                                );
-                              } else if (res.status === 404) {
-                                setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
-                              } else if (res.status === 403) {
-                                setWeekScheduleError(
-                                  tr("Нельзя создать тренировку для этого клиента.", "You can't schedule this client.")
-                                );
-                              } else {
-                                setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                            const createdSessions: SessionItem[] = [];
+                            for (const key of targetDateKeys) {
+                              const res = await fetch(`${apiBase}/sessions`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({
+                                  dateKey: key,
+                                  start,
+                                  end,
+                                  tzOffset: new Date().getTimezoneOffset(),
+                                  ...payload,
+                                }),
+                              });
+                              if (!res.ok) {
+                                if (res.status === 409) {
+                                  setWeekScheduleError(
+                                    tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                                  );
+                                } else if (res.status === 404) {
+                                  setWeekScheduleError(tr("Клиент не найден.", "Client not found."));
+                                } else if (res.status === 403) {
+                                  setWeekScheduleError(
+                                    tr("Нельзя создать тренировку для этого клиента.", "You can't schedule this client.")
+                                  );
+                                } else {
+                                  setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
+                                }
+                                return;
                               }
-                              return;
+                              const data = (await res.json()) as { ok: boolean; session?: any };
+                              if (!data?.session) throw new Error("session missing");
+                              const mapped = mapSessionFromApi(data.session);
+                              if (weekScheduleMode === "group" && groupClients.length && (!mapped.participants || mapped.participants.length === 0)) {
+                                mapped.participants = groupClients.map((c) => ({
+                                  clientId: c.id,
+                                  clientUsername: c.username,
+                                  clientName: c.fullName || c.clientName || "",
+                                }));
+                              }
+                              createdSessions.push(mapped);
                             }
-                            const data = (await res.json()) as { ok: boolean; session?: any };
-                            if (!data?.session) {
-                              throw new Error("session missing");
+                            if (createdSessions.length) {
+                              setSessionsByDate((prev) => {
+                                const next = { ...prev };
+                                createdSessions.forEach((mapped) => {
+                                  const list = next[mapped.dateKey] ? [...next[mapped.dateKey]] : [];
+                                  list.push(mapped);
+                                  next[mapped.dateKey] = list;
+                                });
+                                return next;
+                              });
                             }
-                            const mapped = mapSessionFromApi(data.session);
-                            if (weekScheduleMode === "group" && groupClients.length && (!mapped.participants || mapped.participants.length === 0)) {
-                              mapped.participants = groupClients.map((c) => ({
-                                clientId: c.id,
-                                clientUsername: c.username,
-                                clientName: c.fullName || c.clientName || "",
-                              }));
-                            }
-                            setSessionsByDate((prev) => {
-                              const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
-                              list.push(mapped);
-                              return { ...prev, [mapped.dateKey]: list };
-                            });
                             setShowWeekSchedule(false);
                           } catch {
                             setWeekScheduleError(tr("Не удалось создать тренировку.", "Failed to create session."));
@@ -13135,7 +13259,7 @@ const styles: Record<string, any> = {
     position: "relative",
     width: "100%",
     maxWidth: 520,
-    height: "74vh",
+    height: "68vh",
     background: "var(--bg)",
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
