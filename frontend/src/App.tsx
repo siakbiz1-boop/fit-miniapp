@@ -1608,7 +1608,11 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={() => setAddMenuOpen((prev) => !prev)}
+                onClick={() => {
+                  setAddMenuOpen(false);
+                  setActiveTab("schedule");
+                  setQuickAddScheduleSignal((prev) => prev + 1);
+                }}
                 style={styles.navAddBtn}
                 aria-label={tr("Добавить тренировку", "Add session")}
               >
