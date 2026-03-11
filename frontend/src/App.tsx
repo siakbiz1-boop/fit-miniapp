@@ -4514,6 +4514,10 @@ function TrainerSchedule(props: {
   const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
   const [weekScheduleGroupIds, setWeekScheduleGroupIds] = useState<string[]>([]);
   const [weekScheduleError, setWeekScheduleError] = useState("");
+  const [weekScheduleDragY, setWeekScheduleDragY] = useState(0);
+  const [weekScheduleDragging, setWeekScheduleDragging] = useState(false);
+  const weekScheduleDragStartRef = useRef<number>(0);
+  const weekScheduleDragYRef = useRef<number>(0);
   const [gridDraft, setGridDraft] = useState<{ dateKey: string; startMin: number; endMin: number } | null>(null);
   const weekScheduleDays = useMemo(() => buildCalendarStrip(today, 14, 30), [today]);
   const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
@@ -4546,6 +4550,32 @@ function TrainerSchedule(props: {
       setGridDraft(null);
     }
   }, [showWeekSchedule]);
+
+  useEffect(() => {
+    if (!weekScheduleDragging) return;
+    const handleMove = (event: PointerEvent) => {
+      const next = Math.max(0, event.clientY - weekScheduleDragStartRef.current);
+      weekScheduleDragYRef.current = next;
+      setWeekScheduleDragY(next);
+    };
+    const handleUp = () => {
+      setWeekScheduleDragging(false);
+      const shouldClose = weekScheduleDragYRef.current > 120;
+      if (shouldClose) {
+        setShowWeekSchedule(false);
+      }
+      weekScheduleDragYRef.current = 0;
+      setWeekScheduleDragY(0);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, [weekScheduleDragging]);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -5923,10 +5953,21 @@ function TrainerSchedule(props: {
                 onClick={() => setShowWeekSchedule(false)}
               />
               <div
-                style={styles.clientScheduleSheet}
+                style={{
+                  ...styles.clientScheduleSheet,
+                  transform: weekScheduleDragY ? `translateY(${weekScheduleDragY}px)` : undefined,
+                  transition: weekScheduleDragging ? "none" : "transform 180ms ease",
+                }}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div style={styles.clientScheduleHandle} />
+                <div
+                  style={styles.clientScheduleHandle}
+                  onPointerDown={(event) => {
+                    weekScheduleDragStartRef.current = event.clientY;
+                    weekScheduleDragYRef.current = 0;
+                    setWeekScheduleDragging(true);
+                  }}
+                />
                 <div style={styles.clientScheduleTitleRow}>
                   <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
                   <button
@@ -6463,11 +6504,22 @@ function TrainerSchedule(props: {
                     style={styles.clientScheduleBackdrop}
                     onClick={() => setShowWeekSchedule(false)}
                   />
-                  <div
-                    style={styles.clientScheduleSheet}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <div style={styles.clientScheduleHandle} />
+              <div
+                  style={{
+                    ...styles.clientScheduleSheet,
+                    transform: weekScheduleDragY ? `translateY(${weekScheduleDragY}px)` : undefined,
+                    transition: weekScheduleDragging ? "none" : "transform 180ms ease",
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                    <div
+                      style={styles.clientScheduleHandle}
+                      onPointerDown={(event) => {
+                        weekScheduleDragStartRef.current = event.clientY;
+                        weekScheduleDragYRef.current = 0;
+                        setWeekScheduleDragging(true);
+                      }}
+                    />
                     <div style={styles.clientScheduleTitleRow}>
                       <div style={styles.clientScheduleTitle}>{tr("Запись на тренировку", "Schedule a session")}</div>
                       <button
