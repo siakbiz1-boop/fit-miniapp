@@ -4556,8 +4556,8 @@ function TrainerSchedule(props: {
     setDraftSessionClientName(activeSession.clientName ?? "");
     setDraftSessionStart(activeSession.start ?? "");
     setDraftSessionEnd(activeSession.end ?? "");
-    const fallbackDate = activeSession.dateKey || formatDateKey(sessionStartTime(activeSession));
-    setDraftSessionDate(fallbackDate ?? "");
+    const fallbackKey = activeSession.dateKey || formatDateKey(sessionStartTime(activeSession));
+    setDraftSessionDate(formatDateInputValue(fallbackKey));
     setSessionTimeError("");
     if (isOneTime || isGroup) setSessionTab("info");
   }, [
@@ -5398,7 +5398,7 @@ function TrainerSchedule(props: {
                 {canEditTime ? (
                   <input
                     type="date"
-                    value={draftSessionDate || activeSession.dateKey || formatDateKey(sessionStartTime(activeSession))}
+                    value={draftSessionDate}
                     onChange={(e) => {
                       setDraftSessionDate(e.target.value);
                       if (sessionTimeError) setSessionTimeError("");
@@ -5409,7 +5409,8 @@ function TrainerSchedule(props: {
                       const start = normalizeTimeInput(draftSessionStart);
                       const end = normalizeTimeInput(draftSessionEnd);
                       if (!start || !end) return;
-                      const nextKey = draftSessionDate;
+                      const nextKey = normalizeDateKeyInput(draftSessionDate);
+                      if (!nextKey) return;
                       if (nextKey === activeSession.dateKey && start === activeSession.start && end === activeSession.end) {
                         return;
                       }
@@ -5460,7 +5461,7 @@ function TrainerSchedule(props: {
                           );
                           return;
                         }
-                        const nextKey = draftSessionDate || activeSession.dateKey;
+                      const nextKey = normalizeDateKeyInput(draftSessionDate) || activeSession.dateKey;
                         if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
                           setSessionTimeError(
                             tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
@@ -5498,7 +5499,7 @@ function TrainerSchedule(props: {
                           );
                           return;
                         }
-                        const nextKey = draftSessionDate || activeSession.dateKey;
+                      const nextKey = normalizeDateKeyInput(draftSessionDate) || activeSession.dateKey;
                         if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
                           setSessionTimeError(
                             tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
@@ -10741,6 +10742,20 @@ function getSessionPrice(clients: TrainerClientInvite[], session: SessionItem) {
 
 function formatDateKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function formatDateInputValue(key: string) {
+  if (!key) return "";
+  const d = parseDateKey(key);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function normalizeDateKeyInput(value: string) {
+  if (!value) return "";
+  return formatDateKey(parseDateKey(value));
 }
 
 function parseDateKey(key: string) {
