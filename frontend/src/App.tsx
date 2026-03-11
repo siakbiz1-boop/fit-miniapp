@@ -4556,7 +4556,8 @@ function TrainerSchedule(props: {
     setDraftSessionClientName(activeSession.clientName ?? "");
     setDraftSessionStart(activeSession.start ?? "");
     setDraftSessionEnd(activeSession.end ?? "");
-    setDraftSessionDate(activeSession.dateKey ?? "");
+    const fallbackDate = activeSession.dateKey || formatDateKey(sessionStartTime(activeSession));
+    setDraftSessionDate(fallbackDate ?? "");
     setSessionTimeError("");
     if (isOneTime || isGroup) setSessionTab("info");
   }, [
@@ -5397,7 +5398,7 @@ function TrainerSchedule(props: {
                 {canEditTime ? (
                   <input
                     type="date"
-                    value={draftSessionDate}
+                    value={draftSessionDate || activeSession.dateKey || formatDateKey(sessionStartTime(activeSession))}
                     onChange={(e) => {
                       setDraftSessionDate(e.target.value);
                       if (sessionTimeError) setSessionTimeError("");
