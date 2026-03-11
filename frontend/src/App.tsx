@@ -5700,7 +5700,14 @@ function TrainerSchedule(props: {
               </div>
               <button
                 type="button"
-                style={{ ...styles.saveBtn, marginTop: 16 }}
+                style={{
+                  ...styles.saveBtn,
+                  marginTop: 16,
+                  background: "rgba(77, 163, 255, 0.18)",
+                  border: "1px solid rgba(77, 163, 255, 0.35)",
+                  color: "var(--text)",
+                  boxShadow: "none",
+                }}
                 onClick={() => {
                   setRepeatOpen(true);
                   setRepeatError("");
