@@ -13083,7 +13083,7 @@ const styles: Record<string, any> = {
     position: "relative",
     width: "100%",
     maxWidth: 520,
-    height: "82vh",
+    height: "74vh",
     background: "var(--bg)",
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
