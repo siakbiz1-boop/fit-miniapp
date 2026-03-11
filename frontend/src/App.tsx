@@ -13812,7 +13812,9 @@ const styles: Record<string, any> = {
     borderColor: "var(--accent)",
   },
   scheduleViewSwitch: {
-    display: "flex",
+    display: "inline-flex",
+    width: "fit-content",
+    maxWidth: "fit-content",
     gap: 4,
     padding: 3,
     borderRadius: 999,
