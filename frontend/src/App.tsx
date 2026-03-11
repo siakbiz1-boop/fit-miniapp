@@ -8445,12 +8445,12 @@ function ExerciseStatsPanel(props: {
                 <div style={styles.weightInlineControls}>
                   <input
                     ref={statsWeightInputRef}
-                    inputMode="numeric"
-                    pattern="[0-9]*"
+                    inputMode="decimal"
+                    pattern="[0-9.,]*"
                     enterKeyHint="done"
                     value={draftStatsWeight}
                     onChange={(e) => {
-                      setDraftStatsWeight(e.target.value.replace(/[^\d]/g, ""));
+                      setDraftStatsWeight(e.target.value.replace(/[^0-9.,]/g, ""));
                       if (statsWeightError) setStatsWeightError("");
                     }}
                     onFocus={() => {
@@ -9154,10 +9154,10 @@ function ClientDetailScreen(props: {
               <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
               {isLocalClient ? (
                 <input
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+                  inputMode="decimal"
+                  pattern="[0-9.,]*"
                   value={draftWeight}
-                  onChange={(e) => setDraftWeight(e.target.value.replace(/[^\d]/g, ""))}
+                  onChange={(e) => setDraftWeight(e.target.value.replace(/[^0-9.,]/g, ""))}
                   onBlur={() => {
                     const v = normalizeNumberWithUnit(draftWeight, "кг");
                     if (v) setDraftWeight(v);
