@@ -4889,6 +4889,33 @@ function TrainerSchedule(props: {
     () => clients.filter((c) => !c.archived && c.status === "active"),
     [clients]
   );
+  const [gridDrag, setGridDrag] = useState<{
+    session: SessionItem;
+    dateKey: string;
+    startMin: number;
+    endMin: number;
+    duration: number;
+    originDateKey: string;
+    originStartMin: number;
+    originEndMin: number;
+    left: number;
+    width: number;
+    offsetY: number;
+  } | null>(null);
+  const gridDragRef = useRef<typeof gridDrag>(null);
+  const gridDragIntentRef = useRef<{
+    session: SessionItem;
+    dateKey: string;
+    startMin: number;
+    endMin: number;
+    duration: number;
+    startX: number;
+    startY: number;
+    offsetY: number;
+  } | null>(null);
+  const gridDragIgnoreClickRef = useRef(false);
+  const scheduleWeekDaysRef = useRef<HTMLDivElement | null>(null);
+  const weekDaysRef = useRef<Date[]>(weekDays);
 
   const minutesToTime = (totalMinutes: number) => {
     const safe = Math.max(0, totalMinutes);
@@ -4896,6 +4923,105 @@ function TrainerSchedule(props: {
     const m = safe % 60;
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
+
+  useEffect(() => {
+    gridDragRef.current = gridDrag;
+  }, [gridDrag]);
+
+  useEffect(() => {
+    weekDaysRef.current = weekDays;
+  }, [weekDays]);
+
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      const intent = gridDragIntentRef.current;
+      const drag = gridDragRef.current;
+      if (!intent && !drag) return;
+
+      if (!drag && intent) {
+        const dx = event.clientX - intent.startX;
+        const dy = event.clientY - intent.startY;
+        if (Math.abs(dx) + Math.abs(dy) < 6) return;
+        gridDragIgnoreClickRef.current = true;
+        const gridRect = scheduleWeekDaysRef.current?.getBoundingClientRect();
+        if (!gridRect) return;
+        const dayWidth = gridRect.width / 7;
+        const colIndex = Math.max(0, Math.min(6, Math.floor((event.clientX - gridRect.left) / dayWidth)));
+        const dateKey = formatDateKey(weekDaysRef.current[colIndex] || weekDays[0]);
+        setGridDrag({
+          session: intent.session,
+          dateKey,
+          startMin: intent.startMin,
+          endMin: intent.endMin,
+          duration: intent.duration,
+          originDateKey: intent.dateKey,
+          originStartMin: intent.startMin,
+          originEndMin: intent.endMin,
+          left: colIndex * dayWidth,
+          width: dayWidth,
+          offsetY: intent.offsetY,
+        });
+        gridDragIntentRef.current = null;
+        return;
+      }
+
+      if (!drag) return;
+      const gridRect = scheduleWeekDaysRef.current?.getBoundingClientRect();
+      if (!gridRect) return;
+      const dayWidth = gridRect.width / 7;
+      const colIndex = Math.max(0, Math.min(6, Math.floor((event.clientX - gridRect.left) / dayWidth)));
+      const dateKey = formatDateKey(weekDaysRef.current[colIndex] || weekDays[0]);
+      const relativeY = event.clientY - drag.offsetY - gridRect.top;
+      const safeY = Math.max(0, Math.min(relativeY - gridRowHeight, gridRowHeight * (gridRows - 1)));
+      const stepIndex = Math.round(safeY / gridStepHeight);
+      const minStart = gridStartHour * 60;
+      const maxStart = gridEndHour * 60 - drag.duration;
+      const startMin = Math.min(minStart + stepIndex * gridStepMinutes, maxStart);
+      const endMin = startMin + drag.duration;
+      setGridDrag((prev) =>
+        prev
+          ? {
+              ...prev,
+              dateKey,
+              startMin,
+              endMin,
+              left: colIndex * dayWidth,
+              width: dayWidth,
+            }
+          : prev
+      );
+    };
+
+    const handleUp = () => {
+      const drag = gridDragRef.current;
+      gridDragIntentRef.current = null;
+      if (!drag) {
+        window.setTimeout(() => {
+          gridDragIgnoreClickRef.current = false;
+        }, 0);
+        return;
+      }
+      setGridDrag(null);
+      const { dateKey, startMin, endMin, originDateKey, originStartMin, originEndMin, session } = drag;
+      window.setTimeout(() => {
+        gridDragIgnoreClickRef.current = false;
+      }, 0);
+      if (dateKey === originDateKey && startMin === originStartMin && endMin === originEndMin) return;
+      const start = minutesToTime(startMin);
+      const end = minutesToTime(endMin);
+      if (hasSessionOverlap(dateKey, start, end, undefined, session.id)) return;
+      void saveSessionTimePatch(session.id, start, end, dateKey);
+    };
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, [gridEndHour, gridRowHeight, gridRows, gridStartHour, gridStepHeight, gridStepMinutes, minutesToTime, weekDays]);
 
   const hasSessionOverlap = (
     dateKey: string,
@@ -6621,7 +6747,30 @@ function TrainerSchedule(props: {
                       );
                     })}
                   </div>
-                  <div style={styles.scheduleWeekDays}>
+                  <div ref={scheduleWeekDaysRef} style={styles.scheduleWeekDays}>
+                    {gridDrag ? (
+                      <div
+                        style={{
+                          ...styles.scheduleWeekSessionDrag,
+                          ...(theme === "dark" ? styles.scheduleWeekSessionDark : null),
+                          top:
+                            (gridDrag.startMin - gridStartHour * 60) * (gridRowHeight / 60) +
+                            gridRowHeight,
+                          height: Math.max(28, (gridDrag.endMin - gridDrag.startMin) * (gridRowHeight / 60)),
+                          left: gridDrag.left,
+                          width: gridDrag.width,
+                        }}
+                      >
+                        <div style={styles.scheduleWeekSessionTitle}>
+                          {gridDrag.session.type === "group" || gridDrag.session.clientUsername === "group"
+                            ? sessionTitle(gridDrag.session, tr)
+                            : sessionClientLabel(gridDrag.session, tr, clients)}
+                        </div>
+                        <div style={styles.scheduleWeekSessionTime}>
+                          {minutesToTime(gridDrag.startMin)}–{minutesToTime(gridDrag.endMin)}
+                        </div>
+                      </div>
+                    ) : null}
                     {weekDays.map((d) => {
                       const dateKey = formatDateKey(d);
                       const daySessions = (sessionsByDate[dateKey] || [])
@@ -6683,6 +6832,8 @@ function TrainerSchedule(props: {
                                 (startMin - gridStartHour * 60) * (gridRowHeight / 60) +
                                 gridRowHeight;
                               const height = Math.max(28, (endMin - startMin) * (gridRowHeight / 60));
+                              const isDragging = gridDrag?.session.id === s.id;
+                              const isEditable = new Date().getTime() < sessionStartTime(s).getTime();
                             return (
                               <button
                                 key={s.id}
@@ -6693,9 +6844,28 @@ function TrainerSchedule(props: {
                                   ...(theme === "dark" ? styles.scheduleWeekSessionDark : null),
                                   top,
                                   height,
+                                  opacity: isDragging ? 0.2 : 1,
+                                  cursor: isEditable ? "grab" : "pointer",
+                                }}
+                                onPointerDown={(event) => {
+                                  if (!isEditable) return;
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  const rect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                  gridDragIntentRef.current = {
+                                    session: s,
+                                    dateKey,
+                                    startMin,
+                                    endMin,
+                                    duration: endMin - startMin,
+                                    startX: event.clientX,
+                                    startY: event.clientY,
+                                    offsetY: event.clientY - rect.top,
+                                  };
                                 }}
                                 onClick={(event) => {
                                   event.stopPropagation();
+                                  if (gridDragIgnoreClickRef.current) return;
                                   setActiveSession(s);
                                   setScheduleScreen("session");
                                 }}
@@ -14168,6 +14338,7 @@ const styles: Record<string, any> = {
     transform: "translateY(-6px)",
   },
   scheduleWeekDays: {
+    position: "relative",
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
   },
@@ -14202,6 +14373,17 @@ const styles: Record<string, any> = {
     padding: "6px 6px",
     textAlign: "left",
     cursor: "pointer",
+  },
+  scheduleWeekSessionDrag: {
+    position: "absolute",
+    borderRadius: 10,
+    border: "1px solid rgba(31, 107, 255, 0.4)",
+    background: "rgba(31, 107, 255, 0.18)",
+    color: "var(--text)",
+    padding: "6px 6px",
+    textAlign: "left",
+    zIndex: 5,
+    pointerEvents: "none",
   },
   scheduleWeekDraft: {
     position: "absolute",
