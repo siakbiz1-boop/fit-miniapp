@@ -39,6 +39,7 @@ type Tab = "home" | "schedule" | "clients" | "settings";
 type ClientTab = "home" | "schedule" | "book" | "settings";
 type SettingsScreen = "main" | "personal" | "theme" | "booking" | "reminders" | "language";
 type ClientsScreen = "list" | "add" | "detail";
+type TariffPeriod = "month" | "quarter" | "year";
 type UiText = {
   login: string;
   loginHint: string;
@@ -1937,6 +1938,7 @@ function TrainerHome({
 }) {
   const tr = useTr();
   const [homeTab, setHomeTab] = useState<"work" | "income" | "subscription">("work");
+  const [tariffPeriod, setTariffPeriod] = useState<TariffPeriod>("month");
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesLists, setNotesLists] = useState<NotesListItem[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
@@ -2098,7 +2100,7 @@ function TrainerHome({
             `Subscription: ${rawSubscriptionStatusInfo.label.toLowerCase()}`
           ),
         };
-  const subscriptionPlanName = tr("Тестовый", "Test");
+  const subscriptionPlanName = tr("Ultimate", "Ultimate");
   const subscriptionConnectedClients = clients.filter((c) => !c.archived).length;
   const subscriptionClientLimitLabel = "∞";
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
@@ -2108,6 +2110,68 @@ function TrainerHome({
     return end.getTime() <= now.getTime() && end.getTime() >= monthStart.getTime() && end.getTime() <= monthEnd.getTime();
   }).length;
   const subscriptionMonthlyLimitLabel = "∞";
+  const tariffPeriodMeta: Record<
+    TariffPeriod,
+    { months: number; discount: number; label: string; toggleLabel: string }
+  > = {
+    month: {
+      months: 1,
+      discount: 0,
+      label: tr("в месяц", "per month"),
+      toggleLabel: tr("Мес", "Month"),
+    },
+    quarter: {
+      months: 3,
+      discount: 0.1,
+      label: tr("за 3 месяца", "for 3 months"),
+      toggleLabel: tr("3 мес", "3 mo"),
+    },
+    year: {
+      months: 12,
+      discount: 0.2,
+      label: tr("в год", "per year"),
+      toggleLabel: tr("Год", "Year"),
+    },
+  };
+  const activeTariffPeriodMeta = tariffPeriodMeta[tariffPeriod];
+  const tariffPlans = [
+    {
+      id: "free",
+      name: "Free",
+      badgeColor: "rgba(77, 163, 255, 0.18)",
+      badgeText: "var(--text)",
+      priceMonthly: 0,
+      strikeMonthly: 300,
+      features: [
+        tr("1 подключенный клиент", "1 connected client"),
+        tr("До 10 тренировок в месяц", "Up to 10 sessions per month"),
+      ],
+    },
+    {
+      id: "basic",
+      name: "Basic",
+      badgeColor: "rgba(99, 102, 241, 0.16)",
+      badgeText: "var(--text)",
+      priceMonthly: 990,
+      strikeMonthly: 2490,
+      features: [
+        tr("До 5 подключенных клиентов", "Up to 5 connected clients"),
+        tr("Безлимит тренировок в месяц", "Unlimited sessions per month"),
+      ],
+    },
+    {
+      id: "ultimate",
+      name: "Ultimate",
+      badgeColor: "rgba(16, 185, 129, 0.18)",
+      badgeText: "var(--text)",
+      priceMonthly: 1490,
+      strikeMonthly: 4990,
+      features: [tr("Безлимит клиентов", "Unlimited clients"), tr("Безлимит тренировок", "Unlimited sessions")],
+    },
+  ];
+  const getTariffTotal = (priceMonthly: number) =>
+    Math.round(priceMonthly * activeTariffPeriodMeta.months * (1 - activeTariffPeriodMeta.discount));
+  const getTariffStrikeTotal = (priceMonthly: number) => priceMonthly * activeTariffPeriodMeta.months;
 
   const todayStart = startOfDay(now);
   const statsAnchorStart = startOfDay(statsDate);
@@ -3422,38 +3486,59 @@ function TrainerHome({
             </div>
             <div style={styles.topBarDivider} />
             <div style={{ ...styles.sectionHeader, marginTop: -10 }}>{tr("Тарифные планы", "Plans")}</div>
-            <div style={styles.tariffScroller}>
-              <div style={styles.tariffCard}>
-                <div style={{ ...styles.tariffBadge, background: "rgba(77, 163, 255, 0.18)", color: "var(--text)" }}>
-                  {tr("Тестовый", "Test")}
-                </div>
-                <div style={styles.tariffPriceRow}>
-                  <span style={styles.tariffPrice}>0 ₽</span>
-                  <span style={styles.tariffPriceStrike}>4 990 ₽</span>
-                </div>
-                <div style={styles.tariffPeriod}>{tr("в месяц", "per month")}</div>
-                <div style={styles.tariffFeatures}>
-                  {[
-                    tr(
-                      "Неограниченный доступ ко всем функциям\nприложения",
-                      "Unlimited access to all app features"
-                    ),
-                    tr("Безлимит клиентов", "Unlimited clients"),
-                    tr("Безлимит тренировок", "Unlimited sessions"),
-                  ].map((item) => (
-                    <div key={item} style={styles.tariffFeatureRow}>
-                      <span style={styles.tariffDot} />
-                      <span style={{ whiteSpace: "pre-line" }}>{item}</span>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  style={{ ...styles.tariffChoose, borderColor: "var(--primary)", color: "var(--primary)" }}
-                >
-                  {tr("Выбран", "Selected")}
-                </button>
+            <div style={styles.tariffToggleWrap}>
+              <div style={styles.tariffToggle}>
+                {(Object.keys(tariffPeriodMeta) as Array<keyof typeof tariffPeriodMeta>).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setTariffPeriod(key)}
+                    style={{
+                      ...styles.tariffToggleBtn,
+                      ...(tariffPeriod === key ? styles.tariffToggleBtnActive : null),
+                    }}
+                  >
+                    {tariffPeriodMeta[key].toggleLabel}
+                  </button>
+                ))}
               </div>
+            </div>
+            <div style={styles.tariffScroller}>
+              {tariffPlans.map((plan) => {
+                const total = getTariffTotal(plan.priceMonthly);
+                const strikeTotal = getTariffStrikeTotal(plan.strikeMonthly);
+                const isSelected = plan.id === "ultimate";
+                return (
+                  <div key={plan.id} style={styles.tariffCard}>
+                    <div style={{ ...styles.tariffBadge, background: plan.badgeColor, color: plan.badgeText }}>
+                      {plan.name}
+                    </div>
+                    <div style={styles.tariffPriceRow}>
+                      <span style={styles.tariffPrice}>{formatMoney(total)}</span>
+                      <span style={styles.tariffPriceStrike}>{formatMoney(strikeTotal)}</span>
+                    </div>
+                    <div style={styles.tariffPeriod}>{activeTariffPeriodMeta.label}</div>
+                    <div style={styles.tariffFeatures}>
+                      {plan.features.map((item) => (
+                        <div key={item} style={styles.tariffFeatureRow}>
+                          <span style={styles.tariffDot} />
+                          <span style={{ whiteSpace: "pre-line" }}>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.tariffChoose,
+                        borderColor: isSelected ? "var(--primary)" : "var(--border)",
+                        color: isSelected ? "var(--primary)" : "var(--text)",
+                      }}
+                    >
+                      {isSelected ? tr("Выбран", "Selected") : tr("Выбрать", "Choose")}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </>
         ) : null}
@@ -13417,6 +13502,33 @@ const styles: Record<string, any> = {
   clientStatsEmpty: {
     fontSize: 13,
     color: "var(--muted)",
+  },
+  tariffToggleWrap: {
+    marginTop: 8,
+  },
+  tariffToggle: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 6,
+    padding: 6,
+    borderRadius: 14,
+    border: "1px solid var(--border)",
+    background: "rgba(148, 163, 184, 0.08)",
+  },
+  tariffToggleBtn: {
+    padding: "8px 10px",
+    borderRadius: 10,
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  tariffToggleBtnActive: {
+    background: "var(--surface)",
+    color: "var(--text)",
+    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.08)",
   },
   tariffScroller: {
     marginTop: 10,
