@@ -4161,7 +4161,11 @@ function ClientSchedule(props: {
                       {sessionTitle(s, tr)}
                     </div>
                     <div style={styles.sessionBannerTime}>
-                      {s.start} — {s.end}
+                      {(() => {
+                        const day = parseDateKey(s.dateKey);
+                        const weekday = day ? formatWeekdayShort(day, currentLanguage) : "";
+                        return `${weekday ? `${weekday} ` : ""}${s.start} — ${s.end}`;
+                      })()}
                     </div>
                     <div
                       style={{
@@ -4274,7 +4278,11 @@ function ClientSchedule(props: {
                       {sessionTitle(s, tr)}
                     </div>
                     <div style={styles.sessionBannerTime}>
-                      {s.start} — {s.end}
+                      {(() => {
+                        const day = parseDateKey(s.dateKey);
+                        const weekday = day ? formatWeekdayShort(day, currentLanguage) : "";
+                        return `${weekday ? `${weekday} ` : ""}${s.start} — ${s.end}`;
+                      })()}
                     </div>
                     <div
                       style={{
@@ -6762,7 +6770,11 @@ function TrainerSchedule(props: {
                         <div style={styles.sessionBannerLeft}>
                           <div style={styles.sessionBannerTitle}>{title}</div>
                           <div style={styles.sessionBannerTime}>
-                            {s.start} — {s.end}
+                            {(() => {
+                              const day = parseDateKey(s.dateKey);
+                              const weekday = day ? formatWeekdayShort(day, currentLanguage) : "";
+                              return `${weekday ? `${weekday} ` : ""}${s.start} — ${s.end}`;
+                            })()}
                           </div>
                           {clientLabel ? (
                             <div style={styles.sessionBannerClient}>{clientLabel}</div>
