@@ -5734,7 +5734,15 @@ function TrainerSchedule(props: {
                       value={draftSessionStart}
                       step={300}
                       onChange={(e) => {
-                        setDraftSessionStart(e.target.value);
+                        const nextStart = e.target.value;
+                        setDraftSessionStart(nextStart);
+                        const normalized = normalizeTimeInput(nextStart);
+                        if (normalized) {
+                          const nextMinutes = (timeToMinutes(normalized) + 60) % (24 * 60);
+                          const hours = Math.floor(nextMinutes / 60);
+                          const minutes = nextMinutes % 60;
+                          setDraftSessionEnd(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
+                        }
                         if (sessionTimeError) setSessionTimeError("");
                       }}
                       onBlur={() => {
@@ -6384,42 +6392,6 @@ function TrainerSchedule(props: {
                 />
                 <div style={{ height: 2 }} />
 
-                <div style={styles.scheduleModeScroll}>
-                  <button
-                    type="button"
-                    onClick={() => setWeekScheduleMode("client")}
-                    style={{
-                      ...styles.scheduleTab,
-                      ...(weekScheduleMode === "client" ? styles.scheduleTabActive : null),
-                    }}
-                  >
-                    {tr("Тренировка клиента", "Client session")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWeekScheduleMode("one_time")}
-                    style={{
-                      ...styles.scheduleTab,
-                      ...(weekScheduleMode === "one_time" ? styles.scheduleTabActive : null),
-                    }}
-                  >
-                    {tr("Разовая тренировка", "One-time session")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWeekScheduleMode("group");
-                      setWeekScheduleGroupIds([]);
-                    }}
-                    style={{
-                      ...styles.scheduleTab,
-                      ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
-                    }}
-                  >
-                    {tr("Групповая тренировка", "Group session")}
-                  </button>
-                </div>
-
                 <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
                   {weekScheduleDays.map((d) => {
                     const isToday = isSameDay(d.date, today);
@@ -6457,6 +6429,42 @@ function TrainerSchedule(props: {
                       </button>
                     );
                   })}
+                </div>
+
+                <div style={styles.scheduleModeScroll}>
+                  <button
+                    type="button"
+                    onClick={() => setWeekScheduleMode("client")}
+                    style={{
+                      ...styles.scheduleTab,
+                      ...(weekScheduleMode === "client" ? styles.scheduleTabActive : null),
+                    }}
+                  >
+                    {tr("Тренировка клиента", "Client session")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWeekScheduleMode("one_time")}
+                    style={{
+                      ...styles.scheduleTab,
+                      ...(weekScheduleMode === "one_time" ? styles.scheduleTabActive : null),
+                    }}
+                  >
+                    {tr("Разовая тренировка", "One-time session")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWeekScheduleMode("group");
+                      setWeekScheduleGroupIds([]);
+                    }}
+                    style={{
+                      ...styles.scheduleTab,
+                      ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
+                    }}
+                  >
+                    {tr("Групповая тренировка", "Group session")}
+                  </button>
                 </div>
 
                 {weekScheduleMode === "client" ? (
