@@ -13749,7 +13749,8 @@ const styles: Record<string, any> = {
     boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
     overflowY: "auto",
     overscrollBehavior: "contain",
-    touchAction: "pan-x",
+    WebkitOverflowScrolling: "touch",
+    touchAction: "pan-y",
   },
   clientScheduleHandle: {
     width: 46,
