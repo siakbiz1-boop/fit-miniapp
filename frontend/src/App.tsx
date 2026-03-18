@@ -4928,6 +4928,14 @@ function TrainerSchedule(props: {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const todayRef = useRef<HTMLButtonElement | null>(null);
   const selectedRef = useRef<HTMLButtonElement | null>(null);
+  const addHourToTime = useCallback((value: string) => {
+    const normalized = normalizeTimeInput(value);
+    if (!normalized) return "";
+    const nextMinutes = (timeToMinutes(normalized) + 60) % (24 * 60);
+    const hours = Math.floor(nextMinutes / 60);
+    const minutes = nextMinutes % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }, []);
 
   useEffect(() => {
     if (bookingMode !== "both" && section !== "sessions") {
@@ -7614,7 +7622,12 @@ function TrainerSchedule(props: {
                 <input
                   type="time"
                   value={freeStart}
-                  onChange={(e) => setFreeStart(e.target.value)}
+                  onChange={(e) => {
+                    const nextStart = e.target.value;
+                    setFreeStart(nextStart);
+                    const nextEnd = addHourToTime(nextStart);
+                    if (nextEnd) setFreeEnd(nextEnd);
+                  }}
                   step={300}
                   style={styles.input}
                 />
@@ -8869,6 +8882,14 @@ function ClientDetailScreen(props: {
   const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
   const goalRef = React.useRef<HTMLTextAreaElement | null>(null);
   const commentRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const addHourToTime = useCallback((value: string) => {
+    const normalized = normalizeTimeInput(value);
+    if (!normalized) return "";
+    const nextMinutes = (timeToMinutes(normalized) + 60) % (24 * 60);
+    const hours = Math.floor(nextMinutes / 60);
+    const minutes = nextMinutes % 60;
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  }, []);
 
   useEffect(() => {
     setDraftFullName(client?.fullName ?? "");
@@ -9139,7 +9160,10 @@ function ClientDetailScreen(props: {
                   type="time"
                   value={scheduleStart}
                   onChange={(e) => {
-                    setScheduleStart(e.target.value);
+                    const nextStart = e.target.value;
+                    setScheduleStart(nextStart);
+                    const nextEnd = addHourToTime(nextStart);
+                    if (nextEnd) setScheduleEnd(nextEnd);
                     if (scheduleError) setScheduleError("");
                   }}
                   step={300}
