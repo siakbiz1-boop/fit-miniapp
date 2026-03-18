@@ -4094,6 +4094,7 @@ function ClientSchedule(props: {
               aria-current={isToday ? "date" : undefined}
               type="button"
             >
+              <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
               <div style={styles.calendarDayDate}>{d.dateText}</div>
             </button>
           );
@@ -6307,6 +6308,7 @@ function TrainerSchedule(props: {
                   aria-current={isToday ? "date" : undefined}
                   type="button"
                 >
+                  <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                   <div style={styles.calendarDayDate}>{d.dateText}</div>
                 </button>
               );
@@ -6434,6 +6436,7 @@ function TrainerSchedule(props: {
                         aria-current={isToday ? "date" : undefined}
                         type="button"
                       >
+                        <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                         <div style={styles.calendarDayDate}>{d.dateText}</div>
                       </button>
                     );
@@ -7070,6 +7073,7 @@ function TrainerSchedule(props: {
                             aria-current={isToday ? "date" : undefined}
                             type="button"
                           >
+                            <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                             <div style={styles.calendarDayDate}>{d.dateText}</div>
                           </button>
                         );
@@ -7585,6 +7589,7 @@ function TrainerSchedule(props: {
                     aria-current={isToday ? "date" : undefined}
                     type="button"
                   >
+                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                     <div style={styles.calendarDayDate}>{d.dateText}</div>
                   </button>
                 );
@@ -9108,6 +9113,7 @@ function ClientDetailScreen(props: {
                     aria-current={isToday ? "date" : undefined}
                     type="button"
                   >
+                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                     <div style={styles.calendarDayDate}>{d.dateText}</div>
                   </button>
                 );
@@ -11671,13 +11677,14 @@ function emptySessionsMessage(selected: Date, today: Date) {
 }
 
 function buildCalendarStrip(base: Date, daysBefore: number, daysAfter: number) {
-  const out: { key: string; date: Date; dateText: string }[] = [];
+  const out: { key: string; date: Date; dateText: string; weekdayText: string }[] = [];
   for (let i = -daysBefore; i <= daysAfter; i++) {
     const date = addDays(base, i);
     out.push({
       key: formatDateKey(date),
       date,
       dateText: formatDateShort(date),
+      weekdayText: formatWeekdayShort(date, currentLanguage),
     });
   }
   return out;
@@ -14195,6 +14202,13 @@ const styles: Record<string, any> = {
   },
   calendarDayPast: {
     opacity: 0.45,
+  },
+  calendarDayWeek: {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "lowercase",
+    color: "currentColor",
+    opacity: 0.7,
   },
   calendarDayDate: {
     fontSize: 14,
