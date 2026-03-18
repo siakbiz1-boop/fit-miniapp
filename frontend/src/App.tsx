@@ -4094,8 +4094,8 @@ function ClientSchedule(props: {
               aria-current={isToday ? "date" : undefined}
               type="button"
             >
-              <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
               <div style={styles.calendarDayDate}>{d.dateText}</div>
+              <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
             </button>
           );
         })}
@@ -6308,8 +6308,8 @@ function TrainerSchedule(props: {
                   aria-current={isToday ? "date" : undefined}
                   type="button"
                 >
-                  <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                   <div style={styles.calendarDayDate}>{d.dateText}</div>
+                  <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                 </button>
               );
             })}
@@ -6436,8 +6436,8 @@ function TrainerSchedule(props: {
                         aria-current={isToday ? "date" : undefined}
                         type="button"
                       >
-                        <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                         <div style={styles.calendarDayDate}>{d.dateText}</div>
+                        <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                       </button>
                     );
                   })}
@@ -7073,8 +7073,8 @@ function TrainerSchedule(props: {
                             aria-current={isToday ? "date" : undefined}
                             type="button"
                           >
-                            <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                             <div style={styles.calendarDayDate}>{d.dateText}</div>
+                            <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                           </button>
                         );
                       })}
@@ -7589,8 +7589,8 @@ function TrainerSchedule(props: {
                     aria-current={isToday ? "date" : undefined}
                     type="button"
                   >
-                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                     <div style={styles.calendarDayDate}>{d.dateText}</div>
+                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                   </button>
                 );
               })}
@@ -9113,8 +9113,8 @@ function ClientDetailScreen(props: {
                     aria-current={isToday ? "date" : undefined}
                     type="button"
                   >
-                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                     <div style={styles.calendarDayDate}>{d.dateText}</div>
+                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
                   </button>
                 );
               })}
