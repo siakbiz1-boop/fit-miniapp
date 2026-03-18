@@ -6493,7 +6493,10 @@ function TrainerSchedule(props: {
                       type="time"
                       value={weekScheduleStart}
                       onChange={(e) => {
-                        setWeekScheduleStart(e.target.value);
+                        const nextStart = e.target.value;
+                        setWeekScheduleStart(nextStart);
+                        const nextEnd = addHourToTime(nextStart);
+                        if (nextEnd) setWeekScheduleEnd(nextEnd);
                         if (weekScheduleError) setWeekScheduleError("");
                       }}
                       step={300}
