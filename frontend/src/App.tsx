@@ -186,8 +186,23 @@ type SessionItem = {
   type?: string;
   price?: string;
   comment?: string;
+  color?: string;
   participants?: { clientId: string; clientUsername: string; clientName?: string }[];
 };
+
+const SESSION_COLOR_OPTIONS = [
+  { id: "default", value: "", labelRu: "Цвет по умолчанию", labelEn: "Default color", icon: "🟦" },
+  { id: "tomato", value: "#E5484D", labelRu: "Помидор", labelEn: "Tomato", icon: "🟥" },
+  { id: "mandarin", value: "#F97316", labelRu: "Мандарин", labelEn: "Mandarin", icon: "🟧" },
+  { id: "banana", value: "#FACC15", labelRu: "Банан", labelEn: "Banana", icon: "🟨" },
+  { id: "basil", value: "#22C55E", labelRu: "Базилик", labelEn: "Basil", icon: "🟩" },
+  { id: "sage", value: "#16A34A", labelRu: "Шалфей", labelEn: "Sage", icon: "🟩" },
+  { id: "peacock", value: "#38BDF8", labelRu: "Павлин", labelEn: "Peacock", icon: "🟦" },
+  { id: "blueberry", value: "#6366F1", labelRu: "Черника", labelEn: "Blueberry", icon: "🟦" },
+  { id: "lavender", value: "#A78BFA", labelRu: "Лаванда", labelEn: "Lavender", icon: "🟪" },
+  { id: "grape", value: "#8B5CF6", labelRu: "Виноград", labelEn: "Grape", icon: "🟪" },
+  { id: "flamingo", value: "#FB7185", labelRu: "Фламинго", labelEn: "Flamingo", icon: "🟥" },
+];
 
 type NotesListItem = {
   id: string;
@@ -4150,7 +4165,7 @@ function ClientSchedule(props: {
               {list.map((s) => (
                 <div
                   key={s.id}
-                  style={styles.sessionBanner}
+                  style={{ ...styles.sessionBanner, ...(getSessionColorStyle(s.color) || null) }}
                   onClick={() => {
                     setActiveSession(s);
                     setScheduleScreen("session");
@@ -4267,7 +4282,7 @@ function ClientSchedule(props: {
               {list.map((s) => (
                 <div
                   key={s.id}
-                  style={styles.sessionBanner}
+                  style={{ ...styles.sessionBanner, ...(getSessionColorStyle(s.color) || null) }}
                   onClick={() => {
                     setActiveSession(s);
                     setScheduleScreen("session");
@@ -4611,6 +4626,7 @@ function TrainerSchedule(props: {
   const [weekScheduleDates, setWeekScheduleDates] = useState<string[]>([]);
   const [weekScheduleStart, setWeekScheduleStart] = useState("12:30");
   const [weekScheduleEnd, setWeekScheduleEnd] = useState("13:30");
+  const [weekScheduleColor, setWeekScheduleColor] = useState("");
   const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
   const [weekScheduleGroupIds, setWeekScheduleGroupIds] = useState<string[]>([]);
   const [weekScheduleError, setWeekScheduleError] = useState("");
@@ -4624,6 +4640,14 @@ function TrainerSchedule(props: {
   const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
   const weekScheduleTodayRef = useRef<HTMLButtonElement | null>(null);
   const bookingMode = trainerProfile?.bookingMode === "both" ? "both" : "trainer";
+  const sessionColorOptions = useMemo(
+    () =>
+      SESSION_COLOR_OPTIONS.map((opt) => ({
+        ...opt,
+        label: tr(opt.labelRu, opt.labelEn),
+      })),
+    [tr]
+  );
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -5185,6 +5209,7 @@ function TrainerSchedule(props: {
   useEffect(() => {
     if (!showWeekSchedule) return;
     setWeekScheduleError("");
+    setWeekScheduleColor("");
     if (weekScheduleMode === "client" && !weekScheduleClientId) {
       const first = activeClients[0];
       if (first?.id) setWeekScheduleClientId(first.id);
@@ -6588,6 +6613,20 @@ function TrainerSchedule(props: {
                       </div>
                     </div>
                   )}
+                  <div style={{ marginTop: 12 }}>
+                    <div style={styles.fieldLabel}>{tr("Цвет", "Color")}</div>
+                    <select
+                      value={weekScheduleColor}
+                      onChange={(e) => setWeekScheduleColor(e.target.value)}
+                      style={styles.selectCompact}
+                    >
+                      {sessionColorOptions.map((opt) => (
+                        <option key={opt.id} value={opt.value}>
+                          {opt.icon} {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                   <button
                     type="button"
@@ -6695,6 +6734,7 @@ function TrainerSchedule(props: {
                               start,
                               end,
                               tzOffset: new Date().getTimezoneOffset(),
+                              ...(weekScheduleColor ? { color: weekScheduleColor } : {}),
                               ...payload,
                             }),
                           });
@@ -6780,7 +6820,7 @@ function TrainerSchedule(props: {
                     return (
                       <div
                         key={s.id}
-                        style={styles.sessionBanner}
+                        style={{ ...styles.sessionBanner, ...(getSessionColorStyle(s.color) || null) }}
                         onClick={() => {
                           setActiveSession(s);
                           setScheduleScreen("session");
@@ -6958,6 +6998,7 @@ function TrainerSchedule(props: {
                                 style={{
                                   ...styles.scheduleWeekSession,
                                   ...(theme === "dark" ? styles.scheduleWeekSessionDark : null),
+                                  ...(getSessionColorStyle(s.color) || null),
                                   top,
                                   height,
                                   opacity: isDragging ? 0.2 : 1,
@@ -7223,6 +7264,20 @@ function TrainerSchedule(props: {
                           </div>
                         </div>
                       )}
+                      <div style={{ marginTop: 12 }}>
+                        <div style={styles.fieldLabel}>{tr("Цвет", "Color")}</div>
+                        <select
+                          value={weekScheduleColor}
+                          onChange={(e) => setWeekScheduleColor(e.target.value)}
+                          style={styles.selectCompact}
+                        >
+                          {sessionColorOptions.map((opt) => (
+                            <option key={opt.id} value={opt.value}>
+                              {opt.icon} {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                       <button
                         type="button"
@@ -7330,6 +7385,7 @@ function TrainerSchedule(props: {
                                   start,
                                   end,
                                   tzOffset: new Date().getTimezoneOffset(),
+                                  ...(weekScheduleColor ? { color: weekScheduleColor } : {}),
                                   ...payload,
                                 }),
                               });
@@ -11584,6 +11640,7 @@ function mapSessionFromApi(s: any): SessionItem {
     type: s.type ? String(s.type) : undefined,
     price: s.price ? String(s.price) : undefined,
     comment: s.comment ? String(s.comment) : undefined,
+    color: s.color ? String(s.color) : undefined,
     participants: Array.isArray(s.participants)
       ? s.participants.map((p: any) => ({
           clientId: String(p.clientId || ""),
@@ -11619,6 +11676,11 @@ function sessionClientLabel(
     return s.clientName?.trim() ? s.clientName : tr("Разовая тренировка", "One-time session");
   }
   return getClientLabel(clients, s.clientUsername);
+}
+
+function getSessionColorStyle(color?: string) {
+  if (!color) return null;
+  return { background: color, borderColor: color };
 }
 
 function getClientLabel(clients: TrainerClientInvite[], username: string) {

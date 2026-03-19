@@ -57,6 +57,7 @@ model TrainingSession {
   type             String?
   price            String?
   comment          String?
+  color            String?
   source           SessionSource @default(trainer)
   remindAt         DateTime
   remindedAt       DateTime?

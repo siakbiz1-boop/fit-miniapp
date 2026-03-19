@@ -214,6 +214,14 @@ function serializeSession(session: any) {
   };
 }
 
+function normalizeSessionColor(raw: any) {
+  if (raw === null) return null;
+  const value = String(raw || "").trim();
+  if (!value) return null;
+  if (/^#[0-9a-fA-F]{6}$/.test(value)) return value.toUpperCase();
+  return null;
+}
+
 function serializeSlot(slot: any) {
   if (!slot) return slot;
   return {
@@ -1956,6 +1964,7 @@ app.post("/sessions", async (req, reply) => {
   );
   const oneTime = body?.oneTime === true;
   const clientNameRaw = body?.clientName ? String(body.clientName) : "";
+  const color = normalizeSessionColor(body?.color);
   const tzOffset = typeof body?.tzOffset === "number" ? body.tzOffset : null;
   const isGroup = groupClientIds.length > 0;
   if (isGroup && groupClientIds.length < 2) {
@@ -2054,6 +2063,7 @@ app.post("/sessions", async (req, reply) => {
       type: oneTime ? "one_time" : isGroup ? "group" : null,
       source: "trainer",
       remindAt,
+      ...(color ? { color } : {}),
     },
   });
 
@@ -2248,6 +2258,9 @@ app.patch("/sessions/:id", async (req, reply) => {
   if (body?.price !== undefined) data.price = body.price;
   if (body?.comment !== undefined) data.comment = body.comment;
   if (body?.clientName !== undefined) data.clientName = body.clientName;
+  if (body?.color !== undefined) {
+    data.color = normalizeSessionColor(body.color);
+  }
   const startRaw = body?.start !== undefined ? String(body.start) : "";
   const endRaw = body?.end !== undefined ? String(body.end) : "";
   const dateKeyRaw = body?.dateKey ? String(body.dateKey) : "";
@@ -2516,6 +2529,7 @@ app.post("/sessions/sync", async (req, reply) => {
       if (!s?.id || !s?.clientUsername || Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
         return null;
       }
+      const color = normalizeSessionColor(s?.color);
       const reminderHours = (dbUser as any)?.reminderHours ?? 1;
       const remindAt = computeRemindAt(startAt, reminderHours);
       const rawId = String(s.id);
@@ -2531,6 +2545,7 @@ app.post("/sessions/sync", async (req, reply) => {
         startTime: String(s.startTime ?? ""),
         endTime: String(s.endTime ?? ""),
         type: s.type ? String(s.type) : null,
+        color: color ?? null,
         source: "trainer",
         remindAt,
       };
@@ -2545,6 +2560,7 @@ app.post("/sessions/sync", async (req, reply) => {
     startTime: string;
     endTime: string;
     type: string | null;
+    color: string | null;
     remindAt: Date;
   }>;
 
@@ -2579,6 +2595,7 @@ app.post("/sessions/sync", async (req, reply) => {
         startTime: s.startTime,
         endTime: s.endTime,
         type: s.type,
+        color: s.color,
         source: "trainer",
         remindAt: s.remindAt,
         remindedAt: (() => {
