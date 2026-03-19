@@ -6882,11 +6882,8 @@ function TrainerSchedule(props: {
                       >
                         <div style={styles.scheduleWeekSessionTitle}>
                           {gridDrag.session.type === "group" || gridDrag.session.clientUsername === "group"
-                            ? sessionTitle(gridDrag.session, tr)
+                            ? tr("ГТ", "GT")
                             : sessionClientLabel(gridDrag.session, tr, clients)}
-                        </div>
-                        <div style={styles.scheduleWeekSessionTime}>
-                          {minutesToTime(gridDrag.startMin)}–{minutesToTime(gridDrag.endMin)}
                         </div>
                       </div>
                     ) : null}
@@ -6991,11 +6988,8 @@ function TrainerSchedule(props: {
                               >
                                   <div style={styles.scheduleWeekSessionTitle}>
                                     {s.type === "group" || s.clientUsername === "group"
-                                      ? sessionTitle(s, tr)
+                                      ? tr("ГТ", "GT")
                                       : sessionClientLabel(s, tr, clients)}
-                                  </div>
-                                  <div style={styles.scheduleWeekSessionTime}>
-                                    {s.start}–{s.end}
                                   </div>
                                 </button>
                               );
@@ -14588,6 +14582,7 @@ const styles: Record<string, any> = {
     fontSize: 11,
     fontWeight: 700,
     lineHeight: 1.1,
+    wordBreak: "break-all",
   },
   scheduleWeekSessionTime: {
     fontSize: 10,
