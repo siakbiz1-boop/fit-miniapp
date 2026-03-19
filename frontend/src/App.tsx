@@ -190,18 +190,18 @@ type SessionItem = {
   participants?: { clientId: string; clientUsername: string; clientName?: string }[];
 };
 
+const SESSION_COLOR_DEFAULT = { id: "default", value: "", labelRu: "По умолчанию", labelEn: "Default" };
 const SESSION_COLOR_OPTIONS = [
-  { id: "default", value: "", labelRu: "Цвет по умолчанию", labelEn: "Default color", icon: "🟦" },
-  { id: "tomato", value: "#E5484D", labelRu: "Помидор", labelEn: "Tomato", icon: "🟥" },
-  { id: "mandarin", value: "#F97316", labelRu: "Мандарин", labelEn: "Mandarin", icon: "🟧" },
-  { id: "banana", value: "#FACC15", labelRu: "Банан", labelEn: "Banana", icon: "🟨" },
-  { id: "basil", value: "#22C55E", labelRu: "Базилик", labelEn: "Basil", icon: "🟩" },
-  { id: "sage", value: "#16A34A", labelRu: "Шалфей", labelEn: "Sage", icon: "🟩" },
-  { id: "peacock", value: "#38BDF8", labelRu: "Павлин", labelEn: "Peacock", icon: "🟦" },
-  { id: "blueberry", value: "#6366F1", labelRu: "Черника", labelEn: "Blueberry", icon: "🟦" },
-  { id: "lavender", value: "#A78BFA", labelRu: "Лаванда", labelEn: "Lavender", icon: "🟪" },
-  { id: "grape", value: "#8B5CF6", labelRu: "Виноград", labelEn: "Grape", icon: "🟪" },
-  { id: "flamingo", value: "#FB7185", labelRu: "Фламинго", labelEn: "Flamingo", icon: "🟥" },
+  { id: "tomato", value: "#E5484D", labelRu: "Помидор", labelEn: "Tomato" },
+  { id: "mandarin", value: "#F97316", labelRu: "Мандарин", labelEn: "Mandarin" },
+  { id: "banana", value: "#FACC15", labelRu: "Банан", labelEn: "Banana" },
+  { id: "basil", value: "#22C55E", labelRu: "Базилик", labelEn: "Basil" },
+  { id: "mint", value: "#10B981", labelRu: "Мята", labelEn: "Mint" },
+  { id: "teal", value: "#14B8A6", labelRu: "Бирюза", labelEn: "Teal" },
+  { id: "peacock", value: "#3B82F6", labelRu: "Павлин", labelEn: "Peacock" },
+  { id: "blueberry", value: "#6366F1", labelRu: "Черника", labelEn: "Blueberry" },
+  { id: "lavender", value: "#8B5CF6", labelRu: "Лаванда", labelEn: "Lavender" },
+  { id: "flamingo", value: "#EC4899", labelRu: "Фламинго", labelEn: "Flamingo" },
 ];
 
 type NotesListItem = {
@@ -4628,6 +4628,7 @@ function TrainerSchedule(props: {
   const [weekScheduleStart, setWeekScheduleStart] = useState("12:30");
   const [weekScheduleEnd, setWeekScheduleEnd] = useState("13:30");
   const [weekScheduleColor, setWeekScheduleColor] = useState("");
+  const [weekScheduleColorOpen, setWeekScheduleColorOpen] = useState(false);
   const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
   const [weekScheduleGroupIds, setWeekScheduleGroupIds] = useState<string[]>([]);
   const [weekScheduleError, setWeekScheduleError] = useState("");
@@ -4649,6 +4650,15 @@ function TrainerSchedule(props: {
       })),
     [tr]
   );
+  const sessionColorDefault = useMemo(
+    () => ({ ...SESSION_COLOR_DEFAULT, label: tr(SESSION_COLOR_DEFAULT.labelRu, SESSION_COLOR_DEFAULT.labelEn) }),
+    [tr]
+  );
+  const selectedColorLabel = (value: string) => {
+    if (!value) return sessionColorDefault.label;
+    const found = sessionColorOptions.find((opt) => opt.value === value);
+    return found?.label ?? sessionColorDefault.label;
+  };
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -5211,6 +5221,7 @@ function TrainerSchedule(props: {
     if (!showWeekSchedule) return;
     setWeekScheduleError("");
     setWeekScheduleColor("");
+    setWeekScheduleColorOpen(false);
     if (weekScheduleMode === "client" && !weekScheduleClientId) {
       const first = activeClients[0];
       if (first?.id) setWeekScheduleClientId(first.id);
@@ -6616,17 +6627,44 @@ function TrainerSchedule(props: {
                   )}
                   <div style={{ marginTop: 12 }}>
                     <div style={styles.fieldLabel}>{tr("Цвет", "Color")}</div>
-                    <select
-                      value={weekScheduleColor}
-                      onChange={(e) => setWeekScheduleColor(e.target.value)}
-                      style={styles.selectCompact}
-                    >
-                      {sessionColorOptions.map((opt) => (
-                        <option key={opt.id} value={opt.value}>
-                          {opt.icon} {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div style={styles.colorSelectWrap}>
+                      <button
+                        type="button"
+                        style={styles.colorSelectButton}
+                        onClick={() => setWeekScheduleColorOpen((prev) => !prev)}
+                      >
+                        {selectedColorLabel(weekScheduleColor)}
+                        <span style={styles.colorSelectChevron}>▾</span>
+                      </button>
+                      {weekScheduleColorOpen ? (
+                        <div style={styles.colorSelectMenu}>
+                          {sessionColorOptions.map((opt) => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              style={styles.colorSelectItem}
+                              onClick={() => {
+                                setWeekScheduleColor(opt.value);
+                                setWeekScheduleColorOpen(false);
+                              }}
+                            >
+                              <span style={{ ...styles.colorSwatchSquare, background: opt.value }} />
+                              <span>{opt.label}</span>
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            style={styles.colorSelectItem}
+                            onClick={() => {
+                              setWeekScheduleColor("");
+                              setWeekScheduleColorOpen(false);
+                            }}
+                          >
+                            <span>{sessionColorDefault.label}</span>
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                   <button
@@ -7267,17 +7305,44 @@ function TrainerSchedule(props: {
                       )}
                       <div style={{ marginTop: 12 }}>
                         <div style={styles.fieldLabel}>{tr("Цвет", "Color")}</div>
-                        <select
-                          value={weekScheduleColor}
-                          onChange={(e) => setWeekScheduleColor(e.target.value)}
-                          style={styles.selectCompact}
-                        >
-                          {sessionColorOptions.map((opt) => (
-                            <option key={opt.id} value={opt.value}>
-                              {opt.icon} {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div style={styles.colorSelectWrap}>
+                          <button
+                            type="button"
+                            style={styles.colorSelectButton}
+                            onClick={() => setWeekScheduleColorOpen((prev) => !prev)}
+                          >
+                            {selectedColorLabel(weekScheduleColor)}
+                            <span style={styles.colorSelectChevron}>▾</span>
+                          </button>
+                          {weekScheduleColorOpen ? (
+                            <div style={styles.colorSelectMenu}>
+                              {sessionColorOptions.map((opt) => (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  style={styles.colorSelectItem}
+                                  onClick={() => {
+                                    setWeekScheduleColor(opt.value);
+                                    setWeekScheduleColorOpen(false);
+                                  }}
+                                >
+                                  <span style={{ ...styles.colorSwatchSquare, background: opt.value }} />
+                                  <span>{opt.label}</span>
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                style={styles.colorSelectItem}
+                                onClick={() => {
+                                  setWeekScheduleColor("");
+                                  setWeekScheduleColorOpen(false);
+                                }}
+                              >
+                                <span>{sessionColorDefault.label}</span>
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                       {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                       <button
@@ -14720,6 +14785,66 @@ const styles: Record<string, any> = {
     boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
     width: "fit-content",
     maxWidth: "100%",
+  },
+  colorSelectWrap: {
+    position: "relative",
+    display: "inline-flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  colorSelectButton: {
+    border: "1px solid rgba(22, 119, 255, 0.35)",
+    borderRadius: 14,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 700,
+    background: "rgba(22, 119, 255, 0.08)",
+    color: "var(--text)",
+    cursor: "pointer",
+    boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    minWidth: 200,
+    justifyContent: "space-between",
+  },
+  colorSelectChevron: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  colorSelectMenu: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    marginTop: 6,
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    borderRadius: 12,
+    boxShadow: "0 12px 24px rgba(15, 23, 42, 0.18)",
+    padding: 6,
+    zIndex: 5,
+    minWidth: 220,
+    maxHeight: 260,
+    overflowY: "auto",
+  },
+  colorSelectItem: {
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    padding: "8px 10px",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    cursor: "pointer",
+    fontSize: 14,
+    color: "var(--text)",
+    textAlign: "left",
+  },
+  colorSwatchSquare: {
+    width: 16,
+    height: 16,
+    borderRadius: 2,
+    flex: "0 0 auto",
   },
   addWindowBtn: {
     width: "100%",
