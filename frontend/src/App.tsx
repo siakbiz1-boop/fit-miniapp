@@ -669,6 +669,7 @@ export default function App() {
         startTime: s.start,
         endTime: s.end,
         type: s.type ?? null,
+        color: s.color ?? null,
       }));
 
       try {
