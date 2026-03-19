@@ -6533,7 +6533,7 @@ function TrainerSchedule(props: {
                           setWeekScheduleClientId(e.target.value);
                           if (weekScheduleError) setWeekScheduleError("");
                         }}
-                        style={styles.trainerSelect}
+                        style={styles.selectCompact}
                       >
                         {activeClients.length === 0 ? (
                           <option value="">{tr("Нет клиентов", "No clients")}</option>
@@ -7141,41 +7141,41 @@ function TrainerSchedule(props: {
                     <div style={styles.clientScheduleFields}>
                       <div style={styles.freeField}>
                         <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                        <input
-                          type="time"
-                          value={weekScheduleStart}
-                          onChange={(e) => {
-                            setWeekScheduleStart(e.target.value);
-                            if (weekScheduleError) setWeekScheduleError("");
-                          }}
-                          step={300}
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.freeField}>
-                        <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                        <input
-                          type="time"
-                          value={weekScheduleEnd}
-                          onChange={(e) => {
-                            setWeekScheduleEnd(e.target.value);
-                            if (weekScheduleError) setWeekScheduleError("");
-                          }}
-                          step={300}
-                          style={styles.input}
-                        />
-                      </div>
-                      {weekScheduleMode === "client" ? (
-                        <div style={{ marginTop: 12 }}>
-                          <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
-                          <select
-                            value={weekScheduleClientId}
-                            onChange={(e) => {
-                              setWeekScheduleClientId(e.target.value);
-                              if (weekScheduleError) setWeekScheduleError("");
-                            }}
-                            style={styles.trainerSelect}
-                          >
+                    <input
+                      type="time"
+                      value={weekScheduleStart}
+                      onChange={(e) => {
+                        setWeekScheduleStart(e.target.value);
+                        if (weekScheduleError) setWeekScheduleError("");
+                      }}
+                      step={300}
+                      style={styles.inputCompact}
+                    />
+                  </div>
+                  <div style={styles.freeField}>
+                    <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+                    <input
+                      type="time"
+                      value={weekScheduleEnd}
+                      onChange={(e) => {
+                        setWeekScheduleEnd(e.target.value);
+                        if (weekScheduleError) setWeekScheduleError("");
+                      }}
+                      step={300}
+                      style={styles.inputCompact}
+                    />
+                  </div>
+                  {weekScheduleMode === "client" ? (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                      <select
+                        value={weekScheduleClientId}
+                        onChange={(e) => {
+                          setWeekScheduleClientId(e.target.value);
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        style={styles.selectCompact}
+                      >
                             {activeClients.length === 0 ? (
                               <option value="">{tr("Нет клиентов", "No clients")}</option>
                             ) : (
@@ -9178,7 +9178,7 @@ function ClientDetailScreen(props: {
                     if (scheduleError) setScheduleError("");
                   }}
                   step={300}
-                  style={styles.input}
+                  style={styles.inputCompact}
                 />
               </div>
               <div style={styles.freeField}>
@@ -9191,7 +9191,7 @@ function ClientDetailScreen(props: {
                     if (scheduleError) setScheduleError("");
                   }}
                   step={300}
-                  style={styles.input}
+                  style={styles.inputCompact}
                 />
               </div>
               {scheduleError ? <div style={styles.errorText}>{scheduleError}</div> : null}
@@ -14036,6 +14036,17 @@ const styles: Record<string, any> = {
     background: "var(--surface)",
     color: "var(--text)",
   },
+  inputCompact: {
+    width: 120,
+    boxSizing: "border-box",
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    padding: "10px 12px",
+    outline: "none",
+    fontSize: 16,
+    background: "var(--surface)",
+    color: "var(--text)",
+  },
   inputNoBorder: {
     width: "100%",
     boxSizing: "border-box",
@@ -14638,6 +14649,19 @@ const styles: Record<string, any> = {
     cursor: "pointer",
     maxWidth: 220,
     boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
+  },
+  selectCompact: {
+    border: "1px solid rgba(22, 119, 255, 0.35)",
+    borderRadius: 14,
+    padding: "10px 12px",
+    fontSize: 14,
+    fontWeight: 700,
+    background: "rgba(22, 119, 255, 0.08)",
+    color: "var(--text)",
+    cursor: "pointer",
+    boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
+    width: "fit-content",
+    maxWidth: "100%",
   },
   addWindowBtn: {
     width: "100%",
