@@ -2968,87 +2968,102 @@ function TrainerHome({
   }
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.homeIntro}>
-        <div style={styles.homeAvatarRow}>
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            style={styles.homeAvatarBtn}
-            aria-label={tr("настройки", "settings")}
-          >
-            <AvatarCircle name={name || tr("Пользователь", "User")} photoUrl={photoUrl} size={44} />
-          </button>
-          {homeTab === "work" ? (
+    <div style={{ ...styles.pageContainer, ...styles.homeWorkPage }}>
+      <div style={{ ...styles.homeIntro, ...styles.homeIntroWork }}>
+        <div style={styles.homeHero}>
+          <div style={styles.homeHeroTop}>
             <button
               type="button"
-              onClick={() => setNotesOpen(true)}
-              style={{ ...styles.homeStatusChip, ...styles.homeStatusChipButton }}
-              aria-label={tr("заметки", "notes")}
+              onClick={onOpenSettings}
+              style={styles.homeAvatarBtn}
+              aria-label={tr("настройки", "settings")}
             >
-              <span style={{ color: subscriptionStatusInfo.color }}>{tr("Заметки", "Notes")}</span>
+              <AvatarCircle name={name || tr("Пользователь", "User")} photoUrl={photoUrl} size={52} />
             </button>
-          ) : (
-            <div style={styles.homeStatusChip}>
-              <span style={{ color: subscriptionStatusInfo.color }}>{subscriptionStatusInfo.label}</span>
-            </div>
-          )}
-        </div>
-        <div style={styles.scheduleTabs}>
-          <button
-            type="button"
-            onClick={() => setHomeTab("work")}
-            style={{
-              ...styles.scheduleTab,
-              ...(homeTab === "work" ? styles.scheduleTabActive : null),
-            }}
-          >
-            {tr("Рабочий экран", "Workspace")}
-          </button>
-        <button
-          type="button"
-          onClick={() => setHomeTab("income")}
-          style={{
-            ...styles.scheduleTab,
-            ...(homeTab === "income" ? styles.scheduleTabActive : null),
-          }}
-        >
-          {tr("Статистика", "Stats")}
-        </button>
-          <button
-            type="button"
-            onClick={() => setHomeTab("subscription")}
-            style={{
-              ...styles.scheduleTab,
-              ...(homeTab === "subscription" ? styles.scheduleTabActive : null),
-            }}
-          >
-            {tr("Моя подписка", "My subscription")}
-          </button>
-        </div>
-        <div style={{ borderTop: "1px solid var(--border-2)", marginTop: 4 }} />
-        {homeTab === "work" ? (
-          <>
-            <div style={styles.homeGreeting}>
+            {homeTab === "work" ? (
+              <button
+                type="button"
+                onClick={() => setNotesOpen(true)}
+                style={styles.homeNotesBtn}
+                aria-label={tr("заметки", "notes")}
+              >
+                {tr("Заметки", "Notes")}
+              </button>
+            ) : (
+              <div style={styles.homeStatusPill}>
+                <span style={{ color: subscriptionStatusInfo.color }}>{subscriptionStatusInfo.label}</span>
+              </div>
+            )}
+          </div>
+          <div style={styles.homeHeroText}>
+            <div style={styles.homeHeroTitle}>
               {getGreetingByTime()}, {name || tr("Пользователь", "User")}
             </div>
-            <div style={styles.homeNextBlock}>
-              <div style={styles.homeNextTitle}>{tr("Ближайшее занятие", "Next session")}</div>
+            <div style={styles.homeHeroSubtitle}>{tr("Ваш день начинается здесь", "Your day starts here")}</div>
+          </div>
+          <div style={styles.homeTabs}>
+            <button
+              type="button"
+              onClick={() => setHomeTab("work")}
+              style={{
+                ...styles.homeTab,
+                ...(homeTab === "work" ? styles.homeTabActive : null),
+              }}
+            >
+              {tr("Рабочий экран", "Workspace")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHomeTab("income")}
+              style={{
+                ...styles.homeTab,
+                ...(homeTab === "income" ? styles.homeTabActive : null),
+              }}
+            >
+              {tr("Статистика", "Stats")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setHomeTab("subscription")}
+              style={{
+                ...styles.homeTab,
+                ...(homeTab === "subscription" ? styles.homeTabActive : null),
+              }}
+            >
+              {tr("Моя подписка", "My subscription")}
+            </button>
+          </div>
+        </div>
+        {homeTab === "work" ? (
+          <>
+            <div style={styles.homeNextBlockWork}>
               {nearest ? (
                 <>
                   <button
                     type="button"
                     className="home-next-card"
-                    style={styles.homeNextCard}
+                    style={styles.homeNextCardWork}
                     onClick={() => onOpenSession(nearest)}
                   >
-                    <div style={styles.homeNextRow}>
-                      <div style={styles.homeNextTime}>{formatNearestTime(nearest)}</div>
-                      <div style={{ ...styles.homeNextStatus, color: sessionStatusColor(nearest, now) }}>
+                    <div style={styles.homeNextHeader}>
+                      <div style={styles.homeNextLabel}>{tr("Ближайшее занятие", "Next session")}</div>
+                      <div
+                        style={{
+                          ...styles.homeNextStatusPill,
+                          color: sessionStatusColor(nearest, now),
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...styles.homeNextStatusDot,
+                            background: sessionStatusColor(nearest, now),
+                          }}
+                        />
                         {sessionStatusLabel(nearest, now)}
                       </div>
                     </div>
-                    <div style={styles.homeNextMeta}>{sessionClientLabel(nearest, tr, clients)}</div>
+                    <div style={styles.homeNextTimeWork}>{formatNearestTime(nearest)}</div>
+                    <div style={styles.homeNextMetaWork}>{sessionClientLabel(nearest, tr, clients)}</div>
                   </button>
                   {(() => {
                     const isGroup = nearest.clientUsername === "group" || nearest.type === "group";
@@ -3099,25 +3114,23 @@ function TrainerHome({
                 </div>
               )}
             </div>
-            <div style={styles.homeTodayBlock}>
-              <div style={styles.homeNextTitle}>{tr("Тренировки сегодня", "Today's sessions")}</div>
-              <div style={styles.homeTodayCard}>
-                <div style={styles.homeTodayGrid}>
-                  <div style={styles.homeTodayRow}>
-                    <span>{tr("Запланировано", "Planned")}</span>
-                    <span>{tr("Осталось", "Remaining")}</span>
-                  </div>
-                  <div style={styles.homeTodayRowValues}>
-                    <span>{todayCount}</span>
-                    <span>{todayRemaining}</span>
-                  </div>
+            <div style={styles.homeStatsBlock}>
+              <div style={styles.homeStatsTitle}>{tr("Статистика за сегодня", "Today's stats")}</div>
+              <div style={styles.homeStatsGrid}>
+                <div style={styles.homeStatsCard}>
+                  <div style={styles.homeStatsLabel}>{tr("Запланировано", "Planned")}</div>
+                  <div style={styles.homeStatsValue}>{todayCount}</div>
+                </div>
+                <div style={styles.homeStatsCard}>
+                  <div style={styles.homeStatsLabel}>{tr("Осталось", "Remaining")}</div>
+                  <div style={styles.homeStatsValue}>{todayRemaining}</div>
                 </div>
               </div>
             </div>
-            <div style={styles.homeWeekBlock}>
-              <div style={styles.homeNextTitle}>{tr("Тренировок за неделю", "Sessions this week")}</div>
-              <div style={styles.homeWeekCard}>
-                <div style={styles.homeWeekValue}>{completedThisWeek}</div>
+            <div style={styles.homeWeekBlockWork}>
+              <div style={styles.homeWeekCardWork}>
+                <div style={styles.homeWeekLabelWork}>{tr("Тренировок за неделю", "Sessions this week")}</div>
+                <div style={styles.homeWeekValueWork}>{completedThisWeek}</div>
               </div>
             </div>
           </>
@@ -12782,11 +12795,99 @@ const styles: Record<string, any> = {
     minWidth: "100%",
     maxWidth: "100%",
   },
+  homeWorkPage: {
+    background:
+      "radial-gradient(circle at 50% -20%, rgba(120, 170, 210, 0.45), transparent 60%)," +
+      "linear-gradient(180deg, #e9eff4 0%, #f3f6fa 40%, #ffffff 100%)",
+  },
+  homeIntroWork: {
+    gap: 16,
+  },
   homeAvatarRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     width: "100%",
+  },
+  homeHero: {
+    padding: "14px",
+    borderRadius: 26,
+    border: "1px solid rgba(180, 200, 220, 0.65)",
+    background: "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(228, 235, 243, 0.9))",
+    boxShadow: "0 24px 40px rgba(15, 23, 42, 0.08)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  homeHeroTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  homeHeroText: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+  },
+  homeHeroTitle: {
+    fontSize: 22,
+    fontWeight: 700,
+    letterSpacing: -0.2,
+    color: "var(--text)",
+  },
+  homeHeroSubtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  homeNotesBtn: {
+    border: "1px solid rgba(130, 160, 200, 0.45)",
+    background: "rgba(245, 248, 252, 0.9)",
+    color: "var(--text)",
+    padding: "6px 12px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
+  },
+  homeStatusPill: {
+    padding: "6px 12px",
+    borderRadius: 999,
+    border: "1px solid rgba(130, 160, 200, 0.35)",
+    background: "rgba(245, 248, 252, 0.9)",
+    fontSize: 12,
+    fontWeight: 700,
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.06)",
+  },
+  homeTabs: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid rgba(170, 190, 210, 0.5)",
+    background: "rgba(240, 245, 250, 0.9)",
+  },
+  homeTab: {
+    flex: 1,
+    border: "none",
+    background: "transparent",
+    padding: "8px 10px",
+    borderRadius: 999,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--muted)",
+    cursor: "pointer",
+    letterSpacing: -0.1,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  homeTabActive: {
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    color: "#fff",
+    boxShadow: "0 12px 22px rgba(79, 124, 230, 0.35)",
   },
   homeStatusChip: {
     padding: "6px 10px",
@@ -12953,6 +13054,60 @@ const styles: Record<string, any> = {
     background: "rgba(77, 163, 255, 0.03)",
     overflow: "hidden",
   },
+  homeNextBlockWork: {
+    marginTop: 8,
+  },
+  homeNextCardWork: {
+    padding: "18px 18px 16px",
+    borderRadius: 26,
+    border: "1px solid rgba(110, 135, 220, 0.5)",
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    boxShadow: "0 20px 34px rgba(79, 124, 230, 0.35)",
+    width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
+    textAlign: "left",
+    cursor: "pointer",
+    display: "block",
+    color: "#fff",
+  },
+  homeNextHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  homeNextLabel: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  homeNextStatusPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "4px 10px",
+    borderRadius: 999,
+    background: "rgba(240, 248, 255, 0.95)",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  homeNextStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+  },
+  homeNextTimeWork: {
+    marginTop: 10,
+    fontSize: 28,
+    fontWeight: 800,
+    letterSpacing: -0.4,
+  },
+  homeNextMetaWork: {
+    marginTop: 6,
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
   homeNextTitle: {
     fontSize: 14,
     fontWeight: 700,
@@ -13028,6 +13183,43 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(77, 163, 255, 0.25)",
     background: "rgba(77, 163, 255, 0.03)",
   },
+  homeStatsBlock: {
+    marginTop: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  homeStatsTitle: {
+    fontSize: 18,
+    fontWeight: 700,
+    letterSpacing: -0.2,
+    color: "var(--text)",
+  },
+  homeStatsGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+  },
+  homeStatsCard: {
+    padding: "14px 16px",
+    borderRadius: 18,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  homeStatsLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--muted)",
+  },
+  homeStatsValue: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
   homeTodayCard: {
     padding: "12px 14px",
     borderRadius: 14,
@@ -13065,6 +13257,30 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(77, 163, 255, 0.25)",
     background: "rgba(77, 163, 255, 0.03)",
     textAlign: "left",
+  },
+  homeWeekBlockWork: {
+    marginTop: 16,
+  },
+  homeWeekCardWork: {
+    padding: "14px 16px",
+    borderRadius: 20,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  homeWeekLabelWork: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  homeWeekValueWork: {
+    fontSize: 22,
+    fontWeight: 800,
+    color: "var(--text)",
   },
   homeWeekCard: {
     marginTop: 6,
