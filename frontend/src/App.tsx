@@ -4068,7 +4068,7 @@ function ClientSchedule(props: {
   }
 
   return (
-    <div style={styles.pageContainer}>
+    <div style={{ ...styles.pageContainer, ...styles.addClientPage }}>
       <div style={styles.scheduleHeaderRow}>
         <div style={styles.pageTitle}>{t.scheduleTitle}</div>
         {section === "book" ? (
@@ -8053,7 +8053,7 @@ function TrainerClients(props: {
   }
 
   return (
-    <div style={styles.pageContainer}>
+    <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
       <div style={styles.topBarClients}>
         <div style={styles.pageTitle}>{tr("Клиенты", "Clients")}</div>
         {clientsTab === "pending" ? (
@@ -8065,7 +8065,7 @@ function TrainerClients(props: {
               }
               setScreen("add");
             }}
-            style={styles.iconBtn}
+            style={styles.clientsAddBtn}
             aria-label="add client"
           >
             ➕
@@ -8344,13 +8344,13 @@ function AddClientScreen(props: {
 
       {!created ? (
         <>
-          <div style={styles.scheduleTabs}>
+          <div style={styles.addClientTabs}>
             <button
               type="button"
               onClick={() => setMode("telegram")}
               style={{
-                ...styles.scheduleTab,
-                ...(mode === "telegram" ? styles.scheduleTabActive : null),
+                ...styles.addClientTab,
+                ...(mode === "telegram" ? styles.addClientTabActive : null),
               }}
             >
               {tr("Telegram", "Telegram")}
@@ -8359,15 +8359,15 @@ function AddClientScreen(props: {
               type="button"
               onClick={() => setMode("local")}
               style={{
-                ...styles.scheduleTab,
-                ...(mode === "local" ? styles.scheduleTabActive : null),
+                ...styles.addClientTab,
+                ...(mode === "local" ? styles.addClientTabActive : null),
               }}
             >
               {tr("Локальный", "Local")}
             </button>
           </div>
 
-          <div style={{ opacity: 0.72, fontSize: 14, lineHeight: 1.35, marginTop: 6 }}>
+          <div style={styles.addClientHint}>
             {mode === "telegram"
               ? tr(
                   "Введи Telegram username клиента (например ",
@@ -8386,7 +8386,7 @@ function AddClientScreen(props: {
               : null}
           </div>
 
-          <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 18 }}>
             {mode === "telegram" ? (
               <>
                 <div style={styles.fieldLabel}>Username</div>
@@ -8394,7 +8394,7 @@ function AddClientScreen(props: {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="@username"
-                  style={styles.input}
+                  style={styles.addClientInput}
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
@@ -8407,7 +8407,7 @@ function AddClientScreen(props: {
                   value={localName}
                   onChange={(e) => setLocalName(e.target.value)}
                   placeholder={tr("Введите ФИО", "Enter full name")}
-                  style={styles.input}
+                  style={styles.addClientInput}
                 />
               </>
             )}
@@ -8415,7 +8415,7 @@ function AddClientScreen(props: {
 
           {error ? <div style={styles.errorText}>{error}</div> : null}
 
-          <button onClick={mode === "telegram" ? createInvite : createLocalClient} style={styles.saveBtn}>
+          <button onClick={mode === "telegram" ? createInvite : createLocalClient} style={styles.addClientPrimaryBtn}>
             {tr("Добавить", "Add")}
           </button>
 
@@ -12873,6 +12873,11 @@ const styles: Record<string, any> = {
       "radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.35), transparent 60%)," +
       "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
   },
+  addClientPage: {
+    background:
+      "radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.4), transparent 60%)," +
+      "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
+  },
   homeIntroWork: {
     gap: 16,
   },
@@ -14458,6 +14463,38 @@ const styles: Record<string, any> = {
     background: "var(--surface)",
     color: "var(--text)",
   },
+  addClientInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 22,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    padding: "14px 16px",
+    outline: "none",
+    fontSize: 16,
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    color: "var(--text)",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+  },
+  addClientHint: {
+    opacity: 0.8,
+    fontSize: 14,
+    lineHeight: 1.45,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  addClientPrimaryBtn: {
+    marginTop: 18,
+    width: "100%",
+    padding: "14px 16px",
+    borderRadius: 999,
+    border: "1px solid rgba(130, 165, 215, 0.7)",
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    color: "#ffffff",
+    fontWeight: 800,
+    fontSize: 18,
+    cursor: "pointer",
+    boxShadow: "0 18px 30px rgba(79, 124, 230, 0.35)",
+  },
   inputCompact: {
     width: 120,
     boxSizing: "border-box",
@@ -14709,6 +14746,20 @@ const styles: Record<string, any> = {
     gap: 12,
     width: "100%",
   },
+  clientsAddBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    border: "1px solid rgba(170, 190, 210, 0.6)",
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    color: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: "0 12px 20px rgba(79, 124, 230, 0.35)",
+    fontSize: 18,
+  },
   clientsTab: {
     flex: 1,
     minHeight: 52,
@@ -14732,6 +14783,33 @@ const styles: Record<string, any> = {
     color: "#ffffff",
     borderColor: "rgba(111, 131, 246, 0.7)",
     boxShadow: "0 14px 26px rgba(79, 124, 230, 0.35)",
+  },
+  addClientTabs: {
+    marginTop: 16,
+    display: "flex",
+    gap: 8,
+    width: "100%",
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "rgba(238, 243, 248, 0.9)",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.1)",
+  },
+  addClientTab: {
+    flex: 1,
+    height: 44,
+    borderRadius: 999,
+    border: "none",
+    background: "transparent",
+    color: "#7d8aa1",
+    fontWeight: 700,
+    fontSize: 14,
+    cursor: "pointer",
+  },
+  addClientTabActive: {
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    color: "#ffffff",
+    boxShadow: "0 10px 18px rgba(79, 124, 230, 0.35)",
   },
   scheduleModeScroll: {
     display: "flex",
@@ -15364,18 +15442,18 @@ const styles: Record<string, any> = {
     left: 0,
     right: 0,
     bottom: 0,
-    height: 86,
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 241, 247, 0.98))",
-    borderTop: "1px solid rgba(180, 195, 210, 0.6)",
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    boxShadow: "0 -18px 36px rgba(15, 23, 42, 0.12)",
+    height: 90,
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(236, 241, 247, 0.98))",
+    borderTop: "1px solid rgba(180, 195, 210, 0.5)",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    boxShadow: "0 -20px 40px rgba(15, 23, 42, 0.12)",
     display: "flex",
     justifyContent: "space-around",
-    paddingTop: 10,
-    paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)",
-    paddingLeft: 12,
-    paddingRight: 12,
+    paddingTop: 12,
+    paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
+    paddingLeft: 14,
+    paddingRight: 14,
     boxSizing: "border-box",
     zIndex: 10,
     backdropFilter: "blur(14px)",
@@ -15392,17 +15470,17 @@ const styles: Record<string, any> = {
     justifyContent: "center",
   },
   navIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 16,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     background: "transparent",
   },
   navIconWrapActive: {
-    background: "linear-gradient(135deg, rgba(111, 131, 246, 0.9), rgba(124, 207, 230, 0.9))",
-    boxShadow: "0 12px 20px rgba(79, 124, 230, 0.35)",
+    background: "linear-gradient(135deg, rgba(111, 131, 246, 0.95), rgba(124, 207, 230, 0.95))",
+    boxShadow: "0 12px 22px rgba(79, 124, 230, 0.35)",
     color: "#ffffff",
   },
   navLabel: {
@@ -15415,9 +15493,9 @@ const styles: Record<string, any> = {
     fontWeight: 700,
   },
   navAddBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
+    width: 70,
+    height: 70,
+    borderRadius: 999,
     border: "none",
     background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
     color: "#ffffff",
@@ -15425,8 +15503,8 @@ const styles: Record<string, any> = {
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    boxShadow: "0 16px 28px rgba(79, 124, 230, 0.35)",
-    marginTop: -16,
+    boxShadow: "0 18px 32px rgba(79, 124, 230, 0.4)",
+    marginTop: -20,
   },
   addMenuOverlay: {
     position: "fixed",
