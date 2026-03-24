@@ -1573,15 +1573,13 @@ export default function App() {
             <div style={styles.bottomNav}>
               <button
                 onClick={() => setActiveTab("home")}
-                style={{
-                  ...styles.navBtn,
-                  color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
-                }}
+                style={styles.navBtn}
               >
                 <div
                   style={{
                     ...styles.navIconWrap,
-                    color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
+                    ...(activeTab === "home" ? styles.navIconWrapActive : null),
+                    color: activeTab === "home" ? "#ffffff" : "#8a96a8",
                   }}
                 >
                   <IconHome />
@@ -1589,7 +1587,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
+                    color: activeTab === "home" ? "#6f83f6" : "#8a96a8",
                     fontWeight: activeTab === "home" ? 700 : 600,
                   }}
                 >
@@ -1599,15 +1597,13 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab("schedule")}
-                style={{
-                  ...styles.navBtn,
-                  color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
-                }}
+                style={styles.navBtn}
               >
                 <div
                   style={{
                     ...styles.navIconWrap,
-                    color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
+                    ...(activeTab === "schedule" ? styles.navIconWrapActive : null),
+                    color: activeTab === "schedule" ? "#ffffff" : "#8a96a8",
                   }}
                 >
                   <IconCalendar />
@@ -1615,7 +1611,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
+                    color: activeTab === "schedule" ? "#6f83f6" : "#8a96a8",
                     fontWeight: activeTab === "schedule" ? 700 : 600,
                   }}
                 >
@@ -1638,15 +1634,13 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab("clients")}
-                style={{
-                  ...styles.navBtn,
-                  color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
-                }}
+                style={styles.navBtn}
               >
                 <div
                   style={{
                     ...styles.navIconWrap,
-                    color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
+                    ...(activeTab === "clients" ? styles.navIconWrapActive : null),
+                    color: activeTab === "clients" ? "#ffffff" : "#8a96a8",
                   }}
                 >
                   <IconUsers />
@@ -1654,7 +1648,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
+                    color: activeTab === "clients" ? "#6f83f6" : "#8a96a8",
                     fontWeight: activeTab === "clients" ? 700 : 600,
                   }}
                 >
@@ -1664,15 +1658,13 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab("settings")}
-                style={{
-                  ...styles.navBtn,
-                  color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
-                }}
+                style={styles.navBtn}
               >
                 <div
                   style={{
                     ...styles.navIconWrap,
-                    color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
+                    ...(activeTab === "settings" ? styles.navIconWrapActive : null),
+                    color: activeTab === "settings" ? "#ffffff" : "#8a96a8",
                   }}
                 >
                   <IconSettings />
@@ -1680,7 +1672,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
+                    color: activeTab === "settings" ? "#6f83f6" : "#8a96a8",
                     fontWeight: activeTab === "settings" ? 700 : 600,
                   }}
                 >
@@ -3010,7 +3002,7 @@ function TrainerHome({
                 ...(homeTab === "work" ? styles.homeTabActive : null),
               }}
             >
-              {tr("Рабочий экран", "Workspace")}
+              {tr("Важное", "Highlights")}
             </button>
             <button
               type="button"
@@ -3030,7 +3022,7 @@ function TrainerHome({
                 ...(homeTab === "subscription" ? styles.homeTabActive : null),
               }}
             >
-              {tr("Моя подписка", "My subscription")}
+              {tr("Подписка", "Subscription")}
             </button>
           </div>
         </div>
@@ -11395,19 +11387,33 @@ function BottomNav<T extends string>(props: {
     <div style={{ ...styles.bottomNav, display: hidden ? "none" : "flex" }}>
       {items.map((it) => {
         const isActive = it.id === active;
-        const color = isActive ? "var(--accent)" : "var(--muted)";
+        const iconColor = isActive ? "#ffffff" : "#8a96a8";
+        const labelColor = isActive ? "#6f83f6" : "#8a96a8";
 
         return (
           <button
             key={it.id}
             onClick={() => onChange(it.id)}
-            style={{
-              ...styles.navBtn,
-              color,
-            }}
+            style={styles.navBtn}
           >
-            <div style={{ ...styles.navIconWrap, color }}>{it.icon}</div>
-            <div style={{ ...styles.navLabel, color, fontWeight: isActive ? 700 : 600 }}>{it.label}</div>
+            <div
+              style={{
+                ...styles.navIconWrap,
+                ...(isActive ? styles.navIconWrapActive : null),
+                color: iconColor,
+              }}
+            >
+              {it.icon}
+            </div>
+            <div
+              style={{
+                ...styles.navLabel,
+                color: labelColor,
+                fontWeight: isActive ? 700 : 600,
+              }}
+            >
+              {it.label}
+            </div>
           </button>
         );
       })}
@@ -13299,16 +13305,17 @@ const styles: Record<string, any> = {
   homeSubscriptionBlock: {
     marginTop: 12,
     padding: "12px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "rgba(77, 163, 255, 0.03)",
+    borderRadius: 20,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
   },
   homeSubscriptionRow: {
     marginTop: 8,
     padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(77, 163, 255, 0.18)",
-    background: "linear-gradient(180deg, rgba(77, 163, 255, 0.08), rgba(77, 163, 255, 0.02))",
+    borderRadius: 16,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -15249,51 +15256,69 @@ const styles: Record<string, any> = {
     left: 0,
     right: 0,
     bottom: 0,
-    height: 76,
-    background: "var(--surface)",
-    borderTop: "1px solid var(--nav-border)",
+    height: 86,
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 241, 247, 0.98))",
+    borderTop: "1px solid rgba(180, 195, 210, 0.6)",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    boxShadow: "0 -18px 36px rgba(15, 23, 42, 0.12)",
     display: "flex",
     justifyContent: "space-around",
-    paddingTop: 6,
-    paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)",
+    paddingTop: 10,
+    paddingBottom: "calc(env(safe-area-inset-bottom) + 14px)",
+    paddingLeft: 12,
+    paddingRight: 12,
     boxSizing: "border-box",
     zIndex: 10,
+    backdropFilter: "blur(14px)",
   },
   navBtn: {
     flex: 1,
     border: "none",
     background: "transparent",
     cursor: "pointer",
-    padding: "20px 6px 8px",
+    padding: "14px 6px 6px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
   },
   navIconWrap: {
-    height: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    background: "transparent",
+  },
+  navIconWrapActive: {
+    background: "linear-gradient(135deg, rgba(111, 131, 246, 0.9), rgba(124, 207, 230, 0.9))",
+    boxShadow: "0 12px 20px rgba(79, 124, 230, 0.35)",
+    color: "#ffffff",
   },
   navLabel: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 6,
     letterSpacing: -0.1,
   },
+  navLabelActive: {
+    color: "#6f83f6",
+    fontWeight: 700,
+  },
   navAddBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 999,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
     border: "none",
-    background: "#1677ff",
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    boxShadow: "0 10px 24px rgba(22, 119, 255, 0.35)",
-    marginTop: -10,
+    boxShadow: "0 16px 28px rgba(79, 124, 230, 0.35)",
+    marginTop: -16,
   },
   addMenuOverlay: {
     position: "fixed",
