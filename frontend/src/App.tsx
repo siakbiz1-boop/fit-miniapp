@@ -11987,55 +11987,43 @@ function SvgIcon({ children, size = 22, strokeWidth = 1.9 }: React.PropsWithChil
   );
 }
 
-function IconHome({ size = 22, strokeWidth = 2.1 }: IconProps) {
+function IconHome() {
   return (
-    <SvgIcon size={size} strokeWidth={strokeWidth}>
-      <path d="M4 11.2 12 4l8 7.2" />
-      <path d="M6.5 10.6V19a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-8.4" />
-      <path d="M10 21v-6a1.8 1.8 0 0 1 1.8-1.8h.4A1.8 1.8 0 0 1 14 15v6" />
+    <SvgIcon>
+      <path d="M3 10.5 12 3l9 7.5" />
+      <path d="M5.5 9.8V21h13V9.8" />
+      <path d="M9.5 21v-6.5h5V21" />
     </SvgIcon>
   );
 }
 
-function IconCalendar({ size = 22, strokeWidth = 2.1 }: IconProps) {
+function IconCalendar({ size = 22, strokeWidth = 1.9 }: IconProps) {
   return (
     <SvgIcon size={size} strokeWidth={strokeWidth}>
-      <path d="M7 4v3M17 4v3" />
-      <rect x="4.5" y="6.5" width="15" height="13.5" rx="3" />
-      <path d="M4.5 9.5h15" />
-      <circle cx="8.5" cy="13.5" r="0.7" />
-      <circle cx="12" cy="13.5" r="0.7" />
-      <circle cx="15.5" cy="13.5" r="0.7" />
-      <circle cx="8.5" cy="16.5" r="0.7" />
-      <circle cx="12" cy="16.5" r="0.7" />
-      <circle cx="15.5" cy="16.5" r="0.7" />
+      <path d="M7 3v3M17 3v3" />
+      <path d="M4.5 7.5h15" />
+      <rect x="4.5" y="6" width="15" height="15" rx="2.5" />
+      <path d="M8 12h3M13 12h3M8 16h3M13 16h3" />
     </SvgIcon>
   );
 }
 
-function IconUsers({ size = 22 }: IconProps) {
+function IconUsers() {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <circle cx="9" cy="10" r="3.2" />
-      <circle cx="17.2" cy="9.6" r="2.6" />
-      <path d="M3.2 20.4c.7-3.4 3.2-5.2 5.9-5.2s5.2 1.8 5.9 5.2" />
-      <path d="M12.8 20.4c.4-2.4 2.1-3.8 4.3-3.8 1.8 0 3.2.9 3.8 2.6" />
-    </svg>
+    <SvgIcon>
+      <path d="M16 11.2a3.2 3.2 0 1 0-3.2-3.2A3.2 3.2 0 0 0 16 11.2Z" />
+      <path d="M8.2 11.6A2.8 2.8 0 1 0 5.4 8.8a2.8 2.8 0 0 0 2.8 2.8Z" />
+      <path d="M20.5 20.5c-.6-3-2.7-4.7-4.9-4.7H15c-2.2 0-4.3 1.7-4.9 4.7" />
+      <path d="M10.8 20.5c-.4-2.2-2.1-3.5-4-3.5H6.3c-1.9 0-3.6 1.3-4 3.5" />
+    </SvgIcon>
   );
 }
 
-function IconSettings({ size = 22, strokeWidth = 2.1 }: IconProps) {
+function IconSettings() {
   return (
-    <SvgIcon size={size} strokeWidth={strokeWidth}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.2 12a7.4 7.4 0 0 0-.1-1l2-1.4-1.8-3.1-2.4 1a8 8 0 0 0-1.6-.9L14.9 4h-5l-.4 2.6a8 8 0 0 0-1.6.9l-2.4-1-1.8 3.1 2 1.4a7.4 7.4 0 0 0 0 2l-2 1.4 1.8 3.1 2.4-1a8 8 0 0 0 1.6.9l.4 2.6h5l.4-2.6a8 8 0 0 0 1.6-.9l2.4 1 1.8-3.1-2-1.4c.1-.3.1-.7.1-1Z" />
+    <SvgIcon>
+      <path d="M12 15.2a3.2 3.2 0 1 0-3.2-3.2 3.2 3.2 0 0 0 3.2 3.2Z" />
+      <path d="M19.4 12a7.5 7.5 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1l-.4-2.6H9.2l-.4 2.6a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7.5 7.5 0 0 0 0 2L.7 13.5l2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" />
     </SvgIcon>
   );
 }
@@ -15454,10 +15442,8 @@ const styles: Record<string, any> = {
     right: 0,
     bottom: 0,
     height: 88,
-    background:
-      "radial-gradient(circle at 50% 0px, rgba(255, 255, 255, 0) 0 38px, rgba(200, 210, 220, 0.55) 38px 39px, rgba(255, 255, 255, 0.98) 40px)," +
-      "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 244, 246, 0.98))",
-    borderTop: "none",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 244, 246, 0.98))",
+    borderTop: "1px solid rgba(200, 210, 220, 0.6)",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     boxShadow: "0 -18px 36px rgba(15, 23, 42, 0.12)",
