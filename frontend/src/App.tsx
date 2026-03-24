@@ -3604,7 +3604,7 @@ function ClientHome(props: {
   }).length;
 
   return (
-    <div style={styles.pageContainer}>
+    <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
       <div style={styles.homeIntro}>
         <div style={styles.homeAvatarRow}>
           <button
@@ -8075,13 +8075,13 @@ function TrainerClients(props: {
         )}
       </div>
 
-      <div style={styles.scheduleTabs}>
+      <div style={styles.clientsTabs}>
         <button
           type="button"
           onClick={() => setClientsTab("my")}
           style={{
-            ...styles.scheduleTab,
-            ...(clientsTab === "my" ? styles.scheduleTabActive : null),
+            ...styles.clientsTab,
+            ...(clientsTab === "my" ? styles.clientsTabActive : null),
           }}
         >
           {tr("Мои клиенты", "My clients")}
@@ -8090,8 +8090,8 @@ function TrainerClients(props: {
           type="button"
           onClick={() => setClientsTab("pending")}
           style={{
-            ...styles.scheduleTab,
-            ...(clientsTab === "pending" ? styles.scheduleTabActive : null),
+            ...styles.clientsTab,
+            ...(clientsTab === "pending" ? styles.clientsTabActive : null),
           }}
         >
           {tr("Добавление клиентов", "Add clients")}
@@ -8100,8 +8100,8 @@ function TrainerClients(props: {
           type="button"
           onClick={() => setClientsTab("archive")}
           style={{
-            ...styles.scheduleTab,
-            ...(clientsTab === "archive" ? styles.scheduleTabActive : null),
+            ...styles.clientsTab,
+            ...(clientsTab === "archive" ? styles.clientsTabActive : null),
           }}
         >
           {tr("Архив клиентов", "Client archive")}
@@ -8140,10 +8140,9 @@ function TrainerClients(props: {
           );
         }
         return (
-          <div style={{ marginTop: 14 }}>
-            <div style={styles.listBlock}>
-              {filtered.map((inv, idx) => {
-                const isLast = idx === filtered.length - 1;
+          <div style={{ marginTop: 18 }}>
+            <div style={styles.clientsList}>
+              {filtered.map((inv) => {
                 const isLocal = inv.isLocal || inv.username.startsWith("local_");
                 const displayName = inv.fullName?.trim()
                   ? inv.fullName
@@ -8166,10 +8165,7 @@ function TrainerClients(props: {
                 return (
                   <div
                     key={inv.id}
-                    style={{
-                      ...styles.rowWrap,
-                      borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                    }}
+                    style={styles.clientsCard}
                   >
                     <button
                       type="button"
@@ -8177,19 +8173,23 @@ function TrainerClients(props: {
                         setSelectedClientId(inv.id);
                         setScreen("detail");
                       }}
-                      style={styles.rowBtnNoBorder}
+                      style={styles.clientsCardBtn}
                       aria-label={`open ${inv.username}`}
                     >
-                      <div style={styles.rowLeft}>
-                        <AvatarCircle
-                          name={displayName}
-                          photoUrl={inv.photoUrl || ""}
-                          size={40}
-                        />
-                        <div style={{ textAlign: "left" }}>
-                          <div style={styles.rowTitle}>
-                            {displayName}
+                      <div style={styles.clientsRowLeft}>
+                        {inv.photoUrl ? (
+                          <AvatarCircle
+                            name={displayName}
+                            photoUrl={inv.photoUrl || ""}
+                            size={52}
+                          />
+                        ) : (
+                          <div style={styles.clientsAvatar}>
+                            <span style={styles.clientsAvatarText}>{displayName.trim().charAt(0).toUpperCase()}</span>
                           </div>
+                        )}
+                        <div style={{ textAlign: "left" }}>
+                          <div style={styles.clientsName}>{displayName}</div>
                           <div style={styles.rowSubtitle}>
                             {clientsTab === "pending" ? (
                               <span>{tr("Ожидает активации", "Pending activation")}</span>
@@ -12435,6 +12435,63 @@ const styles: Record<string, any> = {
     borderTop: "1px solid var(--border-2)",
     borderBottom: "1px solid var(--border-2)",
   },
+  clientsList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  clientsCard: {
+    borderRadius: 24,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    boxShadow: "0 16px 28px rgba(15, 23, 42, 0.12)",
+    padding: "8px 10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  clientsCardBtn: {
+    flex: 1,
+    border: "none",
+    background: "transparent",
+    padding: "12px 8px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    cursor: "pointer",
+    minWidth: 0,
+  },
+  clientsRowLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    minWidth: 0,
+  },
+  clientsName: {
+    fontWeight: 700,
+    fontSize: 18,
+    color: "var(--text)",
+    letterSpacing: -0.2,
+    lineHeight: 1.2,
+  },
+  clientsAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: "50%",
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 10px 20px rgba(79, 124, 230, 0.35)",
+    color: "#ffffff",
+    fontWeight: 800,
+    fontSize: 22,
+    flex: "0 0 auto",
+  },
+  clientsAvatarText: {
+    lineHeight: 1,
+  },
   exerciseListBlock: {
     border: "none",
     borderRadius: 18,
@@ -12809,6 +12866,11 @@ const styles: Record<string, any> = {
   schedulePage: {
     background:
       "radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.4), transparent 60%)," +
+      "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
+  },
+  clientsPage: {
+    background:
+      "radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.35), transparent 60%)," +
       "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
   },
   homeIntroWork: {
@@ -14641,6 +14703,36 @@ const styles: Record<string, any> = {
     gap: 10,
     width: "100%",
   },
+  clientsTabs: {
+    marginTop: 16,
+    display: "flex",
+    gap: 12,
+    width: "100%",
+  },
+  clientsTab: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 22,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    boxShadow: "0 10px 22px rgba(15, 23, 42, 0.08)",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "#7d8aa1",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    padding: "8px 10px",
+    lineHeight: 1.2,
+  },
+  clientsTabActive: {
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    color: "#ffffff",
+    borderColor: "rgba(111, 131, 246, 0.7)",
+    boxShadow: "0 14px 26px rgba(79, 124, 230, 0.35)",
+  },
   scheduleModeScroll: {
     display: "flex",
     gap: 10,
@@ -15170,11 +15262,11 @@ const styles: Record<string, any> = {
     right: 12,
     fontSize: 12,
     fontWeight: 700,
-    color: "#2f7a43",
-    background: "rgba(214, 243, 223, 0.95)",
+    color: "#2e5da8",
+    background: "rgba(205, 229, 255, 0.9)",
     padding: "4px 10px",
     borderRadius: 999,
-    border: "1px solid rgba(140, 214, 170, 0.6)",
+    border: "1px solid rgba(155, 195, 235, 0.8)",
   },
   freeForm: {
     marginTop: 12,
