@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import WebApp from "@twa-dev/sdk";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  Home08Icon,
+  Calendar04Icon,
+  UserMultiple02Icon,
+  Settings01Icon,
+} from "@hugeicons/core-free-icons";
 
 const SUBSCRIPTION_CLIENT_LIMIT = 9999;
 let currentLanguage: "ru" | "en" = "ru";
@@ -11988,44 +11995,19 @@ function SvgIcon({ children, size = 22, strokeWidth = 1.9 }: React.PropsWithChil
 }
 
 function IconHome() {
-  return (
-    <SvgIcon>
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5.5 9.8V21h13V9.8" />
-      <path d="M9.5 21v-6.5h5V21" />
-    </SvgIcon>
-  );
+  return <HugeiconsIcon icon={Home08Icon} size={22} strokeWidth={1.9} />;
 }
 
-function IconCalendar({ size = 22, strokeWidth = 1.9 }: IconProps) {
-  return (
-    <SvgIcon size={size} strokeWidth={strokeWidth}>
-      <path d="M7 3v3M17 3v3" />
-      <path d="M4.5 7.5h15" />
-      <rect x="4.5" y="6" width="15" height="15" rx="2.5" />
-      <path d="M8 12h3M13 12h3M8 16h3M13 16h3" />
-    </SvgIcon>
-  );
+function IconCalendar() {
+  return <HugeiconsIcon icon={Calendar04Icon} size={22} strokeWidth={1.9} />;
 }
 
 function IconUsers() {
-  return (
-    <SvgIcon>
-      <path d="M16 11.2a3.2 3.2 0 1 0-3.2-3.2A3.2 3.2 0 0 0 16 11.2Z" />
-      <path d="M8.2 11.6A2.8 2.8 0 1 0 5.4 8.8a2.8 2.8 0 0 0 2.8 2.8Z" />
-      <path d="M20.5 20.5c-.6-3-2.7-4.7-4.9-4.7H15c-2.2 0-4.3 1.7-4.9 4.7" />
-      <path d="M10.8 20.5c-.4-2.2-2.1-3.5-4-3.5H6.3c-1.9 0-3.6 1.3-4 3.5" />
-    </SvgIcon>
-  );
+  return <HugeiconsIcon icon={UserMultiple02Icon} size={22} strokeWidth={1.9} />;
 }
 
 function IconSettings() {
-  return (
-    <SvgIcon>
-      <path d="M12 15.2a3.2 3.2 0 1 0-3.2-3.2 3.2 3.2 0 0 0 3.2 3.2Z" />
-      <path d="M19.4 12a7.5 7.5 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a8 8 0 0 0-1.7-1l-.4-2.6H9.2l-.4 2.6a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7.5 7.5 0 0 0 0 2L.7 13.5l2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 2.6h5.6l.4-2.6a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" />
-    </SvgIcon>
-  );
+  return <HugeiconsIcon icon={Settings01Icon} size={22} strokeWidth={1.9} />;
 }
 
 function IconPlus({ size = 30, strokeWidth = 2.6 }: IconProps) {
