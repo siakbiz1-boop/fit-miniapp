@@ -6,6 +6,7 @@ import {
   Calendar04Icon,
   UserMultiple02Icon,
   Settings01Icon,
+  PlusSignSquareIcon,
 } from "@hugeicons/core-free-icons";
 
 const SUBSCRIPTION_CLIENT_LIMIT = 9999;
@@ -8075,7 +8076,7 @@ function TrainerClients(props: {
             style={styles.clientsAddBtn}
             aria-label="add client"
           >
-            ➕
+            <HugeiconsIcon icon={PlusSignSquareIcon} size={20} strokeWidth={2.2} />
           </button>
         ) : (
           <div style={{ width: 44, height: 44 }} />
@@ -9997,16 +9998,12 @@ function TrainerSettings(props: {
     personalShowClientWeights = false,
     showBookingRow = true,
     systemExtraRows,
-    aboutCardText,
     subscriptionTabLabel,
     subscriptionItems,
     trainerHistory,
     onDeleteProfile,
   } = props;
   const tr = useTr();
-  const resolvedAboutCardText =
-    aboutCardText ??
-    tr("Здесь находится информация о вас, которая будет видна всем вашим клиентам!", "This is your info that will be visible to all your clients.");
   const resolvedSubscriptionTabLabel = subscriptionTabLabel ?? tr("Моя подписка", "My subscription");
   const [bookingMode, setBookingMode] = useState<"trainer" | "both">("trainer");
 
@@ -10090,58 +10087,60 @@ function TrainerSettings(props: {
   }
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.settingsHeader}>
-        <AvatarCircle name={name || username || tr("Пользователь", "User")} photoUrl={photoUrl} size={78} />
-        <div style={styles.profileName}>{name || tr("Пользователь", "User")}</div>
-        <div style={styles.profileSub}>{username ? `@${username}` : " "}</div>
-        <div style={styles.rolePill}>{roleLabel}</div>
+    <div style={{ ...styles.pageContainer, ...styles.settingsPage }}>
+      <div style={styles.settingsHero}>
+        <div style={styles.settingsHeroCard}>
+          <AvatarCircle name={name || username || tr("Пользователь", "User")} photoUrl={photoUrl} size={72} />
+          <div style={{ minWidth: 0 }}>
+            <div style={styles.settingsHeroName}>{name || tr("Пользователь", "User")}</div>
+            <div style={styles.settingsHeroHandle}>{username ? `@${username}` : " "}</div>
+            <div style={styles.settingsHeroRole}>{roleLabel}</div>
+          </div>
+        </div>
       </div>
 
-      <button type="button" onClick={() => setScreen("personal")} style={styles.aboutCardBtn}>
-        <div style={styles.aboutHeader}>
-          <div style={styles.aboutIcon}>✦</div>
-          <div style={styles.aboutTitle}>{tr("Личная информация", "Personal info")}</div>
-        </div>
-        <div style={styles.aboutText}>{resolvedAboutCardText}</div>
+      <button type="button" onClick={() => setScreen("personal")} style={styles.settingsPersonalRow}>
+        <div style={styles.settingsPersonalLabel}>{tr("Личная информация", "Personal info")}</div>
+        <div style={styles.settingsPersonalPlus}>+</div>
       </button>
 
-      <div style={styles.sectionHeader}>{t.settingsSystem}</div>
-      <div style={styles.listBlock}>
+      <div style={styles.settingsSectionLabel}>{t.settingsSystem}</div>
+      <div style={styles.settingsGroup}>
         {showBookingRow ? (
-          <SettingsRow
+          <SettingsRowGlass
             icon={<IconUsers />}
             title={t.settingsBooking}
             right={bookingMode === "both" ? t.bookingBoth : t.bookingTrainerOnly}
             onClick={() => setScreen("booking")}
           />
         ) : null}
-        <SettingsRow
+        <SettingsRowGlass
           icon={<IconBell />}
           title={t.settingsReminders}
           right={formatReminderLabel(reminderHours, language, t)}
           onClick={() => setScreen("reminders")}
         />
-        <SettingsRow
+        <SettingsRowGlass
           icon={<IconGlobe />}
           title={t.settingsLanguage}
           right={language === "en" ? t.languageEn : t.languageRu}
           onClick={() => setScreen("language")}
         />
-        <SettingsRow
+        <SettingsRowGlass
           icon={<IconPalette />}
           title={t.settingsTheme}
           right={theme === "dark" ? t.themeDark : t.themeLight}
           onClick={() => setScreen("theme")}
+          isLast
         />
         {systemExtraRows}
       </div>
 
       <div style={{ height: 18 }} />
 
-      <div style={styles.sectionHeader}>{t.settingsUseful}</div>
-      <div style={styles.listBlock}>
-        <SettingsRow
+      <div style={styles.settingsSectionLabel}>{t.settingsUseful}</div>
+      <div style={styles.settingsGroup}>
+        <SettingsRowGlass
           icon={<IconBox />}
           title={t.settingsHelp}
           onClick={() => {
@@ -10153,12 +10152,12 @@ function TrainerSettings(props: {
             }
           }}
         />
-        <SettingsRow
+        <SettingsRowGlass
           icon={<IconSupport />}
           title={t.settingsSupport}
           onClick={() => alert(tr("Позже добавим поддержку", "Support will be added later."))}
         />
-        <SettingsRow
+        <SettingsRowGlass
           icon={<IconLock />}
           title={t.settingsPrivacy}
           onClick={() => alert(tr("Позже добавим страницу политики", "Privacy policy page will be added later."))}
@@ -10166,11 +10165,7 @@ function TrainerSettings(props: {
         />
       </div>
       {onDeleteProfile ? (
-        <button
-          type="button"
-          onClick={onDeleteProfile}
-          style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 18 }}
-        >
+        <button type="button" onClick={onDeleteProfile} style={styles.settingsDangerBtn}>
           {t.deleteProfile}
         </button>
       ) : null}
@@ -11309,7 +11304,7 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
 }
 
 
-function SettingsRow(props: {
+function SettingsRowGlass(props: {
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
@@ -11324,22 +11319,21 @@ function SettingsRow(props: {
     <button
       onClick={onClick}
       style={{
-        ...styles.rowBtn,
-        borderBottom: isLast ? "none" : "1px solid var(--border-2)",
+        ...styles.settingsRow,
+        borderBottom: isLast ? "none" : "1px solid rgba(190, 205, 220, 0.6)",
       }}
     >
-      <div style={styles.rowLeft}>
-        <div style={styles.rowIcon}>{icon}</div>
+      <div style={styles.settingsRowLeft}>
+        <div style={styles.settingsRowIcon}>{icon}</div>
         <div style={{ textAlign: "left" }}>
-          <div style={styles.rowTitle}>{title}</div>
-          {subtitle ? <div style={styles.rowSubtitle}>{subtitle}</div> : null}
+          <div style={styles.settingsRowTitle}>{title}</div>
+          {subtitle ? <div style={styles.settingsRowSubtitle}>{subtitle}</div> : null}
         </div>
       </div>
-
-      <div style={styles.rowRight}>
-        {right ? <div style={styles.rowRightText}>{right}</div> : null}
+      <div style={styles.settingsRowRight}>
+        {right ? <div style={styles.settingsRowRightText}>{right}</div> : null}
         {!hideChevron ? (
-          <div style={styles.rowChevron}>
+          <div style={styles.settingsRowChevron}>
             <IconChevronRight />
           </div>
         ) : null}
@@ -12290,6 +12284,152 @@ const styles: Record<string, any> = {
     fontWeight: 700,
     fontSize: 12,
   },
+  settingsHero: {
+    marginTop: 6,
+  },
+  settingsHeroCard: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    padding: "16px",
+    borderRadius: 22,
+    border: "1px solid rgba(160, 190, 225, 0.6)",
+    background: "linear-gradient(135deg, rgba(160, 205, 245, 0.95), rgba(95, 160, 225, 0.95))",
+    boxShadow: "0 18px 32px rgba(62, 116, 190, 0.35)",
+    color: "#fff",
+  },
+  settingsHeroName: {
+    fontSize: 22,
+    fontWeight: 800,
+    letterSpacing: -0.3,
+    color: "#fff",
+    lineHeight: 1.1,
+  },
+  settingsHeroHandle: {
+    marginTop: 4,
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  settingsHeroRole: {
+    marginTop: 8,
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "6px 12px",
+    borderRadius: 999,
+    background: "rgba(255, 255, 255, 0.2)",
+    border: "1px solid rgba(255, 255, 255, 0.35)",
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#fff",
+  },
+  settingsPersonalRow: {
+    marginTop: 14,
+    width: "100%",
+    borderRadius: 22,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    boxShadow: "0 14px 26px rgba(15, 23, 42, 0.12)",
+    padding: "14px 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    cursor: "pointer",
+  },
+  settingsPersonalLabel: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  settingsPersonalPlus: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    border: "1px solid rgba(180, 200, 220, 0.7)",
+    background: "rgba(255, 255, 255, 0.9)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 22,
+    color: "var(--text)",
+  },
+  settingsSectionLabel: {
+    marginTop: 16,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "var(--muted)",
+  },
+  settingsGroup: {
+    marginTop: 8,
+    borderRadius: 20,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    overflow: "hidden",
+  },
+  settingsRow: {
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    padding: "14px 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    cursor: "pointer",
+  },
+  settingsRowLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    minWidth: 0,
+  },
+  settingsRowIcon: {
+    width: 28,
+    height: 28,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "var(--muted)",
+  },
+  settingsRowTitle: {
+    fontSize: 15,
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  settingsRowSubtitle: {
+    marginTop: 2,
+    fontSize: 13,
+    color: "var(--muted)",
+  },
+  settingsRowRight: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flex: "0 0 auto",
+  },
+  settingsRowRightText: {
+    fontSize: 13,
+    color: "var(--muted)",
+    fontWeight: 600,
+  },
+  settingsRowChevron: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "var(--muted)",
+  },
+  settingsDangerBtn: {
+    marginTop: 18,
+    width: "100%",
+    padding: "14px 16px",
+    borderRadius: 999,
+    border: "1px solid rgba(248, 113, 113, 0.5)",
+    background: "linear-gradient(135deg, rgba(248, 113, 113, 0.9), rgba(239, 68, 68, 0.9))",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 16,
+    cursor: "pointer",
+    boxShadow: "0 16px 26px rgba(239, 68, 68, 0.35)",
+  },
   settingsHeader: {
     display: "flex",
     flexDirection: "column",
@@ -12858,6 +12998,11 @@ const styles: Record<string, any> = {
     background:
       "radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.4), transparent 60%)," +
       "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
+  },
+  settingsPage: {
+    background:
+      "radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.45), transparent 60%)," +
+      "linear-gradient(180deg, #e3edf7 0%, #f1f5fb 45%, #ffffff 100%)",
   },
   homeIntroWork: {
     gap: 16,
