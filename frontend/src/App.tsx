@@ -6292,7 +6292,7 @@ function TrainerSchedule(props: {
   }
 
   return (
-    <div style={styles.pageContainer}>
+    <div style={{ ...styles.pageContainer, ...styles.schedulePage }}>
       <div style={styles.scheduleHeaderRow}>
         <div style={styles.scheduleTitleRow}>
           <div style={styles.pageTitle}>
@@ -12806,6 +12806,11 @@ const styles: Record<string, any> = {
       "radial-gradient(circle at 50% -20%, rgba(120, 170, 210, 0.45), transparent 60%)," +
       "linear-gradient(180deg, #e9eff4 0%, #f3f6fa 40%, #ffffff 100%)",
   },
+  schedulePage: {
+    background:
+      "radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.4), transparent 60%)," +
+      "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
+  },
   homeIntroWork: {
     gap: 16,
   },
@@ -14584,35 +14589,36 @@ const styles: Record<string, any> = {
   calendarStrip: {
     marginTop: 12,
     display: "flex",
-    gap: 8,
+    gap: 10,
     overflowX: "auto",
-    paddingBottom: 6,
+    paddingBottom: 8,
     WebkitOverflowScrolling: "touch",
   },
   calendarDay: {
     flex: "0 0 calc((100% - 32px) / 5)",
     minWidth: "calc((100% - 32px) / 5)",
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    padding: "10px 8px",
-    background: "var(--surface)",
+    borderRadius: 22,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    padding: "14px 8px",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 246, 250, 0.96))",
+    boxShadow: "0 10px 22px rgba(15, 23, 42, 0.08)",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     cursor: "pointer",
     color: "var(--text)",
   },
   calendarDayActive: {
-    background: "var(--accent)",
-    borderColor: "var(--accent)",
-    color: "var(--accent-contrast)",
+    background: "linear-gradient(180deg, rgba(217, 232, 245, 0.9), rgba(255, 255, 255, 0.96))",
+    borderColor: "rgba(156, 186, 216, 0.8)",
+    color: "#3a4b5f",
   },
   calendarDaySelected: {
-    background: "var(--surface)",
-    borderColor: "var(--accent)",
-    color: "var(--accent)",
-    boxShadow: "0 0 0 2px rgba(22, 119, 255, 0.18)",
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    borderColor: "rgba(111, 131, 246, 0.7)",
+    color: "#ffffff",
+    boxShadow: "0 12px 24px rgba(79, 124, 230, 0.35)",
   },
   calendarDayPast: {
     opacity: 0.45,
@@ -14690,23 +14696,25 @@ const styles: Record<string, any> = {
     gap: 4,
     padding: 3,
     borderRadius: 999,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "rgba(238, 243, 248, 0.9)",
+    boxShadow: "0 10px 22px rgba(15, 23, 42, 0.08)",
     flex: "0 0 auto",
   },
   scheduleViewSwitchBtn: {
     border: "none",
     background: "transparent",
     cursor: "pointer",
-    padding: "6px 12px",
+    padding: "7px 14px",
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 800,
     color: "var(--text)",
   },
   scheduleViewSwitchBtnActive: {
-    background: "var(--accent)",
-    color: "var(--accent-contrast)",
+    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    color: "#ffffff",
+    boxShadow: "0 8px 16px rgba(79, 124, 230, 0.3)",
   },
   scheduleTab: {
     flex: 1,
@@ -14818,9 +14826,10 @@ const styles: Record<string, any> = {
     background: "transparent",
   },
   scheduleWeekWrap: {
-    borderRadius: 16,
-    border: "1px solid var(--border-2)",
-    background: "var(--surface)",
+    borderRadius: 20,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
     overflow: "hidden",
     width: "100%",
     boxSizing: "border-box",
@@ -14969,8 +14978,8 @@ const styles: Record<string, any> = {
     width: 28,
     height: 28,
     borderRadius: 10,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
+    border: "1px solid rgba(170, 190, 210, 0.6)",
+    background: "rgba(245, 248, 252, 0.95)",
     cursor: "pointer",
     fontSize: 16,
     fontWeight: 700,
@@ -14979,6 +14988,7 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.06)",
   },
   trainerSelectWrap: {
     display: "flex",
@@ -15110,10 +15120,12 @@ const styles: Record<string, any> = {
   },
   sessionBanner: {
     position: "relative",
-    padding: 12,
-    borderRadius: 12,
-    border: "1px solid rgba(77, 163, 255, 0.35)",
-    background: "rgba(77, 163, 255, 0.18)",
+    padding: "14px 16px 14px 18px",
+    borderRadius: 22,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    borderLeft: "4px solid rgba(126, 175, 220, 0.9)",
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    boxShadow: "0 14px 26px rgba(15, 23, 42, 0.12)",
     color: "var(--text)",
     display: "flex",
     alignItems: "center",
@@ -15158,7 +15170,11 @@ const styles: Record<string, any> = {
     right: 12,
     fontSize: 12,
     fontWeight: 700,
-    color: "var(--accent)",
+    color: "#2f7a43",
+    background: "rgba(214, 243, 223, 0.95)",
+    padding: "4px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(140, 214, 170, 0.6)",
   },
   freeForm: {
     marginTop: 12,
