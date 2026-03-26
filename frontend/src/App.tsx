@@ -11967,6 +11967,9 @@ function GlobalStyles() {
         --glass-hero-bg: linear-gradient(135deg, rgba(160, 205, 245, 0.95), rgba(95, 160, 225, 0.95));
         --glass-hero-border: rgba(160, 190, 225, 0.6);
         --glass-hero-shadow: 0 18px 32px rgba(62, 116, 190, 0.35);
+        --home-hero-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(228, 235, 243, 0.9));
+        --home-hero-border: rgba(180, 200, 220, 0.65);
+        --home-hero-shadow: 0 24px 40px rgba(15, 23, 42, 0.08);
         --glass-card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96));
         --glass-card-border: rgba(190, 205, 220, 0.7);
         --glass-card-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
@@ -12042,6 +12045,9 @@ function GlobalStyles() {
         --glass-hero-bg: linear-gradient(135deg, rgba(36, 48, 70, 0.95), rgba(26, 36, 54, 0.95));
         --glass-hero-border: rgba(120, 150, 200, 0.25);
         --glass-hero-shadow: 0 24px 40px rgba(0, 0, 0, 0.35);
+        --home-hero-bg: linear-gradient(135deg, rgba(36, 48, 70, 0.95), rgba(26, 36, 54, 0.95));
+        --home-hero-border: rgba(120, 150, 200, 0.25);
+        --home-hero-shadow: 0 24px 40px rgba(0, 0, 0, 0.35);
         --glass-card-bg: linear-gradient(180deg, rgba(32, 42, 60, 0.9), rgba(24, 32, 46, 0.9));
         --glass-card-border: rgba(120, 150, 200, 0.25);
         --glass-card-shadow: 0 12px 22px rgba(0, 0, 0, 0.35);
@@ -13136,9 +13142,9 @@ const styles: Record<string, any> = {
   homeHero: {
     padding: "14px",
     borderRadius: 26,
-    border: "1px solid var(--glass-hero-border)",
-    background: "var(--glass-hero-bg)",
-    boxShadow: "var(--glass-hero-shadow)",
+    border: "1px solid var(--home-hero-border)",
+    background: "var(--home-hero-bg)",
+    boxShadow: "var(--home-hero-shadow)",
     display: "flex",
     flexDirection: "column",
     gap: 12,
