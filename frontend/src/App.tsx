@@ -3139,38 +3139,7 @@ function TrainerHome({
           <div style={styles.statsBlock}>
             <div style={styles.statsHeader}>
               <div style={styles.statsHeaderLeft} />
-              <div style={styles.statsHeaderRight}>
-                <button
-                  type="button"
-                  style={styles.statsRangeBtn}
-                  onClick={() => setStatsRangeOpen((prev) => !prev)}
-                >
-                  ⏱
-                </button>
-                <button type="button" style={styles.statsInfo} onClick={() => setStatsInfoOpen(true)}>
-                  i
-                </button>
-                {statsRangeOpen ? (
-                  <div style={styles.statsRangeMenu}>
-                    {[7, 14].map((value) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          setStatsRange(value as 7 | 14);
-                          setStatsRangeOpen(false);
-                        }}
-                        style={{
-                          ...styles.statsRangeOption,
-                          ...(statsRange === value ? styles.statsRangeOptionActive : null),
-                        }}
-                      >
-                        {tr(`${value} дней`, `${value} days`)}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+              <div style={styles.statsHeaderRight} />
             </div>
             <div style={styles.statsControls}>
               <div style={styles.statsModeGroup}>
@@ -3231,25 +3200,61 @@ function TrainerHome({
               </div>
             </div>
             <div style={styles.statsSummary}>
-              <div style={styles.statsSummaryItem}>
-                <div style={styles.statsSummaryLabel}>
-                  <span style={{ ...styles.statsSummaryDot, background: "#D7DEE8" }} />
-                  {tr("Запланировано", "Planned")}
+              <div style={styles.statsSummaryRow}>
+                <div style={styles.statsSummaryGrid}>
+                  <div style={styles.statsSummaryItem}>
+                    <div style={styles.statsSummaryLabel}>
+                      <span style={{ ...styles.statsSummaryDot, background: "#D7DEE8" }} />
+                      {tr("Запланировано", "Planned")}
+                    </div>
+                    <div style={styles.statsSummaryValue}>
+                      {statsMode === "money" ? formatMoney(statsPlannedValue) : statsPlannedValue}
+                    </div>
+                    {renderStatsTrend(plannedTrend)}
+                  </div>
+                  <div style={styles.statsSummaryItem}>
+                    <div style={styles.statsSummaryLabel}>
+                      <span style={{ ...styles.statsSummaryDot, background: "#1E6BFF" }} />
+                      {tr("Проведено", "Completed")}
+                    </div>
+                    <div style={styles.statsSummaryValue}>
+                      {statsMode === "money" ? formatMoney(statsDoneValue) : statsDoneValue}
+                    </div>
+                    {renderStatsTrend(doneTrend)}
+                  </div>
                 </div>
-                <div style={styles.statsSummaryValue}>
-                  {statsMode === "money" ? formatMoney(statsPlannedValue) : statsPlannedValue}
+                <div style={styles.statsSummarySide}>
+                  <button
+                    type="button"
+                    style={styles.statsRangeBtn}
+                    onClick={() => setStatsRangeOpen((prev) => !prev)}
+                  >
+                    ⏱
+                  </button>
+                  <button type="button" style={styles.statsInfo} onClick={() => setStatsInfoOpen(true)}>
+                    i
+                  </button>
+                  {statsRangeOpen ? (
+                    <div style={styles.statsRangeMenu}>
+                      {[7, 14].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            setStatsRange(value as 7 | 14);
+                            setStatsRangeOpen(false);
+                          }}
+                          style={{
+                            ...styles.statsRangeOption,
+                            ...(statsRange === value ? styles.statsRangeOptionActive : null),
+                          }}
+                        >
+                          {tr(`${value} дней`, `${value} days`)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-                {renderStatsTrend(plannedTrend)}
-              </div>
-              <div style={styles.statsSummaryItem}>
-                <div style={styles.statsSummaryLabel}>
-                  <span style={{ ...styles.statsSummaryDot, background: "#1E6BFF" }} />
-                  {tr("Проведено", "Completed")}
-                </div>
-                <div style={styles.statsSummaryValue}>
-                  {statsMode === "money" ? formatMoney(statsDoneValue) : statsDoneValue}
-                </div>
-                {renderStatsTrend(doneTrend)}
               </div>
             </div>
             <div style={styles.statsChart}>
@@ -13502,31 +13507,31 @@ const styles: Record<string, any> = {
   },
   homeSubscriptionBlock: {
     marginTop: 12,
-    padding: "12px",
-    borderRadius: 20,
+    padding: "14px",
+    borderRadius: 22,
     border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
+    boxShadow: "0 14px 24px rgba(15, 23, 42, 0.1)",
   },
   homeSubscriptionRow: {
     marginTop: 8,
-    padding: "10px 12px",
-    borderRadius: 16,
+    padding: "12px 14px",
+    borderRadius: 999,
     border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
   },
   homeSubscriptionLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: 600,
     color: "var(--muted)",
   },
   homeSubscriptionValue: {
-    fontSize: 14,
-    fontWeight: 700,
+    fontSize: 16,
+    fontWeight: 800,
     color: "var(--text)",
   },
   statsBlock: {
@@ -13738,10 +13743,32 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(190, 205, 220, 0.7)",
     background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
     padding: "14px 16px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+  },
+  statsSummaryRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 16,
+    width: "100%",
+  },
+  statsSummaryGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: 12,
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    flex: 1,
+  },
+  statsSummarySide: {
+    position: "relative",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "flex-start",
   },
   statsSummaryItem: {
     display: "flex",
@@ -14121,13 +14148,14 @@ const styles: Record<string, any> = {
     gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: 6,
     padding: 6,
-    borderRadius: 14,
-    border: "1px solid var(--border)",
-    background: "rgba(148, 163, 184, 0.08)",
+    borderRadius: 999,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
   },
   tariffToggleBtn: {
     padding: "8px 10px",
-    borderRadius: 10,
+    borderRadius: 999,
     border: "none",
     background: "transparent",
     color: "var(--muted)",
@@ -14136,9 +14164,9 @@ const styles: Record<string, any> = {
     cursor: "pointer",
   },
   tariffToggleBtnActive: {
-    background: "var(--surface)",
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
     color: "var(--text)",
-    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.08)",
+    boxShadow: "0 8px 16px rgba(15, 23, 42, 0.08)",
   },
   tariffScroller: {
     marginTop: 10,
@@ -14150,14 +14178,14 @@ const styles: Record<string, any> = {
     scrollSnapType: "x mandatory",
   },
   tariffCard: {
-    minWidth: "100%",
-    width: "100%",
+    minWidth: "48%",
+    width: "48%",
     flex: "0 0 auto",
     padding: "14px 14px 16px",
-    borderRadius: 14,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
-    boxShadow: "0 6px 20px rgba(15, 23, 42, 0.06)",
+    borderRadius: 20,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
     boxSizing: "border-box",
     scrollSnapAlign: "start",
     display: "flex",
@@ -14167,15 +14195,16 @@ const styles: Record<string, any> = {
   tariffBadge: {
     padding: "6px 12px",
     borderRadius: 999,
-    color: "white",
+    color: "var(--text)",
     fontWeight: 700,
     fontSize: 12,
     letterSpacing: 0.2,
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
   },
   tariffPrice: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 800,
-    color: "var(--text)",
+    color: "#5a8fe0",
   },
   tariffPriceRow: {
     marginTop: 10,
@@ -14217,16 +14246,16 @@ const styles: Record<string, any> = {
     height: 6,
     marginTop: 6,
     borderRadius: "50%",
-    background: "rgba(77, 163, 255, 0.6)",
+    background: "rgba(120, 165, 230, 0.7)",
     flex: "0 0 auto",
   },
   tariffChoose: {
     marginTop: 12,
     alignSelf: "stretch",
     padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid var(--primary)",
-    background: "transparent",
+    borderRadius: 999,
+    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
     fontWeight: 700,
     cursor: "pointer",
   },
