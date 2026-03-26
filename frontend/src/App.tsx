@@ -10198,42 +10198,49 @@ function ThemeSchemeScreen(props: {
 }) {
   const { onBack, theme, setTheme, t } = props;
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.topBar}>
-        {typeof WebApp?.BackButton?.show === "function" ? (
-          <div style={{ width: 36 }} />
-        ) : (
+    <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
+      <div style={styles.bookingHeader}>
+        {typeof WebApp?.BackButton?.show === "function" ? null : (
           <button onClick={onBack} style={styles.backBtnInline} aria-label="back">
             <IconArrowLeft />
           </button>
         )}
-        <div style={styles.topBarTitle}>{t.settingsTheme}</div>
-        <div style={{ width: 36 }} />
+        <div style={styles.bookingTitle}>{t.settingsTheme}</div>
       </div>
-      <div style={styles.topBarDivider} />
-
-      <div style={styles.themeTabs}>
+      <div style={styles.bookingOptionsRow}>
         <button
           type="button"
           onClick={() => setTheme("light")}
           style={{
-            ...styles.scheduleTab,
-            ...(theme === "light" ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
+            ...styles.bookingOptionCard,
+            ...(theme === "light" ? styles.bookingOptionCardActive : null),
           }}
         >
-          {t.themeLight}
+          <span
+            style={{
+              ...styles.bookingOptionText,
+              ...(theme === "light" ? styles.bookingOptionTextActive : null),
+            }}
+          >
+            {t.themeLight}
+          </span>
         </button>
         <button
           type="button"
           onClick={() => setTheme("dark")}
           style={{
-            ...styles.scheduleTab,
-            ...(theme === "dark" ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
+            ...styles.bookingOptionCard,
+            ...(theme === "dark" ? styles.bookingOptionCardActive : null),
           }}
         >
-          {t.themeDark}
+          <span
+            style={{
+              ...styles.bookingOptionText,
+              ...(theme === "dark" ? styles.bookingOptionTextActive : null),
+            }}
+          >
+            {t.themeDark}
+          </span>
         </button>
       </div>
     </div>
@@ -10349,42 +10356,49 @@ function LanguageScreen(props: {
 }) {
   const { onBack, language, setLanguage, t } = props;
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.topBar}>
-        {typeof WebApp?.BackButton?.show === "function" ? (
-          <div style={{ width: 36 }} />
-        ) : (
+    <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
+      <div style={styles.bookingHeader}>
+        {typeof WebApp?.BackButton?.show === "function" ? null : (
           <button onClick={onBack} style={styles.backBtnInline} aria-label="back">
             <IconArrowLeft />
           </button>
         )}
-        <div style={styles.topBarTitle}>{t.languageTitle}</div>
-        <div style={{ width: 36 }} />
+        <div style={styles.bookingTitle}>{t.languageTitle}</div>
       </div>
-      <div style={styles.topBarDivider} />
-
-      <div style={styles.themeTabs}>
+      <div style={styles.bookingOptionsRow}>
         <button
           type="button"
           onClick={() => setLanguage("ru")}
           style={{
-            ...styles.scheduleTab,
-            ...(language === "ru" ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
+            ...styles.bookingOptionCard,
+            ...(language === "ru" ? styles.bookingOptionCardActive : null),
           }}
         >
-          {t.languageRu}
+          <span
+            style={{
+              ...styles.bookingOptionText,
+              ...(language === "ru" ? styles.bookingOptionTextActive : null),
+            }}
+          >
+            {t.languageRu}
+          </span>
         </button>
         <button
           type="button"
           onClick={() => setLanguage("en")}
           style={{
-            ...styles.scheduleTab,
-            ...(language === "en" ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
+            ...styles.bookingOptionCard,
+            ...(language === "en" ? styles.bookingOptionCardActive : null),
           }}
         >
-          {t.languageEn}
+          <span
+            style={{
+              ...styles.bookingOptionText,
+              ...(language === "en" ? styles.bookingOptionTextActive : null),
+            }}
+          >
+            {t.languageEn}
+          </span>
         </button>
       </div>
     </div>
@@ -12009,6 +12023,12 @@ function GlobalStyles() {
         --hero-chip-border: rgba(255, 255, 255, 0.35);
         --booking-card-active-text: #ffffff;
         --booking-card-active-text-shadow: 0 6px 14px rgba(35, 80, 140, 0.35);
+        --booking-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(230, 238, 246, 0.8));
+        --booking-card-border: rgba(255, 255, 255, 0.85);
+        --booking-card-shadow: 0 18px 30px rgba(120, 150, 190, 0.2);
+        --booking-card-active-bg: radial-gradient(circle at 40% 35%, rgba(170, 220, 255, 0.95), rgba(120, 185, 245, 0.9));
+        --booking-card-active-border: rgba(130, 190, 235, 0.8);
+        --booking-card-active-shadow: 0 22px 36px rgba(90, 150, 220, 0.35);
         --keyboard-inset: 0px;
         color-scheme: light;
       }
@@ -12089,6 +12109,12 @@ function GlobalStyles() {
         --hero-chip-border: rgba(255, 255, 255, 0.18);
         --booking-card-active-text: #ffffff;
         --booking-card-active-text-shadow: 0 6px 14px rgba(8, 20, 40, 0.55);
+        --booking-card-bg: linear-gradient(135deg, rgba(36, 46, 64, 0.85), rgba(26, 34, 48, 0.9));
+        --booking-card-border: rgba(120, 150, 200, 0.25);
+        --booking-card-shadow: 0 18px 30px rgba(0, 0, 0, 0.4);
+        --booking-card-active-bg: radial-gradient(circle at 40% 35%, rgba(90, 140, 220, 0.9), rgba(60, 100, 180, 0.85));
+        --booking-card-active-border: rgba(120, 170, 230, 0.6);
+        --booking-card-active-shadow: 0 22px 36px rgba(20, 40, 80, 0.55);
         color-scheme: dark;
       }
       input, textarea { caret-color: var(--text); font-size: 16px; }
@@ -13153,40 +13179,42 @@ const styles: Record<string, any> = {
     marginBottom: 28,
   },
   bookingTitle: {
-    fontSize: 38,
-    fontWeight: 500,
-    letterSpacing: -0.6,
+    fontSize: 40,
+    fontWeight: 400,
+    letterSpacing: -0.9,
     lineHeight: 1.05,
     color: "var(--text)",
     textAlign: "left",
     paddingLeft: 2,
   },
   bookingOptionsRow: {
-    marginTop: 16,
+    marginTop: 28,
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 18,
+    gap: 22,
     alignItems: "center",
   },
   bookingOptionCard: {
-    border: "1px solid var(--glass-card-border)",
-    background: "var(--glass-card-bg)",
-    boxShadow: "var(--glass-card-shadow)",
-    borderRadius: 36,
-    minHeight: 180,
+    border: "1px solid var(--booking-card-border)",
+    background: "var(--booking-card-bg)",
+    boxShadow: "var(--booking-card-shadow)",
+    borderRadius: 44,
+    minHeight: 210,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     padding: "18px 16px",
     cursor: "pointer",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
   },
   bookingOptionCardActive: {
-    borderColor: "rgba(130, 175, 220, 0.7)",
-    background: "var(--accent-grad)",
-    boxShadow: "var(--accent-shadow)",
+    borderColor: "var(--booking-card-active-border)",
+    background: "var(--booking-card-active-bg)",
+    boxShadow: "var(--booking-card-active-shadow)",
   },
   bookingOptionText: {
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: 500,
     color: "var(--text)",
     textAlign: "center",
