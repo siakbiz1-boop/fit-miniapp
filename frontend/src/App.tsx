@@ -1587,7 +1587,7 @@ export default function App() {
                   style={{
                     ...styles.navIconWrap,
                     ...(activeTab === "home" ? styles.navIconWrapActive : null),
-                    color: activeTab === "home" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
                   }}
                 >
                   <IconHome />
@@ -1595,7 +1595,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "home" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "home" ? "var(--accent)" : "var(--muted)",
                     fontWeight: activeTab === "home" ? 700 : 600,
                   }}
                 >
@@ -1611,7 +1611,7 @@ export default function App() {
                   style={{
                     ...styles.navIconWrap,
                     ...(activeTab === "schedule" ? styles.navIconWrapActive : null),
-                    color: activeTab === "schedule" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
                   }}
                 >
                   <IconCalendar />
@@ -1619,7 +1619,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "schedule" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "schedule" ? "var(--accent)" : "var(--muted)",
                     fontWeight: activeTab === "schedule" ? 700 : 600,
                   }}
                 >
@@ -1648,7 +1648,7 @@ export default function App() {
                   style={{
                     ...styles.navIconWrap,
                     ...(activeTab === "clients" ? styles.navIconWrapActive : null),
-                    color: activeTab === "clients" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
                   }}
                 >
                   <IconUsers />
@@ -1656,7 +1656,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "clients" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "clients" ? "var(--accent)" : "var(--muted)",
                     fontWeight: activeTab === "clients" ? 700 : 600,
                   }}
                 >
@@ -1672,7 +1672,7 @@ export default function App() {
                   style={{
                     ...styles.navIconWrap,
                     ...(activeTab === "settings" ? styles.navIconWrapActive : null),
-                    color: activeTab === "settings" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
                   }}
                 >
                   <IconSettings />
@@ -1680,7 +1680,7 @@ export default function App() {
                 <div
                   style={{
                     ...styles.navLabel,
-                    color: activeTab === "settings" ? "#5a8fe0" : "#8a96a8",
+                  color: activeTab === "settings" ? "var(--accent)" : "var(--muted)",
                     fontWeight: activeTab === "settings" ? 700 : 600,
                   }}
                 >
@@ -11404,8 +11404,8 @@ function BottomNav<T extends string>(props: {
     <div style={{ ...styles.bottomNav, display: hidden ? "none" : "flex" }}>
       {items.map((it) => {
         const isActive = it.id === active;
-        const iconColor = isActive ? "#5a8fe0" : "#8a96a8";
-        const labelColor = isActive ? "#5a8fe0" : "#8a96a8";
+        const iconColor = isActive ? "var(--accent)" : "var(--muted)";
+        const labelColor = isActive ? "var(--accent)" : "var(--muted)";
 
         return (
           <button
@@ -11954,6 +11954,49 @@ function GlobalStyles() {
         --notes-empty-bg: rgba(255, 255, 255, 0.6);
         --notes-empty-border: rgba(255, 255, 255, 0.7);
         --notes-empty-text: #3f4a5a;
+        --trainer-bg-home: radial-gradient(circle at 50% -20%, rgba(120, 170, 210, 0.45), transparent 60%),
+          linear-gradient(180deg, #e9eff4 0%, #f3f6fa 40%, #ffffff 100%);
+        --trainer-bg-schedule: radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.4), transparent 60%),
+          linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%);
+        --trainer-bg-clients: radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.35), transparent 60%),
+          linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%);
+        --trainer-bg-add-client: radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.4), transparent 60%),
+          linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%);
+        --trainer-bg-settings: radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.45), transparent 60%),
+          linear-gradient(180deg, #e3edf7 0%, #f1f5fb 45%, #ffffff 100%);
+        --glass-hero-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(228, 235, 243, 0.9));
+        --glass-hero-border: rgba(180, 200, 220, 0.65);
+        --glass-hero-shadow: 0 24px 40px rgba(15, 23, 42, 0.08);
+        --glass-card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96));
+        --glass-card-border: rgba(190, 205, 220, 0.7);
+        --glass-card-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
+        --glass-pill-bg: rgba(245, 248, 252, 0.9);
+        --glass-pill-border: rgba(130, 160, 200, 0.45);
+        --glass-pill-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+        --glass-tab-wrap-bg: rgba(240, 245, 250, 0.9);
+        --glass-tab-wrap-border: rgba(170, 190, 210, 0.5);
+        --glass-tab-active-bg: linear-gradient(135deg, #6f83f6, #7ccfe6);
+        --glass-tab-active-shadow: 0 12px 22px rgba(79, 124, 230, 0.35);
+        --glass-tab-active-text: #ffffff;
+        --glass-btn-bg: linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96));
+        --glass-btn-border: rgba(190, 205, 220, 0.7);
+        --glass-btn-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+        --glass-sheet-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98));
+        --glass-sheet-shadow: 0 -18px 30px rgba(15, 23, 42, 0.18);
+        --accent-grad: linear-gradient(135deg, #6f83f6, #7ccfe6);
+        --accent-shadow: 0 18px 30px rgba(79, 124, 230, 0.35);
+        --accent-soft-bg: linear-gradient(180deg, rgba(217, 232, 245, 0.9), rgba(255, 255, 255, 0.96));
+        --accent-soft-border: rgba(156, 186, 216, 0.8);
+        --accent-soft-text: #3a4b5f;
+        --bottom-nav-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 244, 246, 0.98));
+        --bottom-nav-border: rgba(200, 210, 220, 0.6);
+        --bottom-nav-shadow: 0 -18px 36px rgba(15, 23, 42, 0.12);
+        --glass-menu-bg: linear-gradient(140deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.65) 45%, rgba(255, 255, 255, 0.5) 100%);
+        --glass-menu-border: rgba(255, 255, 255, 0.7);
+        --glass-menu-btn-bg: rgba(255, 255, 255, 0.62);
+        --glass-menu-btn-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9), 0 6px 12px rgba(15, 23, 42, 0.08);
+        --hero-chip-bg: rgba(255, 255, 255, 0.2);
+        --hero-chip-border: rgba(255, 255, 255, 0.35);
         --keyboard-inset: 0px;
         color-scheme: light;
       }
@@ -11986,6 +12029,49 @@ function GlobalStyles() {
         --notes-empty-bg: rgba(20, 26, 36, 0.6);
         --notes-empty-border: rgba(120, 150, 210, 0.2);
         --notes-empty-text: #b8c2d2;
+        --trainer-bg-home: radial-gradient(circle at 50% -20%, rgba(80, 120, 170, 0.3), transparent 60%),
+          linear-gradient(180deg, #1b2432 0%, #151b24 45%, #0f141c 100%);
+        --trainer-bg-schedule: radial-gradient(circle at 50% -15%, rgba(70, 110, 160, 0.25), transparent 60%),
+          linear-gradient(180deg, #182231 0%, #141a24 45%, #0f141c 100%);
+        --trainer-bg-clients: radial-gradient(circle at 50% -15%, rgba(70, 110, 160, 0.22), transparent 60%),
+          linear-gradient(180deg, #182231 0%, #141a24 45%, #0f141c 100%);
+        --trainer-bg-add-client: radial-gradient(circle at 50% -10%, rgba(70, 110, 160, 0.25), transparent 60%),
+          linear-gradient(180deg, #182231 0%, #141a24 45%, #0f141c 100%);
+        --trainer-bg-settings: radial-gradient(circle at 50% -10%, rgba(80, 120, 170, 0.28), transparent 60%),
+          linear-gradient(180deg, #192434 0%, #141a24 45%, #0f141c 100%);
+        --glass-hero-bg: linear-gradient(135deg, rgba(36, 48, 70, 0.95), rgba(26, 36, 54, 0.95));
+        --glass-hero-border: rgba(120, 150, 200, 0.25);
+        --glass-hero-shadow: 0 24px 40px rgba(0, 0, 0, 0.35);
+        --glass-card-bg: linear-gradient(180deg, rgba(32, 42, 60, 0.9), rgba(24, 32, 46, 0.9));
+        --glass-card-border: rgba(120, 150, 200, 0.25);
+        --glass-card-shadow: 0 12px 22px rgba(0, 0, 0, 0.35);
+        --glass-pill-bg: rgba(28, 38, 54, 0.9);
+        --glass-pill-border: rgba(120, 150, 200, 0.25);
+        --glass-pill-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+        --glass-tab-wrap-bg: rgba(26, 36, 52, 0.9);
+        --glass-tab-wrap-border: rgba(120, 150, 200, 0.25);
+        --glass-tab-active-bg: linear-gradient(135deg, #4f7bff, #5bb7ff);
+        --glass-tab-active-shadow: 0 12px 22px rgba(60, 120, 220, 0.35);
+        --glass-tab-active-text: #ffffff;
+        --glass-btn-bg: linear-gradient(135deg, rgba(36, 48, 70, 0.9), rgba(30, 40, 58, 0.9));
+        --glass-btn-border: rgba(120, 150, 200, 0.25);
+        --glass-btn-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
+        --glass-sheet-bg: linear-gradient(180deg, rgba(30, 40, 56, 0.98), rgba(20, 28, 40, 0.98));
+        --glass-sheet-shadow: 0 -18px 30px rgba(0, 0, 0, 0.5);
+        --accent-grad: linear-gradient(135deg, #5d7bff, #5bb7ff);
+        --accent-shadow: 0 18px 30px rgba(40, 90, 180, 0.45);
+        --accent-soft-bg: linear-gradient(180deg, rgba(47, 74, 120, 0.5), rgba(28, 40, 58, 0.65));
+        --accent-soft-border: rgba(90, 120, 180, 0.55);
+        --accent-soft-text: #d6e2f5;
+        --bottom-nav-bg: linear-gradient(180deg, rgba(28, 34, 44, 0.98), rgba(18, 22, 30, 0.98));
+        --bottom-nav-border: rgba(70, 85, 110, 0.6);
+        --bottom-nav-shadow: 0 -18px 36px rgba(0, 0, 0, 0.45);
+        --glass-menu-bg: linear-gradient(140deg, rgba(30, 40, 56, 0.9) 0%, rgba(24, 32, 46, 0.8) 45%, rgba(20, 28, 40, 0.75) 100%);
+        --glass-menu-border: rgba(120, 150, 200, 0.2);
+        --glass-menu-btn-bg: rgba(30, 40, 56, 0.7);
+        --glass-menu-btn-shadow: inset 0 1px 2px rgba(120, 150, 200, 0.08), 0 6px 12px rgba(0, 0, 0, 0.35);
+        --hero-chip-bg: rgba(255, 255, 255, 0.08);
+        --hero-chip-border: rgba(255, 255, 255, 0.18);
         color-scheme: dark;
       }
       input, textarea { caret-color: var(--text); font-size: 16px; }
@@ -12337,9 +12423,9 @@ const styles: Record<string, any> = {
     gap: 16,
     padding: "16px",
     borderRadius: 22,
-    border: "1px solid rgba(160, 190, 225, 0.6)",
-    background: "linear-gradient(135deg, rgba(160, 205, 245, 0.95), rgba(95, 160, 225, 0.95))",
-    boxShadow: "0 18px 32px rgba(62, 116, 190, 0.35)",
+    border: "1px solid var(--glass-hero-border)",
+    background: "var(--glass-hero-bg)",
+    boxShadow: "var(--glass-hero-shadow)",
     color: "#fff",
   },
   settingsHeroName: {
@@ -12360,8 +12446,8 @@ const styles: Record<string, any> = {
     alignItems: "center",
     padding: "6px 12px",
     borderRadius: 999,
-    background: "rgba(255, 255, 255, 0.2)",
-    border: "1px solid rgba(255, 255, 255, 0.35)",
+    background: "var(--hero-chip-bg)",
+    border: "1px solid var(--hero-chip-border)",
     fontSize: 12,
     fontWeight: 700,
     color: "#fff",
@@ -12370,9 +12456,9 @@ const styles: Record<string, any> = {
     marginTop: 14,
     width: "100%",
     borderRadius: 22,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
-    boxShadow: "0 14px 26px rgba(15, 23, 42, 0.12)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     padding: "14px 16px",
     display: "flex",
     alignItems: "center",
@@ -12388,8 +12474,8 @@ const styles: Record<string, any> = {
     width: 36,
     height: 36,
     borderRadius: 999,
-    border: "1px solid rgba(180, 200, 220, 0.7)",
-    background: "rgba(255, 255, 255, 0.9)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -12405,9 +12491,9 @@ const styles: Record<string, any> = {
   settingsGroup: {
     marginTop: 8,
     borderRadius: 20,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     overflow: "hidden",
   },
   settingsRow: {
@@ -12607,9 +12693,9 @@ const styles: Record<string, any> = {
   },
   clientsCard: {
     borderRadius: 24,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
-    boxShadow: "0 16px 28px rgba(15, 23, 42, 0.12)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     padding: "8px 10px",
     display: "flex",
     alignItems: "center",
@@ -12644,11 +12730,11 @@ const styles: Record<string, any> = {
     width: 52,
     height: 52,
     borderRadius: "50%",
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    background: "var(--accent-grad)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 10px 20px rgba(79, 124, 230, 0.35)",
+    boxShadow: "var(--accent-shadow)",
     color: "#ffffff",
     fontWeight: 800,
     fontSize: 22,
@@ -13024,29 +13110,19 @@ const styles: Record<string, any> = {
     maxWidth: "100%",
   },
   homeWorkPage: {
-    background:
-      "radial-gradient(circle at 50% -20%, rgba(120, 170, 210, 0.45), transparent 60%)," +
-      "linear-gradient(180deg, #e9eff4 0%, #f3f6fa 40%, #ffffff 100%)",
+    background: "var(--trainer-bg-home)",
   },
   schedulePage: {
-    background:
-      "radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.4), transparent 60%)," +
-      "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
+    background: "var(--trainer-bg-schedule)",
   },
   clientsPage: {
-    background:
-      "radial-gradient(circle at 50% -15%, rgba(120, 170, 210, 0.35), transparent 60%)," +
-      "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
+    background: "var(--trainer-bg-clients)",
   },
   addClientPage: {
-    background:
-      "radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.4), transparent 60%)," +
-      "linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%)",
+    background: "var(--trainer-bg-add-client)",
   },
   settingsPage: {
-    background:
-      "radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.45), transparent 60%)," +
-      "linear-gradient(180deg, #e3edf7 0%, #f1f5fb 45%, #ffffff 100%)",
+    background: "var(--trainer-bg-settings)",
   },
   homeIntroWork: {
     gap: 16,
@@ -13060,9 +13136,9 @@ const styles: Record<string, any> = {
   homeHero: {
     padding: "14px",
     borderRadius: 26,
-    border: "1px solid rgba(180, 200, 220, 0.65)",
-    background: "linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(228, 235, 243, 0.9))",
-    boxShadow: "0 24px 40px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-hero-border)",
+    background: "var(--glass-hero-bg)",
+    boxShadow: "var(--glass-hero-shadow)",
     display: "flex",
     flexDirection: "column",
     gap: 12,
@@ -13086,27 +13162,27 @@ const styles: Record<string, any> = {
   },
   homeHeroSubtitle: {
     fontSize: 14,
-    color: "#6b7280",
+    color: "var(--muted)",
   },
   homeNotesBtn: {
-    border: "1px solid rgba(130, 160, 200, 0.45)",
-    background: "rgba(245, 248, 252, 0.9)",
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
     color: "var(--text)",
     padding: "6px 12px",
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
-    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-pill-shadow)",
   },
   homeStatusPill: {
     padding: "6px 12px",
     borderRadius: 999,
-    border: "1px solid rgba(130, 160, 200, 0.35)",
-    background: "rgba(245, 248, 252, 0.9)",
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
     fontSize: 12,
     fontWeight: 700,
-    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.06)",
+    boxShadow: "var(--glass-pill-shadow)",
   },
   homeTabs: {
     display: "flex",
@@ -13114,8 +13190,8 @@ const styles: Record<string, any> = {
     gap: 6,
     padding: 6,
     borderRadius: 999,
-    border: "1px solid rgba(170, 190, 210, 0.5)",
-    background: "rgba(240, 245, 250, 0.9)",
+    border: "1px solid var(--glass-tab-wrap-border)",
+    background: "var(--glass-tab-wrap-bg)",
   },
   homeTab: {
     flex: 1,
@@ -13133,9 +13209,9 @@ const styles: Record<string, any> = {
     textOverflow: "ellipsis",
   },
   homeTabActive: {
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
-    color: "#fff",
-    boxShadow: "0 12px 22px rgba(79, 124, 230, 0.35)",
+    background: "var(--glass-tab-active-bg)",
+    color: "var(--glass-tab-active-text)",
+    boxShadow: "var(--glass-tab-active-shadow)",
   },
   homeStatusChip: {
     padding: "6px 10px",
@@ -13341,8 +13417,8 @@ const styles: Record<string, any> = {
     padding: "18px 18px 16px",
     borderRadius: 26,
     border: "1px solid rgba(110, 135, 220, 0.5)",
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
-    boxShadow: "0 20px 34px rgba(79, 124, 230, 0.35)",
+    background: "var(--accent-grad)",
+    boxShadow: "var(--accent-shadow)",
     width: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
@@ -13368,7 +13444,7 @@ const styles: Record<string, any> = {
     gap: 6,
     padding: "4px 10px",
     borderRadius: 999,
-    background: "rgba(240, 248, 255, 0.95)",
+    background: "var(--glass-pill-bg)",
     fontSize: 12,
     fontWeight: 700,
   },
@@ -13483,9 +13559,9 @@ const styles: Record<string, any> = {
   homeStatsCard: {
     padding: "14px 16px",
     borderRadius: 18,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     display: "flex",
     flexDirection: "column",
     gap: 6,
@@ -13544,9 +13620,9 @@ const styles: Record<string, any> = {
   homeWeekCardWork: {
     padding: "14px 16px",
     borderRadius: 20,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -13580,16 +13656,16 @@ const styles: Record<string, any> = {
     marginTop: 12,
     padding: "14px",
     borderRadius: 22,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
-    boxShadow: "0 14px 24px rgba(15, 23, 42, 0.1)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   homeSubscriptionRow: {
     marginTop: 8,
     padding: "12px 14px",
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -13629,29 +13705,29 @@ const styles: Record<string, any> = {
     width: 34,
     height: 34,
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     color: "var(--text)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
     fontSize: 14,
-    boxShadow: "0 10px 18px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
   statsInfo: {
     width: 28,
     height: 28,
     borderRadius: "50%",
-    border: "1px solid rgba(190, 205, 220, 0.7)",
+    border: "1px solid var(--glass-btn-border)",
     color: "var(--muted)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    background: "var(--glass-btn-bg)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontWeight: 700,
     cursor: "pointer",
-    boxShadow: "0 10px 18px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
   statsInfoOverlay: {
     position: "fixed",
@@ -13665,11 +13741,11 @@ const styles: Record<string, any> = {
   statsInfoSheet: {
     width: "100%",
     maxWidth: 520,
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
+    background: "var(--glass-sheet-bg)",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: "16px 18px 18px",
-    boxShadow: "0 -18px 30px rgba(15, 23, 42, 0.18)",
+    boxShadow: "var(--glass-sheet-shadow)",
     position: "relative",
     minHeight: "34vh",
   },
@@ -13680,8 +13756,8 @@ const styles: Record<string, any> = {
     width: 32,
     height: 32,
     borderRadius: "50%",
-    border: "1px solid rgba(170, 190, 210, 0.6)",
-    background: "rgba(245, 248, 252, 0.95)",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     color: "var(--muted)",
     display: "flex",
     alignItems: "center",
@@ -13726,11 +13802,11 @@ const styles: Record<string, any> = {
     position: "absolute",
     top: 36,
     right: 0,
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
-    border: "1px solid rgba(190, 205, 220, 0.7)",
+    background: "var(--glass-sheet-bg)",
+    border: "1px solid var(--glass-card-border)",
     borderRadius: 12,
     padding: 6,
-    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.12)",
+    boxShadow: "var(--glass-card-shadow)",
     display: "flex",
     flexDirection: "column",
     gap: 4,
@@ -13762,9 +13838,9 @@ const styles: Record<string, any> = {
     gap: 6,
     padding: 6,
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
-    boxShadow: "0 10px 18px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   statsModeBtn: {
     padding: "6px 14px",
@@ -13776,9 +13852,9 @@ const styles: Record<string, any> = {
     cursor: "pointer",
   },
   statsModeBtnActive: {
-    background: "linear-gradient(135deg, #9cc9ff, #7fb7ff)",
+    background: "var(--glass-tab-active-bg)",
     color: "#ffffff",
-    boxShadow: "0 10px 18px rgba(110, 160, 230, 0.35)",
+    boxShadow: "var(--glass-tab-active-shadow)",
   },
   statsDatePicker: {
     display: "flex",
@@ -13789,8 +13865,8 @@ const styles: Record<string, any> = {
     width: 36,
     height: 36,
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     fontSize: 18,
     cursor: "pointer",
     color: "var(--text)",
@@ -13799,7 +13875,7 @@ const styles: Record<string, any> = {
     justifyContent: "center",
     lineHeight: 1,
     padding: 0,
-    boxShadow: "0 10px 18px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
   statsDateLabel: {
     fontSize: 16,
@@ -13811,14 +13887,14 @@ const styles: Record<string, any> = {
   },
   statsSummary: {
     borderRadius: 18,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
     padding: "14px 16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   statsSummaryRow: {
     display: "flex",
@@ -13887,11 +13963,11 @@ const styles: Record<string, any> = {
   },
   statsChart: {
     borderRadius: 22,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
     padding: "16px 14px 12px",
     position: "relative",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   statsChartGrid: {
     position: "relative",
@@ -14017,14 +14093,14 @@ const styles: Record<string, any> = {
   },
   financeCard: {
     borderRadius: 18,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
     padding: "14px 16px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   financeLabel: {
     fontSize: 13,
@@ -14040,23 +14116,23 @@ const styles: Record<string, any> = {
   financeBtn: {
     padding: "10px 16px",
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     color: "var(--text)",
     fontWeight: 700,
     fontSize: 14,
     cursor: "pointer",
     whiteSpace: "nowrap",
-    boxShadow: "0 10px 18px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
   financeSheet: {
     width: "100%",
     maxWidth: 520,
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
+    background: "var(--glass-sheet-bg)",
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: "14px 18px 18px",
-    boxShadow: "0 -18px 30px rgba(15, 23, 42, 0.18)",
+    boxShadow: "var(--glass-sheet-shadow)",
     position: "relative",
     minHeight: "28vh",
   },
@@ -14074,8 +14150,8 @@ const styles: Record<string, any> = {
   },
   financeHistoryItem: {
     borderRadius: 12,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
     padding: "12px 14px",
     display: "flex",
     flexDirection: "column",
@@ -14098,13 +14174,13 @@ const styles: Record<string, any> = {
   clientStatsBlock: {
     marginTop: 10,
     borderRadius: 20,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
     padding: "14px 16px",
     display: "flex",
     flexDirection: "column",
     gap: 12,
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   clientStatsHeader: {
     display: "flex",
@@ -14127,8 +14203,8 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     borderRadius: 999,
-    border: "1px solid rgba(170, 190, 210, 0.6)",
-    background: "rgba(245, 248, 252, 0.95)",
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
     overflow: "hidden",
   },
   clientStatsModeBtn: {
@@ -14141,7 +14217,7 @@ const styles: Record<string, any> = {
     cursor: "pointer",
   },
   clientStatsModeBtnActive: {
-    background: "linear-gradient(135deg, #9cc9ff, #7fb7ff)",
+    background: "var(--glass-tab-active-bg)",
     color: "#fff",
   },
   clientStatsMonthPicker: {
@@ -14153,8 +14229,8 @@ const styles: Record<string, any> = {
     width: 34,
     height: 34,
     borderRadius: 12,
-    border: "1px solid rgba(170, 190, 210, 0.6)",
-    background: "rgba(245, 248, 252, 0.95)",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     color: "var(--text)",
     fontSize: 18,
     fontWeight: 700,
@@ -14162,7 +14238,7 @@ const styles: Record<string, any> = {
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.06)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
   clientStatsMonthLabel: {
     fontSize: 13,
@@ -14220,9 +14296,9 @@ const styles: Record<string, any> = {
     gap: 6,
     padding: 6,
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   tariffToggleBtn: {
     padding: "8px 10px",
@@ -14235,9 +14311,9 @@ const styles: Record<string, any> = {
     cursor: "pointer",
   },
   tariffToggleBtnActive: {
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    background: "var(--glass-btn-bg)",
     color: "var(--text)",
-    boxShadow: "0 8px 16px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
   tariffScroller: {
     marginTop: 10,
@@ -14255,9 +14331,9 @@ const styles: Record<string, any> = {
     flex: "0 0 auto",
     padding: "14px 14px 16px",
     borderRadius: 20,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     boxSizing: "border-box",
     scrollSnapAlign: "start",
     display: "flex",
@@ -14271,12 +14347,12 @@ const styles: Record<string, any> = {
     fontWeight: 700,
     fontSize: 12,
     letterSpacing: 0.2,
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    background: "var(--glass-btn-bg)",
   },
   tariffPrice: {
     fontSize: 24,
     fontWeight: 800,
-    color: "#5a8fe0",
+    color: "var(--accent)",
   },
   tariffPriceRow: {
     marginTop: 10,
@@ -14327,8 +14403,8 @@ const styles: Record<string, any> = {
     alignSelf: "stretch",
     padding: "10px 12px",
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     fontWeight: 700,
     cursor: "pointer",
   },
@@ -14698,13 +14774,13 @@ const styles: Record<string, any> = {
     width: "100%",
     boxSizing: "border-box",
     borderRadius: 22,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
+    border: "1px solid var(--glass-card-border)",
     padding: "14px 16px",
     outline: "none",
     fontSize: 16,
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
+    background: "var(--glass-card-bg)",
     color: "var(--text)",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   addClientHint: {
     opacity: 0.8,
@@ -14719,12 +14795,12 @@ const styles: Record<string, any> = {
     padding: "14px 16px",
     borderRadius: 999,
     border: "1px solid rgba(130, 165, 215, 0.7)",
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    background: "var(--accent-grad)",
     color: "#ffffff",
     fontWeight: 800,
     fontSize: 18,
     cursor: "pointer",
-    boxShadow: "0 18px 30px rgba(79, 124, 230, 0.35)",
+    boxShadow: "var(--accent-shadow)",
   },
   inputCompact: {
     width: 120,
@@ -14910,10 +14986,10 @@ const styles: Record<string, any> = {
   emptyState: {
     marginTop: 18,
     padding: "18px 20px",
-    border: "1px solid rgba(190, 205, 220, 0.7)",
+    border: "1px solid var(--glass-card-border)",
     borderRadius: 22,
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
 
   calendarStrip: {
@@ -14928,10 +15004,10 @@ const styles: Record<string, any> = {
     flex: "0 0 calc((100% - 32px) / 5)",
     minWidth: "calc((100% - 32px) / 5)",
     borderRadius: 22,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
+    border: "1px solid var(--glass-card-border)",
     padding: "14px 8px",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 246, 250, 0.96))",
-    boxShadow: "0 10px 22px rgba(15, 23, 42, 0.08)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -14940,15 +15016,15 @@ const styles: Record<string, any> = {
     color: "var(--text)",
   },
   calendarDayActive: {
-    background: "linear-gradient(180deg, rgba(217, 232, 245, 0.9), rgba(255, 255, 255, 0.96))",
-    borderColor: "rgba(156, 186, 216, 0.8)",
-    color: "#3a4b5f",
+    background: "var(--accent-soft-bg)",
+    borderColor: "var(--accent-soft-border)",
+    color: "var(--accent-soft-text)",
   },
   calendarDaySelected: {
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    background: "var(--accent-grad)",
     borderColor: "rgba(111, 131, 246, 0.7)",
     color: "#ffffff",
-    boxShadow: "0 12px 24px rgba(79, 124, 230, 0.35)",
+    boxShadow: "var(--accent-shadow)",
   },
   calendarDayPast: {
     opacity: 0.45,
@@ -14981,27 +15057,27 @@ const styles: Record<string, any> = {
     width: 44,
     height: 44,
     borderRadius: 16,
-    border: "1px solid rgba(170, 190, 210, 0.6)",
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--accent-grad)",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    boxShadow: "0 12px 20px rgba(79, 124, 230, 0.35)",
+    boxShadow: "var(--accent-shadow)",
     fontSize: 18,
   },
   clientsTab: {
     flex: 1,
     minHeight: 52,
     borderRadius: 22,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
-    boxShadow: "0 10px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     cursor: "pointer",
     fontWeight: 700,
     fontSize: 13,
-    color: "#7d8aa1",
+    color: "var(--muted)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -15010,10 +15086,10 @@ const styles: Record<string, any> = {
     lineHeight: 1.2,
   },
   clientsTabActive: {
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    background: "var(--accent-grad)",
     color: "#ffffff",
     borderColor: "rgba(111, 131, 246, 0.7)",
-    boxShadow: "0 14px 26px rgba(79, 124, 230, 0.35)",
+    boxShadow: "var(--accent-shadow)",
   },
   addClientTabs: {
     marginTop: 16,
@@ -15022,9 +15098,9 @@ const styles: Record<string, any> = {
     width: "100%",
     padding: 6,
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "rgba(238, 243, 248, 0.9)",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.1)",
+    border: "1px solid var(--glass-tab-wrap-border)",
+    background: "var(--glass-tab-wrap-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   addClientTab: {
     flex: 1,
@@ -15032,15 +15108,15 @@ const styles: Record<string, any> = {
     borderRadius: 999,
     border: "none",
     background: "transparent",
-    color: "#7d8aa1",
+    color: "var(--muted)",
     fontWeight: 700,
     fontSize: 14,
     cursor: "pointer",
   },
   addClientTabActive: {
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    background: "var(--accent-grad)",
     color: "#ffffff",
-    boxShadow: "0 10px 18px rgba(79, 124, 230, 0.35)",
+    boxShadow: "var(--accent-shadow)",
   },
   scheduleModeScroll: {
     display: "flex",
@@ -15097,9 +15173,9 @@ const styles: Record<string, any> = {
     gap: 4,
     padding: 3,
     borderRadius: 999,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "rgba(238, 243, 248, 0.9)",
-    boxShadow: "0 10px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-tab-wrap-border)",
+    background: "var(--glass-tab-wrap-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     flex: "0 0 auto",
   },
   scheduleViewSwitchBtn: {
@@ -15113,9 +15189,9 @@ const styles: Record<string, any> = {
     color: "var(--text)",
   },
   scheduleViewSwitchBtnActive: {
-    background: "linear-gradient(135deg, #6f83f6, #7ccfe6)",
+    background: "var(--accent-grad)",
     color: "#ffffff",
-    boxShadow: "0 8px 16px rgba(79, 124, 230, 0.3)",
+    boxShadow: "var(--accent-shadow)",
   },
   scheduleTab: {
     flex: 1,
@@ -15228,9 +15304,9 @@ const styles: Record<string, any> = {
   },
   scheduleWeekWrap: {
     borderRadius: 20,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96))",
-    boxShadow: "0 12px 22px rgba(15, 23, 42, 0.08)",
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     overflow: "hidden",
     width: "100%",
     boxSizing: "border-box",
@@ -15379,8 +15455,8 @@ const styles: Record<string, any> = {
     width: 28,
     height: 28,
     borderRadius: 10,
-    border: "1px solid rgba(170, 190, 210, 0.6)",
-    background: "rgba(245, 248, 252, 0.95)",
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     cursor: "pointer",
     fontSize: 16,
     fontWeight: 700,
@@ -15389,7 +15465,7 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 8px 18px rgba(15, 23, 42, 0.06)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
   trainerSelectWrap: {
     display: "flex",
@@ -15523,10 +15599,10 @@ const styles: Record<string, any> = {
     position: "relative",
     padding: "14px 16px 14px 18px",
     borderRadius: 22,
-    border: "1px solid rgba(190, 205, 220, 0.7)",
+    border: "1px solid var(--glass-card-border)",
     borderLeft: "4px solid rgba(126, 175, 220, 0.9)",
-    background: "linear-gradient(135deg, rgba(229, 242, 252, 0.96), rgba(255, 255, 255, 0.96))",
-    boxShadow: "0 14px 26px rgba(15, 23, 42, 0.12)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     color: "var(--text)",
     display: "flex",
     alignItems: "center",
@@ -15674,11 +15750,11 @@ const styles: Record<string, any> = {
     right: 0,
     bottom: 0,
     height: 88,
-    background: "linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 244, 246, 0.98))",
-    borderTop: "1px solid rgba(200, 210, 220, 0.6)",
+    background: "var(--bottom-nav-bg)",
+    borderTop: "1px solid var(--bottom-nav-border)",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    boxShadow: "0 -18px 36px rgba(15, 23, 42, 0.12)",
+    boxShadow: "var(--bottom-nav-shadow)",
     display: "flex",
     justifyContent: "space-around",
     paddingTop: 10,
@@ -15712,7 +15788,7 @@ const styles: Record<string, any> = {
   navIconWrapActive: {
     background: "transparent",
     boxShadow: "none",
-    color: "#5a8fe0",
+    color: "var(--accent)",
   },
   navLabel: {
     fontSize: 12,
@@ -15720,7 +15796,7 @@ const styles: Record<string, any> = {
     letterSpacing: -0.1,
   },
   navLabelActive: {
-    color: "#6f83f6",
+    color: "var(--accent)",
     fontWeight: 700,
   },
   navAddBtn: {
@@ -15728,13 +15804,13 @@ const styles: Record<string, any> = {
     height: 74,
     borderRadius: 999,
     border: "none",
-    background: "linear-gradient(135deg, #9cc9ff, #7fb7ff)",
+    background: "var(--accent-grad)",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    boxShadow: "0 18px 30px rgba(110, 160, 230, 0.45)",
+    boxShadow: "var(--accent-shadow)",
     marginTop: -24,
   },
   addMenuOverlay: {
@@ -15752,9 +15828,8 @@ const styles: Record<string, any> = {
     maxWidth: 420,
     borderRadius: 999,
     padding: "12px 12px",
-    background:
-      "linear-gradient(140deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 45%, rgba(255,255,255,0.5) 100%)",
-    border: "1px solid rgba(255, 255, 255, 0.7)",
+    background: "var(--glass-menu-bg)",
+    border: "1px solid var(--glass-menu-border)",
     boxShadow: "0 16px 32px rgba(15, 23, 42, 0.2)",
     backdropFilter: "blur(18px)",
     WebkitBackdropFilter: "blur(18px)",
@@ -15767,7 +15842,7 @@ const styles: Record<string, any> = {
   },
   addMenuGlassBtn: {
     border: "none",
-    background: "rgba(255, 255, 255, 0.62)",
+    background: "var(--glass-menu-btn-bg)",
     color: "var(--text)",
     fontSize: 11,
     fontWeight: 700,
@@ -15777,7 +15852,6 @@ const styles: Record<string, any> = {
     minHeight: 40,
     borderRadius: 999,
     cursor: "pointer",
-    boxShadow:
-      "inset 0 1px 2px rgba(255, 255, 255, 0.9), 0 6px 12px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--glass-menu-btn-shadow)",
   },
 };
