@@ -11940,6 +11940,20 @@ function GlobalStyles() {
         --success-bg: #eaf7ea;
         --success-text: #1b7f2a;
         --danger: #b42318;
+        --notes-page-bg: radial-gradient(120% 90% at 50% 0%, rgba(232, 244, 255, 0.95) 0%, rgba(240, 246, 255, 0.92) 35%, rgba(244, 246, 251, 0.92) 60%, rgba(241, 242, 246, 0.95) 100%);
+        --notes-title: #1b1f2a;
+        --notes-row-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(227, 238, 255, 0.85));
+        --notes-row-border: rgba(255, 255, 255, 0.7);
+        --notes-row-shadow: 0 14px 28px rgba(122, 148, 190, 0.22);
+        --notes-row-text: #1b1f2a;
+        --notes-row-btn-bg: linear-gradient(135deg, rgba(152, 194, 255, 0.55), rgba(196, 222, 255, 0.75));
+        --notes-row-btn-border: rgba(255, 255, 255, 0.8);
+        --notes-row-btn-shadow: 0 16px 30px rgba(118, 155, 210, 0.28);
+        --notes-action: #ffffff;
+        --notes-action-shadow: 0 4px 10px rgba(84, 121, 184, 0.45);
+        --notes-empty-bg: rgba(255, 255, 255, 0.6);
+        --notes-empty-border: rgba(255, 255, 255, 0.7);
+        --notes-empty-text: #3f4a5a;
         --keyboard-inset: 0px;
         color-scheme: light;
       }
@@ -11958,6 +11972,20 @@ function GlobalStyles() {
         --success-bg: #1c3a28;
         --success-text: #7ee29c;
         --danger: #ff8a8a;
+        --notes-page-bg: radial-gradient(120% 90% at 50% 0%, rgba(34, 48, 70, 0.95) 0%, rgba(24, 33, 48, 0.92) 45%, rgba(20, 26, 36, 0.95) 100%);
+        --notes-title: #e7ecf4;
+        --notes-row-bg: linear-gradient(135deg, rgba(31, 42, 60, 0.9), rgba(24, 32, 46, 0.9));
+        --notes-row-border: rgba(255, 255, 255, 0.08);
+        --notes-row-shadow: 0 16px 28px rgba(0, 0, 0, 0.35);
+        --notes-row-text: #e7ecf4;
+        --notes-row-btn-bg: linear-gradient(135deg, rgba(72, 110, 180, 0.6), rgba(46, 76, 134, 0.65));
+        --notes-row-btn-border: rgba(120, 150, 210, 0.25);
+        --notes-row-btn-shadow: 0 16px 30px rgba(10, 20, 40, 0.55);
+        --notes-action: #ffffff;
+        --notes-action-shadow: 0 4px 10px rgba(18, 30, 60, 0.6);
+        --notes-empty-bg: rgba(20, 26, 36, 0.6);
+        --notes-empty-border: rgba(120, 150, 210, 0.2);
+        --notes-empty-text: #b8c2d2;
         color-scheme: dark;
       }
       input, textarea { caret-color: var(--text); font-size: 16px; }
@@ -13130,8 +13158,7 @@ const styles: Record<string, any> = {
   },
   notesPage: {
     minHeight: "100vh",
-    background:
-      "radial-gradient(120% 90% at 50% 0%, rgba(232, 244, 255, 0.95) 0%, rgba(240, 246, 255, 0.92) 35%, rgba(244, 246, 251, 0.92) 60%, rgba(241, 242, 246, 0.95) 100%)",
+    background: "var(--notes-page-bg)",
     paddingTop: 26,
     paddingBottom: 120,
   },
@@ -13144,7 +13171,7 @@ const styles: Record<string, any> = {
     fontSize: 32,
     fontWeight: 700,
     letterSpacing: 0.2,
-    color: "#1b1f2a",
+    color: "var(--notes-title)",
     paddingLeft: 0,
     paddingRight: 0,
   },
@@ -13165,13 +13192,12 @@ const styles: Record<string, any> = {
     justifyContent: "space-between",
     padding: "18px 22px",
     borderRadius: 999,
-    border: "1px solid rgba(255, 255, 255, 0.7)",
-    background:
-      "linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(227, 238, 255, 0.85))",
-    boxShadow: "0 14px 28px rgba(122, 148, 190, 0.22)",
+    border: "1px solid var(--notes-row-border)",
+    background: "var(--notes-row-bg)",
+    boxShadow: "var(--notes-row-shadow)",
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
-    color: "#1b1f2a",
+    color: "var(--notes-row-text)",
     fontSize: 18,
     fontWeight: 600,
     letterSpacing: -0.1,
@@ -13239,10 +13265,9 @@ const styles: Record<string, any> = {
   },
   notesRowButton: {
     cursor: "pointer",
-    background:
-      "linear-gradient(135deg, rgba(152, 194, 255, 0.55), rgba(196, 222, 255, 0.75))",
-    borderColor: "rgba(255, 255, 255, 0.8)",
-    boxShadow: "0 16px 30px rgba(118, 155, 210, 0.28)",
+    background: "var(--notes-row-btn-bg)",
+    borderColor: "var(--notes-row-btn-border)",
+    boxShadow: "var(--notes-row-btn-shadow)",
   },
   notesRowTitle: {
     opacity: 0.92,
@@ -13250,8 +13275,8 @@ const styles: Record<string, any> = {
   notesRowAction: {
     fontSize: 26,
     fontWeight: 700,
-    color: "#ffffff",
-    textShadow: "0 4px 10px rgba(84, 121, 184, 0.45)",
+    color: "var(--notes-action)",
+    textShadow: "var(--notes-action-shadow)",
   },
   notesRowActionDisabled: {
     opacity: 0.5,
@@ -13264,15 +13289,15 @@ const styles: Record<string, any> = {
     fontSize: 18,
     fontWeight: 600,
     letterSpacing: -0.2,
-    color: "#1b1f2a",
+    color: "var(--notes-row-text)",
     opacity: 1,
   },
   notesEmpty: {
     padding: "12px 16px",
     borderRadius: 18,
-    border: "1px solid rgba(255, 255, 255, 0.7)",
-    background: "rgba(255, 255, 255, 0.6)",
-    color: "#3f4a5a",
+    border: "1px solid var(--notes-empty-border)",
+    background: "var(--notes-empty-bg)",
+    color: "var(--notes-empty-text)",
     fontSize: 14,
   },
   notesError: {
