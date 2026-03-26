@@ -10248,42 +10248,49 @@ function BookingModeScreen(props: {
 }) {
   const { onBack, bookingMode, setBookingMode, t } = props;
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.topBar}>
-        {typeof WebApp?.BackButton?.show === "function" ? (
-          <div style={{ width: 36 }} />
-        ) : (
+    <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
+      <div style={styles.bookingHeader}>
+        {typeof WebApp?.BackButton?.show === "function" ? null : (
           <button onClick={onBack} style={styles.backBtnInline} aria-label="back">
             <IconArrowLeft />
           </button>
         )}
-        <div style={styles.topBarTitle}>{t.settingsBooking}</div>
-        <div style={{ width: 36 }} />
+        <div style={styles.bookingTitle}>{t.settingsBooking}</div>
       </div>
-      <div style={styles.topBarDivider} />
-
-      <div style={styles.themeTabs}>
+      <div style={styles.bookingOptionsRow}>
         <button
           type="button"
           onClick={() => setBookingMode("trainer")}
           style={{
-            ...styles.scheduleTab,
-            ...(bookingMode === "trainer" ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
+            ...styles.bookingOptionCard,
+            ...(bookingMode === "trainer" ? styles.bookingOptionCardActive : null),
           }}
         >
-          {t.bookingTrainerOnly}
+          <span
+            style={{
+              ...styles.bookingOptionText,
+              ...(bookingMode === "trainer" ? styles.bookingOptionTextActive : null),
+            }}
+          >
+            {t.bookingTrainerOnly}
+          </span>
         </button>
         <button
           type="button"
           onClick={() => setBookingMode("both")}
           style={{
-            ...styles.scheduleTab,
-            ...(bookingMode === "both" ? styles.scheduleTabActive : null),
-            alignSelf: "flex-start",
+            ...styles.bookingOptionCard,
+            ...(bookingMode === "both" ? styles.bookingOptionCardActive : null),
           }}
         >
-          {t.bookingBoth}
+          <span
+            style={{
+              ...styles.bookingOptionText,
+              ...(bookingMode === "both" ? styles.bookingOptionTextActive : null),
+            }}
+          >
+            {t.bookingBoth}
+          </span>
         </button>
       </div>
     </div>
@@ -12000,6 +12007,8 @@ function GlobalStyles() {
         --glass-menu-btn-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.9), 0 6px 12px rgba(15, 23, 42, 0.08);
         --hero-chip-bg: rgba(255, 255, 255, 0.2);
         --hero-chip-border: rgba(255, 255, 255, 0.35);
+        --booking-card-active-text: #ffffff;
+        --booking-card-active-text-shadow: 0 6px 14px rgba(35, 80, 140, 0.35);
         --keyboard-inset: 0px;
         color-scheme: light;
       }
@@ -12078,6 +12087,8 @@ function GlobalStyles() {
         --glass-menu-btn-shadow: inset 0 1px 2px rgba(120, 150, 200, 0.08), 0 6px 12px rgba(0, 0, 0, 0.35);
         --hero-chip-bg: rgba(255, 255, 255, 0.08);
         --hero-chip-border: rgba(255, 255, 255, 0.18);
+        --booking-card-active-text: #ffffff;
+        --booking-card-active-text-shadow: 0 6px 14px rgba(8, 20, 40, 0.55);
         color-scheme: dark;
       }
       input, textarea { caret-color: var(--text); font-size: 16px; }
@@ -13129,6 +13140,61 @@ const styles: Record<string, any> = {
   },
   settingsPage: {
     background: "var(--trainer-bg-settings)",
+  },
+  bookingPage: {
+    minHeight: "100vh",
+    background: "var(--trainer-bg-settings)",
+    paddingTop: 26,
+    paddingBottom: 120,
+  },
+  bookingHeader: {
+    position: "relative",
+    minHeight: 44,
+    marginBottom: 28,
+  },
+  bookingTitle: {
+    fontSize: 38,
+    fontWeight: 500,
+    letterSpacing: -0.6,
+    lineHeight: 1.05,
+    color: "var(--text)",
+    textAlign: "left",
+    paddingLeft: 2,
+  },
+  bookingOptionsRow: {
+    marginTop: 16,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 18,
+    alignItems: "center",
+  },
+  bookingOptionCard: {
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    borderRadius: 36,
+    minHeight: 180,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "18px 16px",
+    cursor: "pointer",
+  },
+  bookingOptionCardActive: {
+    borderColor: "rgba(130, 175, 220, 0.7)",
+    background: "var(--accent-grad)",
+    boxShadow: "var(--accent-shadow)",
+  },
+  bookingOptionText: {
+    fontSize: 20,
+    fontWeight: 500,
+    color: "var(--text)",
+    textAlign: "center",
+    lineHeight: 1.2,
+  },
+  bookingOptionTextActive: {
+    color: "var(--booking-card-active-text)",
+    textShadow: "var(--booking-card-active-text-shadow)",
   },
   homeIntroWork: {
     gap: 16,
