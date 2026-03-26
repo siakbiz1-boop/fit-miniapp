@@ -11964,9 +11964,9 @@ function GlobalStyles() {
           linear-gradient(180deg, #e9f0f6 0%, #f4f7fb 45%, #ffffff 100%);
         --trainer-bg-settings: radial-gradient(circle at 50% -10%, rgba(120, 170, 210, 0.45), transparent 60%),
           linear-gradient(180deg, #e3edf7 0%, #f1f5fb 45%, #ffffff 100%);
-        --glass-hero-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(228, 235, 243, 0.9));
-        --glass-hero-border: rgba(180, 200, 220, 0.65);
-        --glass-hero-shadow: 0 24px 40px rgba(15, 23, 42, 0.08);
+        --glass-hero-bg: linear-gradient(135deg, rgba(160, 205, 245, 0.95), rgba(95, 160, 225, 0.95));
+        --glass-hero-border: rgba(160, 190, 225, 0.6);
+        --glass-hero-shadow: 0 18px 32px rgba(62, 116, 190, 0.35);
         --glass-card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 247, 250, 0.96));
         --glass-card-border: rgba(190, 205, 220, 0.7);
         --glass-card-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
