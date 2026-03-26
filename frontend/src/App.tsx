@@ -6319,36 +6319,38 @@ function TrainerSchedule(props: {
     <div style={{ ...styles.pageContainer, ...styles.schedulePage }}>
       <div style={styles.scheduleHeaderRow}>
         <div style={styles.scheduleTitleRow}>
-          <div style={styles.pageTitle}>
-            {scheduleView === "grid"
-              ? (() => {
+          {scheduleView === "grid" ? (
+            <div style={styles.scheduleMonthPill}>
+              <div style={styles.scheduleMonthLabel}>
+                {(() => {
                   const raw = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", {
                     month: "long",
                   }).format(today);
                   return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
-                })()
-              : tr("Расписание", "Schedule")}
-          </div>
-          {scheduleView === "grid" ? (
-            <div style={styles.scheduleWeekNav}>
-              <button
-                type="button"
-                style={styles.scheduleWeekNavBtn}
-                onClick={() => setWeekOffset((v) => v - 1)}
-                aria-label={tr("Предыдущая неделя", "Previous week")}
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                style={styles.scheduleWeekNavBtn}
-                onClick={() => setWeekOffset((v) => v + 1)}
-                aria-label={tr("Следующая неделя", "Next week")}
-              >
-                ›
-              </button>
+                })()}
+              </div>
+              <div style={styles.scheduleMonthNav}>
+                <button
+                  type="button"
+                  style={styles.scheduleMonthBtn}
+                  onClick={() => setWeekOffset((v) => v - 1)}
+                  aria-label={tr("Предыдущая неделя", "Previous week")}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  style={styles.scheduleMonthBtn}
+                  onClick={() => setWeekOffset((v) => v + 1)}
+                  aria-label={tr("Следующая неделя", "Next week")}
+                >
+                  ›
+                </button>
+              </div>
             </div>
-          ) : null}
+          ) : (
+            <div style={styles.pageTitle}>{tr("Расписание", "Schedule")}</div>
+          )}
         </div>
         {section === "sessions" ? (
           <div style={styles.scheduleViewSwitch}>
@@ -12044,6 +12046,28 @@ function GlobalStyles() {
         --reminder-text: rgba(15, 23, 42, 0.65);
         --reminder-text-active: #ffffff;
         --reminder-text-shadow: 0 4px 12px rgba(35, 80, 140, 0.3);
+        --schedule-month-pill-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(230, 238, 246, 0.82));
+        --schedule-month-pill-border: rgba(255, 255, 255, 0.85);
+        --schedule-month-pill-shadow: 0 16px 26px rgba(120, 150, 190, 0.22);
+        --schedule-month-text: rgba(15, 23, 42, 0.8);
+        --schedule-month-btn-bg: rgba(255, 255, 255, 0.75);
+        --schedule-month-btn-border: rgba(255, 255, 255, 0.9);
+        --schedule-month-btn-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.85), 0 6px 12px rgba(120, 150, 190, 0.15);
+        --schedule-switch-bg: rgba(255, 255, 255, 0.7);
+        --schedule-switch-border: rgba(255, 255, 255, 0.85);
+        --schedule-switch-shadow: 0 16px 26px rgba(120, 150, 190, 0.2);
+        --schedule-switch-active-bg: radial-gradient(circle at 40% 35%, rgba(170, 220, 255, 0.95), rgba(120, 185, 245, 0.9));
+        --schedule-switch-active-shadow: 0 14px 24px rgba(90, 150, 220, 0.3);
+        --schedule-grid-wrap-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(230, 238, 246, 0.86));
+        --schedule-grid-wrap-border: rgba(255, 255, 255, 0.85);
+        --schedule-grid-wrap-shadow: 0 20px 34px rgba(120, 150, 190, 0.22);
+        --schedule-grid-header-bg: rgba(255, 255, 255, 0.5);
+        --schedule-grid-line: rgba(120, 140, 170, 0.25);
+        --schedule-day-active-bg: radial-gradient(circle at 50% 40%, rgba(170, 220, 255, 0.95), rgba(120, 185, 245, 0.9));
+        --schedule-day-active-text: #ffffff;
+        --schedule-session-bg: radial-gradient(circle at 40% 35%, rgba(170, 220, 255, 0.85), rgba(130, 190, 235, 0.85));
+        --schedule-session-border: rgba(150, 200, 240, 0.8);
+        --schedule-session-shadow: 0 10px 20px rgba(90, 150, 220, 0.25);
         --keyboard-inset: 0px;
         color-scheme: light;
       }
@@ -12139,6 +12163,28 @@ function GlobalStyles() {
         --reminder-text: rgba(230, 235, 245, 0.75);
         --reminder-text-active: #ffffff;
         --reminder-text-shadow: 0 4px 12px rgba(8, 20, 40, 0.55);
+        --schedule-month-pill-bg: linear-gradient(135deg, rgba(36, 46, 64, 0.85), rgba(26, 34, 48, 0.9));
+        --schedule-month-pill-border: rgba(120, 150, 200, 0.25);
+        --schedule-month-pill-shadow: 0 16px 26px rgba(0, 0, 0, 0.45);
+        --schedule-month-text: rgba(230, 235, 245, 0.8);
+        --schedule-month-btn-bg: rgba(30, 40, 56, 0.75);
+        --schedule-month-btn-border: rgba(120, 150, 200, 0.3);
+        --schedule-month-btn-shadow: inset 0 1px 2px rgba(120, 150, 200, 0.08), 0 6px 12px rgba(0, 0, 0, 0.35);
+        --schedule-switch-bg: rgba(30, 40, 56, 0.8);
+        --schedule-switch-border: rgba(120, 150, 200, 0.3);
+        --schedule-switch-shadow: 0 16px 26px rgba(0, 0, 0, 0.45);
+        --schedule-switch-active-bg: radial-gradient(circle at 40% 35%, rgba(90, 140, 220, 0.9), rgba(60, 100, 180, 0.85));
+        --schedule-switch-active-shadow: 0 14px 24px rgba(20, 40, 80, 0.5);
+        --schedule-grid-wrap-bg: linear-gradient(135deg, rgba(36, 46, 64, 0.85), rgba(26, 34, 48, 0.9));
+        --schedule-grid-wrap-border: rgba(120, 150, 200, 0.25);
+        --schedule-grid-wrap-shadow: 0 20px 34px rgba(0, 0, 0, 0.55);
+        --schedule-grid-header-bg: rgba(30, 40, 56, 0.6);
+        --schedule-grid-line: rgba(120, 150, 190, 0.25);
+        --schedule-day-active-bg: radial-gradient(circle at 50% 40%, rgba(90, 140, 220, 0.9), rgba(60, 100, 180, 0.85));
+        --schedule-day-active-text: #ffffff;
+        --schedule-session-bg: radial-gradient(circle at 40% 35%, rgba(90, 140, 220, 0.85), rgba(60, 100, 180, 0.85));
+        --schedule-session-border: rgba(120, 170, 230, 0.6);
+        --schedule-session-shadow: 0 10px 20px rgba(20, 40, 80, 0.5);
         color-scheme: dark;
       }
       input, textarea { caret-color: var(--text); font-size: 16px; }
@@ -15340,9 +15386,9 @@ const styles: Record<string, any> = {
     gap: 4,
     padding: 3,
     borderRadius: 999,
-    border: "1px solid var(--glass-tab-wrap-border)",
-    background: "var(--glass-tab-wrap-bg)",
-    boxShadow: "var(--glass-card-shadow)",
+    border: "1px solid var(--schedule-switch-border)",
+    background: "var(--schedule-switch-bg)",
+    boxShadow: "var(--schedule-switch-shadow)",
     flex: "0 0 auto",
   },
   scheduleViewSwitchBtn: {
@@ -15356,9 +15402,9 @@ const styles: Record<string, any> = {
     color: "var(--text)",
   },
   scheduleViewSwitchBtnActive: {
-    background: "var(--accent-grad)",
+    background: "var(--schedule-switch-active-bg)",
     color: "#ffffff",
-    boxShadow: "var(--accent-shadow)",
+    boxShadow: "var(--schedule-switch-active-shadow)",
   },
   scheduleTab: {
     flex: 1,
@@ -15470,41 +15516,46 @@ const styles: Record<string, any> = {
     background: "transparent",
   },
   scheduleWeekWrap: {
-    borderRadius: 20,
-    border: "1px solid var(--glass-card-border)",
-    background: "var(--glass-card-bg)",
-    boxShadow: "var(--glass-card-shadow)",
+    borderRadius: 28,
+    border: "1px solid var(--schedule-grid-wrap-border)",
+    background: "var(--schedule-grid-wrap-bg)",
+    boxShadow: "var(--schedule-grid-wrap-shadow)",
     overflow: "hidden",
     width: "100%",
     boxSizing: "border-box",
     position: "relative",
+    padding: 10,
   },
   scheduleWeekHeader: {
     display: "grid",
     gridTemplateColumns: "44px repeat(7, 1fr)",
-    borderBottom: "1px solid var(--border-2)",
-    background: "var(--surface-2)",
+    borderBottom: "1px solid var(--schedule-grid-line)",
+    background: "var(--schedule-grid-header-bg)",
+    borderRadius: 18,
+    overflow: "hidden",
   },
   scheduleWeekTimeSpacer: {
-    borderRight: "1px solid var(--border-2)",
+    borderRight: "1px solid var(--schedule-grid-line)",
   },
   scheduleWeekDayHeader: {
-    padding: "6px 4px",
+    padding: "10px 4px",
     textAlign: "center",
-    fontSize: 12,
-    fontWeight: 700,
+    fontSize: 11,
+    fontWeight: 600,
     color: "var(--text)",
-    borderRight: "1px solid var(--border-2)",
+    borderRight: "1px solid var(--schedule-grid-line)",
   },
   scheduleWeekDayHeaderToday: {
-    background: "rgba(31, 107, 255, 0.12)",
-    color: "var(--accent)",
+    background: "var(--schedule-day-active-bg)",
+    color: "var(--schedule-day-active-text)",
+    borderRadius: 14,
+    margin: "4px 4px",
   },
   scheduleWeekDayTitle: {
     whiteSpace: "nowrap",
   },
   scheduleWeekDayName: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 700,
     textTransform: "uppercase",
     color: "var(--muted)",
@@ -15516,16 +15567,16 @@ const styles: Record<string, any> = {
     gridTemplateColumns: "44px 1fr",
   },
   scheduleWeekTimeCol: {
-    borderRight: "1px solid var(--border-2)",
+    borderRight: "1px solid var(--schedule-grid-line)",
     position: "relative",
-    background: "var(--surface)",
+    background: "transparent",
   },
   scheduleWeekTimeLabel: {
     position: "absolute",
     left: 0,
     right: 0,
-    fontSize: 11,
-    color: "var(--muted)",
+    fontSize: 12,
+    color: "var(--schedule-month-text)",
     padding: "0 6px",
     boxSizing: "border-box",
     transform: "translateY(-6px)",
@@ -15536,7 +15587,7 @@ const styles: Record<string, any> = {
     gridTemplateColumns: "repeat(7, 1fr)",
   },
   scheduleWeekDayCol: {
-    borderRight: "1px solid var(--border-2)",
+    borderRight: "1px solid var(--schedule-grid-line)",
   },
   scheduleWeekDayBody: {
     position: "relative",
@@ -15546,32 +15597,33 @@ const styles: Record<string, any> = {
     left: -10,
     right: 0,
     height: 1,
-    background: "var(--border-2)",
+    background: "var(--schedule-grid-line)",
   },
   scheduleWeekHourLine: {
     position: "absolute",
     left: 0,
     right: 0,
     height: 1,
-    background: "var(--border-2)",
+    background: "var(--schedule-grid-line)",
   },
   scheduleWeekSession: {
     position: "absolute",
     left: 0,
     right: 0,
-    borderRadius: 10,
-    border: "1px solid rgba(31, 107, 255, 0.2)",
-    background: "rgba(31, 107, 255, 0.12)",
+    borderRadius: 14,
+    border: "1px solid var(--schedule-session-border)",
+    background: "var(--schedule-session-bg)",
     color: "var(--text)",
     padding: "6px 6px",
     textAlign: "left",
     cursor: "pointer",
+    boxShadow: "var(--schedule-session-shadow)",
   },
   scheduleWeekSessionDrag: {
     position: "absolute",
-    borderRadius: 10,
-    border: "1px solid rgba(31, 107, 255, 0.4)",
-    background: "rgba(31, 107, 255, 0.18)",
+    borderRadius: 14,
+    border: "1px solid var(--schedule-session-border)",
+    background: "var(--schedule-session-bg)",
     color: "var(--text)",
     padding: "6px 6px",
     textAlign: "left",
@@ -15589,18 +15641,19 @@ const styles: Record<string, any> = {
     pointerEvents: "none",
   },
   scheduleWeekSessionDark: {
-    border: "1px solid rgba(31, 107, 255, 0.35)",
-    background: "rgba(31, 107, 255, 0.24)",
+    border: "1px solid var(--schedule-session-border)",
+    background: "var(--schedule-session-bg)",
   },
   scheduleWeekSessionTitle: {
-    fontSize: 11,
-    fontWeight: 700,
+    fontSize: 12,
+    fontWeight: 600,
     lineHeight: 1.1,
     wordBreak: "break-all",
+    color: "var(--schedule-month-text)",
   },
   scheduleWeekSessionTime: {
     fontSize: 10,
-    opacity: 0.7,
+    opacity: 0.75,
     marginTop: 2,
   },
   scheduleHeaderRow: {
@@ -15614,25 +15667,41 @@ const styles: Record<string, any> = {
     alignItems: "center",
     gap: 10,
   },
-  scheduleWeekNav: {
+  scheduleMonthPill: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "10px 14px",
+    borderRadius: 999,
+    border: "1px solid var(--schedule-month-pill-border)",
+    background: "var(--schedule-month-pill-bg)",
+    boxShadow: "var(--schedule-month-pill-shadow)",
+  },
+  scheduleMonthLabel: {
+    fontSize: 18,
+    fontWeight: 500,
+    color: "var(--schedule-month-text)",
+    letterSpacing: -0.3,
+  },
+  scheduleMonthNav: {
     display: "flex",
     gap: 6,
   },
-  scheduleWeekNavBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    border: "1px solid var(--glass-btn-border)",
-    background: "var(--glass-btn-bg)",
+  scheduleMonthBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    border: "1px solid var(--schedule-month-btn-border)",
+    background: "var(--schedule-month-btn-bg)",
     cursor: "pointer",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 700,
-    color: "var(--text)",
+    color: "var(--schedule-month-text)",
     lineHeight: 1,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "var(--glass-btn-shadow)",
+    boxShadow: "var(--schedule-month-btn-shadow)",
   },
   trainerSelectWrap: {
     display: "flex",
