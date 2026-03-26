@@ -10314,35 +10314,41 @@ function RemindersScreen(props: {
   const { onBack, value, onChange, language, t } = props;
   const options = [0, 1, 2, 3, 4, 5, 6, 9, 12];
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.topBar}>
-        {typeof WebApp?.BackButton?.show === "function" ? (
-          <div style={{ width: 36 }} />
-        ) : (
+    <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
+      <div style={styles.bookingHeader}>
+        {typeof WebApp?.BackButton?.show === "function" ? null : (
           <button onClick={onBack} style={styles.backBtnInline} aria-label="back">
             <IconArrowLeft />
           </button>
         )}
-        <div style={styles.topBarTitle}>{t.settingsReminders}</div>
-        <div style={{ width: 36 }} />
+        <div style={styles.bookingTitle}>{t.settingsReminders}</div>
       </div>
-      <div style={styles.topBarDivider} />
 
-      <div style={styles.themeTabs}>
-        {options.map((hours) => (
-          <button
-            key={hours}
-            type="button"
-            onClick={() => onChange(hours)}
-            style={{
-              ...styles.scheduleTab,
-              ...(value === hours ? styles.scheduleTabActive : null),
-              alignSelf: "flex-start",
-            }}
-          >
-            {formatReminderLabel(hours, language, t)}
-          </button>
-        ))}
+      <div style={styles.remindersList}>
+        {options.map((hours) => {
+          const isActive = value === hours;
+          return (
+            <button
+              key={hours}
+              type="button"
+              onClick={() => onChange(hours)}
+              style={{
+                ...styles.remindersPill,
+                ...(isActive ? styles.remindersPillActive : null),
+              }}
+            >
+              {isActive ? <span style={styles.remindersCheck}>✓</span> : null}
+              <span
+                style={{
+                  ...styles.remindersLabel,
+                  ...(isActive ? styles.remindersLabelActive : null),
+                }}
+              >
+                {formatReminderLabel(hours, language, t)}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -12029,6 +12035,15 @@ function GlobalStyles() {
         --booking-card-active-bg: radial-gradient(circle at 40% 35%, rgba(170, 220, 255, 0.95), rgba(120, 185, 245, 0.9));
         --booking-card-active-border: rgba(130, 190, 235, 0.8);
         --booking-card-active-shadow: 0 22px 36px rgba(90, 150, 220, 0.35);
+        --reminder-pill-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(230, 238, 246, 0.82));
+        --reminder-pill-border: rgba(255, 255, 255, 0.85);
+        --reminder-pill-shadow: 0 16px 26px rgba(120, 150, 190, 0.2);
+        --reminder-pill-active-bg: radial-gradient(circle at 40% 35%, rgba(170, 220, 255, 0.95), rgba(120, 185, 245, 0.9));
+        --reminder-pill-active-border: rgba(130, 190, 235, 0.8);
+        --reminder-pill-active-shadow: 0 20px 32px rgba(90, 150, 220, 0.35);
+        --reminder-text: rgba(15, 23, 42, 0.65);
+        --reminder-text-active: #ffffff;
+        --reminder-text-shadow: 0 4px 12px rgba(35, 80, 140, 0.3);
         --keyboard-inset: 0px;
         color-scheme: light;
       }
@@ -12115,6 +12130,15 @@ function GlobalStyles() {
         --booking-card-active-bg: radial-gradient(circle at 40% 35%, rgba(90, 140, 220, 0.9), rgba(60, 100, 180, 0.85));
         --booking-card-active-border: rgba(120, 170, 230, 0.6);
         --booking-card-active-shadow: 0 22px 36px rgba(20, 40, 80, 0.55);
+        --reminder-pill-bg: linear-gradient(135deg, rgba(36, 46, 64, 0.85), rgba(26, 34, 48, 0.9));
+        --reminder-pill-border: rgba(120, 150, 200, 0.25);
+        --reminder-pill-shadow: 0 16px 26px rgba(0, 0, 0, 0.45);
+        --reminder-pill-active-bg: radial-gradient(circle at 40% 35%, rgba(90, 140, 220, 0.9), rgba(60, 100, 180, 0.85));
+        --reminder-pill-active-border: rgba(120, 170, 230, 0.6);
+        --reminder-pill-active-shadow: 0 20px 32px rgba(20, 40, 80, 0.6);
+        --reminder-text: rgba(230, 235, 245, 0.75);
+        --reminder-text-active: #ffffff;
+        --reminder-text-shadow: 0 4px 12px rgba(8, 20, 40, 0.55);
         color-scheme: dark;
       }
       input, textarea { caret-color: var(--text); font-size: 16px; }
@@ -13223,6 +13247,49 @@ const styles: Record<string, any> = {
   bookingOptionTextActive: {
     color: "var(--booking-card-active-text)",
     textShadow: "var(--booking-card-active-text-shadow)",
+  },
+  remindersList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    marginTop: 6,
+  },
+  remindersPill: {
+    width: "100%",
+    borderRadius: 999,
+    border: "1px solid var(--reminder-pill-border)",
+    background: "var(--reminder-pill-bg)",
+    boxShadow: "var(--reminder-pill-shadow)",
+    padding: "16px 20px",
+    fontSize: 20,
+    fontWeight: 500,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    cursor: "pointer",
+    position: "relative",
+  },
+  remindersPillActive: {
+    background: "var(--reminder-pill-active-bg)",
+    borderColor: "var(--reminder-pill-active-border)",
+    boxShadow: "var(--reminder-pill-active-shadow)",
+  },
+  remindersCheck: {
+    position: "absolute",
+    left: 18,
+    fontSize: 26,
+    fontWeight: 700,
+    color: "var(--reminder-text-active)",
+    textShadow: "var(--reminder-text-shadow)",
+  },
+  remindersLabel: {
+    color: "var(--reminder-text)",
+    textShadow: "none",
+  },
+  remindersLabelActive: {
+    color: "var(--reminder-text-active)",
+    textShadow: "var(--reminder-text-shadow)",
   },
   homeIntroWork: {
     gap: 16,
