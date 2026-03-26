@@ -2170,6 +2170,8 @@ function TrainerHome({
       badgeText: "var(--text)",
       priceMonthly: 990,
       strikeMonthly: 2490,
+      priceByPeriod: { quarter: 2490, year: 9490 },
+      strikeByPeriod: { quarter: 2970, year: 11800 },
       features: [
         tr("До 5 подключенных клиентов", "Up to 5 connected clients"),
         tr("Безлимит тренировок в месяц", "Unlimited sessions per month"),
@@ -2182,12 +2184,21 @@ function TrainerHome({
       badgeText: "var(--text)",
       priceMonthly: 1490,
       strikeMonthly: 4990,
+      priceByPeriod: { quarter: 3990, year: 14490 },
+      strikeByPeriod: { quarter: 4990, year: 17490 },
       features: [tr("Безлимит клиентов", "Unlimited clients"), tr("Безлимит тренировок", "Unlimited sessions")],
     },
   ];
-  const getTariffTotal = (priceMonthly: number) =>
-    Math.round(priceMonthly * activeTariffPeriodMeta.months * (1 - activeTariffPeriodMeta.discount));
-  const getTariffStrikeTotal = (priceMonthly: number) => priceMonthly * activeTariffPeriodMeta.months;
+  const getTariffTotal = (plan: {
+    priceMonthly: number;
+    priceByPeriod?: Partial<Record<TariffPeriod, number>>;
+  }) =>
+    plan.priceByPeriod?.[tariffPeriod] ??
+    Math.round(plan.priceMonthly * activeTariffPeriodMeta.months * (1 - activeTariffPeriodMeta.discount));
+  const getTariffStrikeTotal = (plan: {
+    strikeMonthly: number;
+    strikeByPeriod?: Partial<Record<TariffPeriod, number>>;
+  }) => plan.strikeByPeriod?.[tariffPeriod] ?? plan.strikeMonthly * activeTariffPeriodMeta.months;
 
   const todayStart = startOfDay(now);
   const statsAnchorStart = startOfDay(statsDate);
@@ -2625,14 +2636,14 @@ function TrainerHome({
 
   if (notesOpen && notesActiveList) {
     return (
-      <div style={styles.pageContainer}>
+      <div style={{ ...styles.pageContainer, ...styles.notesPage }}>
         <div style={styles.notesScreen}>
-          <div style={styles.topBar}>
+          <div style={{ ...styles.topBar, ...styles.notesTopBar }}>
             <div style={styles.backBtnSpacer} />
-            <div style={styles.topBarTitle}>{notesActiveList.title}</div>
+            <div style={{ ...styles.topBarTitle, ...styles.notesTitle }}>{notesActiveList.title}</div>
             <div style={styles.backBtnSpacer} />
           </div>
-          <div style={styles.topBarDivider} />
+          <div style={styles.notesTopBarDivider} />
           <div style={styles.notesList}>
             {notesItemCreating ? (
               <div style={styles.notesRow}>
@@ -2804,14 +2815,14 @@ function TrainerHome({
 
   if (notesOpen) {
     return (
-      <div style={styles.pageContainer}>
+      <div style={{ ...styles.pageContainer, ...styles.notesPage }}>
         <div style={styles.notesScreen}>
-          <div style={styles.topBar}>
+          <div style={{ ...styles.topBar, ...styles.notesTopBar }}>
             <div style={styles.backBtnSpacer} />
-            <div style={styles.topBarTitle}>{tr("Заметки", "Notes")}</div>
+            <div style={{ ...styles.topBarTitle, ...styles.notesTitle }}>{tr("Заметки", "Notes")}</div>
             <div style={styles.backBtnSpacer} />
           </div>
-          <div style={styles.topBarDivider} />
+          <div style={styles.notesTopBarDivider} />
           <div style={styles.notesList}>
             {notesCreating ? (
               <div style={styles.notesRow}>
@@ -3539,8 +3550,8 @@ function TrainerHome({
             </div>
             <div style={styles.tariffScroller}>
               {tariffPlans.map((plan) => {
-                const total = getTariffTotal(plan.priceMonthly);
-                const strikeTotal = getTariffStrikeTotal(plan.strikeMonthly);
+                const total = getTariffTotal(plan);
+                const strikeTotal = getTariffStrikeTotal(plan);
                 const isSelected = plan.id === "ultimate";
                 return (
                   <div key={plan.id} style={styles.tariffCard}>
@@ -13117,24 +13128,53 @@ const styles: Record<string, any> = {
     flexDirection: "column",
     width: "100%",
   },
+  notesPage: {
+    minHeight: "100vh",
+    background:
+      "radial-gradient(120% 90% at 50% 0%, rgba(232, 244, 255, 0.95) 0%, rgba(240, 246, 255, 0.92) 35%, rgba(244, 246, 251, 0.92) 60%, rgba(241, 242, 246, 0.95) 100%)",
+    paddingTop: 26,
+    paddingBottom: 120,
+  },
+  notesTopBar: {
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  notesTitle: {
+    fontFamily: "Georgia, 'Times New Roman', serif",
+    fontSize: 32,
+    fontWeight: 700,
+    letterSpacing: 0.2,
+    color: "#1b1f2a",
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
+  notesTopBarDivider: {
+    height: 0,
+    background: "transparent",
+    marginBottom: 8,
+  },
   notesList: {
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: 14,
     paddingBottom: 20,
   },
   notesRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "14px 16px",
-    borderRadius: 14,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
-    color: "var(--text)",
-    fontSize: 15,
+    padding: "18px 22px",
+    borderRadius: 999,
+    border: "1px solid rgba(255, 255, 255, 0.7)",
+    background:
+      "linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(227, 238, 255, 0.85))",
+    boxShadow: "0 14px 28px rgba(122, 148, 190, 0.22)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    color: "#1b1f2a",
+    fontSize: 18,
     fontWeight: 600,
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
     textAlign: "left",
     width: "100%",
     boxSizing: "border-box",
@@ -13152,10 +13192,10 @@ const styles: Record<string, any> = {
     alignItems: "stretch",
     gap: 0,
     overflow: "hidden",
-    borderRadius: 14,
+    borderRadius: 999,
   },
   notesSwipeBtn: {
-    width: 60,
+    width: 64,
     border: "none",
     cursor: "pointer",
     display: "flex",
@@ -13199,14 +13239,19 @@ const styles: Record<string, any> = {
   },
   notesRowButton: {
     cursor: "pointer",
+    background:
+      "linear-gradient(135deg, rgba(152, 194, 255, 0.55), rgba(196, 222, 255, 0.75))",
+    borderColor: "rgba(255, 255, 255, 0.8)",
+    boxShadow: "0 16px 30px rgba(118, 155, 210, 0.28)",
   },
   notesRowTitle: {
     opacity: 0.92,
   },
   notesRowAction: {
-    fontSize: 20,
+    fontSize: 26,
     fontWeight: 700,
-    color: "var(--muted)",
+    color: "#ffffff",
+    textShadow: "0 4px 10px rgba(84, 121, 184, 0.45)",
   },
   notesRowActionDisabled: {
     opacity: 0.5,
@@ -13216,25 +13261,26 @@ const styles: Record<string, any> = {
     border: "none",
     outline: "none",
     background: "transparent",
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: 600,
     letterSpacing: -0.2,
-    color: "var(--text)",
+    color: "#1b1f2a",
     opacity: 1,
   },
   notesEmpty: {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px dashed var(--border)",
-    color: "var(--muted)",
+    padding: "12px 16px",
+    borderRadius: 18,
+    border: "1px solid rgba(255, 255, 255, 0.7)",
+    background: "rgba(255, 255, 255, 0.6)",
+    color: "#3f4a5a",
     fontSize: 14,
   },
   notesError: {
-    padding: "8px 12px",
-    borderRadius: 10,
+    padding: "10px 14px",
+    borderRadius: 14,
     border: "1px solid rgba(239, 68, 68, 0.3)",
-    background: "rgba(239, 68, 68, 0.08)",
-    color: "#dc2626",
+    background: "rgba(255, 235, 235, 0.7)",
+    color: "#b91c1c",
     fontSize: 13,
   },
   homeGreeting: {
