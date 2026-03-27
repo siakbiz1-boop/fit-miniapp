@@ -9096,7 +9096,6 @@ function ClientDetailScreen(props: {
             <IconArrowLeft />
           </button>
         )}
-        <div style={styles.topBarTitle}>{tr("Клиент", "Client")}</div>
         <div style={{ width: 36 }} />
       </div>
 
@@ -15660,16 +15659,17 @@ const styles: Record<string, any> = {
   inlineCheckBtn: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    border: "none",
-    background: "var(--accent)",
-    color: "var(--accent-contrast)",
+    borderRadius: 999,
+    border: "1px solid rgba(120, 170, 220, 0.7)",
+    background: "linear-gradient(135deg, #6fa3ff, #6cc6ff)",
+    color: "#ffffff",
     fontSize: 20,
     fontWeight: 800,
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    boxShadow: "0 12px 22px rgba(80, 140, 220, 0.35)",
   },
 
   saveBtn: {
