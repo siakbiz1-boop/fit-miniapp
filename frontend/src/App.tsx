@@ -9767,7 +9767,7 @@ function ClientDetailScreen(props: {
           {history.filter((s) => isSessionEnded(s, new Date())).length === 0 ? (
             <div style={styles.clientPanelBody}>{tr("Пока нет завершённых тренировок.", "No completed sessions yet.")}</div>
           ) : (
-            <div style={styles.listBlock}>
+            <div style={styles.sessionHistoryList}>
               {history
                 .filter((s) => isSessionEnded(s, new Date()))
                 .slice()
@@ -9776,26 +9776,14 @@ function ClientDetailScreen(props: {
                   const bEnd = sessionEndTime(b).getTime();
                   return bEnd - aEnd;
                 })
-                .map((s, idx) => {
-                  const isLast = idx === history.length - 1;
-                  return (
-                    <div
-                      key={s.id}
-                      style={{
-                        ...styles.rowWrap,
-                        borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                        padding: "12px 0",
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={styles.rowTitle}>{tr("Тренировка", "Session")}</div>
-                        <div style={styles.rowSubtitle}>
-                          {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
-                        </div>
-                      </div>
+                .map((s) => (
+                  <div key={s.id} style={styles.sessionHistoryCard}>
+                    <div style={styles.sessionHistoryTitle}>{tr("Тренировка", "Session")}</div>
+                    <div style={styles.sessionHistorySubtitle}>
+                      {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
             </div>
           )}
         </div>
