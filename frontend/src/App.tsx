@@ -6441,13 +6441,14 @@ function TrainerSchedule(props: {
               <div
                 style={{
                   ...styles.clientScheduleSheet,
+                  ...styles.scheduleQuickSheet,
                   transform: weekScheduleDragY ? `translateY(${weekScheduleDragY}px)` : undefined,
                   transition: weekScheduleDragging ? "none" : "transform 180ms ease",
                 }}
                 onClick={(event) => event.stopPropagation()}
               >
                 <div
-                  style={styles.clientScheduleHandle}
+                  style={styles.scheduleQuickHandle}
                   onPointerDown={(event) => {
                     weekScheduleDragStartRef.current = event.clientY;
                     weekScheduleDragYRef.current = 0;
@@ -6456,13 +6457,13 @@ function TrainerSchedule(props: {
                 />
                 <div style={{ height: 2 }} />
 
-                <div style={styles.scheduleModeScroll}>
+                <div style={styles.scheduleQuickSegment}>
                   <button
                     type="button"
                     onClick={() => setWeekScheduleMode("client")}
                     style={{
-                      ...styles.scheduleTab,
-                      ...(weekScheduleMode === "client" ? styles.scheduleTabActive : null),
+                      ...styles.scheduleQuickSegmentBtn,
+                      ...(weekScheduleMode === "client" ? styles.scheduleQuickSegmentBtnActive : null),
                     }}
                   >
                     {tr("Тренировка клиента", "Client session")}
@@ -6471,8 +6472,8 @@ function TrainerSchedule(props: {
                     type="button"
                     onClick={() => setWeekScheduleMode("one_time")}
                     style={{
-                      ...styles.scheduleTab,
-                      ...(weekScheduleMode === "one_time" ? styles.scheduleTabActive : null),
+                      ...styles.scheduleQuickSegmentBtn,
+                      ...(weekScheduleMode === "one_time" ? styles.scheduleQuickSegmentBtnActive : null),
                     }}
                   >
                     {tr("Разовая тренировка", "One-time session")}
@@ -6484,15 +6485,16 @@ function TrainerSchedule(props: {
                       setWeekScheduleGroupIds([]);
                     }}
                     style={{
-                      ...styles.scheduleTab,
-                      ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
+                      ...styles.scheduleQuickSegmentBtn,
+                      ...(weekScheduleMode === "group" ? styles.scheduleQuickSegmentBtnActive : null),
                     }}
                   >
                     {tr("Групповая тренировка", "Group session")}
                   </button>
                 </div>
 
-                <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
+                <div style={styles.scheduleQuickSectionLabel}>{tr("Дата", "Date")}</div>
+                <div ref={weekScheduleScrollerRef} style={styles.scheduleQuickCalendarStrip}>
                   {weekScheduleDays.map((d) => {
                     const isToday = isSameDay(d.date, today);
                     const dateKey = formatDateKey(d.date);
@@ -6515,17 +6517,17 @@ function TrainerSchedule(props: {
                           if (weekScheduleError) setWeekScheduleError("");
                         }}
                         style={{
-                          ...styles.calendarDay,
-                          ...(isToday && !weekScheduleMulti ? styles.calendarDayActive : {}),
-                          ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
-                          ...(isSelected && weekScheduleMulti ? styles.calendarDaySelected : {}),
-                          ...(isPast ? styles.calendarDayPast : {}),
+                          ...styles.scheduleQuickDay,
+                          ...(isToday && !weekScheduleMulti ? styles.scheduleQuickDayActive : {}),
+                          ...(isSelected && !isToday ? styles.scheduleQuickDaySelected : {}),
+                          ...(isSelected && weekScheduleMulti ? styles.scheduleQuickDaySelected : {}),
+                          ...(isPast ? styles.scheduleQuickDayPast : {}),
                         }}
                         aria-current={isToday ? "date" : undefined}
                         type="button"
                       >
-                        <div style={styles.calendarDayDate}>{d.dateText}</div>
-                        <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
+                        <div style={styles.scheduleQuickDayDate}>{d.dateText}</div>
+                        <div style={styles.scheduleQuickDayWeek}>{d.weekdayText}</div>
                       </button>
                     );
                   })}
@@ -6533,13 +6535,13 @@ function TrainerSchedule(props: {
 
                 {weekScheduleMode === "client" ? (
                   <div style={{ marginTop: 8 }}>
-                    <div style={styles.scheduleViewSwitch}>
+                    <div style={styles.scheduleQuickSegment}>
                       <button
                         type="button"
                         onClick={() => setWeekScheduleMulti(false)}
                         style={{
-                          ...styles.scheduleViewSwitchBtn,
-                          ...(weekScheduleMulti ? null : styles.scheduleViewSwitchBtnActive),
+                          ...styles.scheduleQuickSegmentBtn,
+                          ...(weekScheduleMulti ? null : styles.scheduleQuickSegmentBtnActive),
                         }}
                       >
                         {tr("Одна дата", "Single date")}
@@ -6548,8 +6550,8 @@ function TrainerSchedule(props: {
                         type="button"
                         onClick={() => setWeekScheduleMulti(true)}
                         style={{
-                          ...styles.scheduleViewSwitchBtn,
-                          ...(weekScheduleMulti ? styles.scheduleViewSwitchBtnActive : null),
+                          ...styles.scheduleQuickSegmentBtn,
+                          ...(weekScheduleMulti ? styles.scheduleQuickSegmentBtnActive : null),
                         }}
                       >
                         {tr("Несколько", "Multiple")}
@@ -6558,46 +6560,48 @@ function TrainerSchedule(props: {
                   </div>
                 ) : null}
 
-                <div style={styles.clientScheduleFields}>
-                  <div style={styles.freeField}>
-                    <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                    <input
-                      type="time"
-                      value={weekScheduleStart}
-                      onChange={(e) => {
-                        const nextStart = e.target.value;
-                        setWeekScheduleStart(nextStart);
-                        const nextEnd = addHourToTime(nextStart);
-                        if (nextEnd) setWeekScheduleEnd(nextEnd);
-                        if (weekScheduleError) setWeekScheduleError("");
-                      }}
-                      step={300}
-                      style={styles.input}
-                    />
-                  </div>
-                  <div style={styles.freeField}>
-                    <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                    <input
-                      type="time"
-                      value={weekScheduleEnd}
-                      onChange={(e) => {
-                        setWeekScheduleEnd(e.target.value);
-                        if (weekScheduleError) setWeekScheduleError("");
-                      }}
-                      step={300}
-                      style={styles.input}
-                    />
+                <div style={styles.scheduleQuickFields}>
+                  <div style={styles.scheduleQuickTimeRow}>
+                    <div style={styles.scheduleQuickField}>
+                      <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
+                      <input
+                        type="time"
+                        value={weekScheduleStart}
+                        onChange={(e) => {
+                          const nextStart = e.target.value;
+                          setWeekScheduleStart(nextStart);
+                          const nextEnd = addHourToTime(nextStart);
+                          if (nextEnd) setWeekScheduleEnd(nextEnd);
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        step={300}
+                        style={styles.scheduleQuickInput}
+                      />
+                    </div>
+                    <div style={styles.scheduleQuickField}>
+                      <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
+                      <input
+                        type="time"
+                        value={weekScheduleEnd}
+                        onChange={(e) => {
+                          setWeekScheduleEnd(e.target.value);
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        step={300}
+                        style={styles.scheduleQuickInput}
+                      />
+                    </div>
                   </div>
                   {weekScheduleMode === "client" ? (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                    <div style={styles.scheduleQuickField}>
+                      <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                       <select
                         value={weekScheduleClientId}
                         onChange={(e) => {
                           setWeekScheduleClientId(e.target.value);
                           if (weekScheduleError) setWeekScheduleError("");
                         }}
-                        style={styles.selectCompact}
+                        style={styles.scheduleQuickInput}
                       >
                         {activeClients.length === 0 ? (
                           <option value="">{tr("Нет клиентов", "No clients")}</option>
@@ -6611,8 +6615,8 @@ function TrainerSchedule(props: {
                       </select>
                     </div>
                   ) : weekScheduleMode === "one_time" ? (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                    <div style={styles.scheduleQuickField}>
+                      <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                       <input
                         value={weekScheduleClientName}
                         onChange={(e) => {
@@ -6620,13 +6624,13 @@ function TrainerSchedule(props: {
                           if (weekScheduleError) setWeekScheduleError("");
                         }}
                         placeholder={tr("Введите имя клиента", "Enter client name")}
-                        style={styles.input}
+                        style={styles.scheduleQuickInput}
                       />
                     </div>
                   ) : (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={styles.fieldLabel}>{tr("Клиенты", "Clients")}</div>
-                      <div style={styles.groupSelectList}>
+                    <div style={styles.scheduleQuickField}>
+                      <div style={styles.scheduleQuickLabel}>{tr("Клиенты", "Clients")}</div>
+                      <div style={styles.scheduleQuickGroupList}>
                         {activeClients.length === 0 ? (
                           <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
                         ) : (
@@ -6652,19 +6656,19 @@ function TrainerSchedule(props: {
                       </div>
                     </div>
                   )}
-                  <div style={{ marginTop: 12 }}>
-                    <div style={styles.fieldLabel}>{tr("Цвет", "Color")}</div>
+                  <div style={styles.scheduleQuickField}>
+                    <div style={styles.scheduleQuickLabel}>{tr("Цвет", "Color")}</div>
                     <div style={styles.colorSelectWrap}>
                       <button
                         type="button"
-                        style={styles.colorSelectButton}
+                        style={styles.scheduleQuickColorButton}
                         onClick={() => setWeekScheduleColorOpen((prev) => !prev)}
                       >
                         {selectedColorLabel(weekScheduleColor)}
                         <span style={styles.colorSelectChevron}>▾</span>
                       </button>
                       {weekScheduleColorOpen ? (
-                        <div style={styles.colorSelectMenu}>
+                        <div style={styles.scheduleQuickColorMenu}>
                           {sessionColorOptions.map((opt) => (
                             <button
                               key={opt.id}
@@ -6696,7 +6700,7 @@ function TrainerSchedule(props: {
                   {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                   <button
                     type="button"
-                    style={styles.saveBtn}
+                    style={styles.scheduleQuickSaveBtn}
                     onClick={async () => {
                       const start = normalizeTimeInput(weekScheduleStart);
                       const end = normalizeTimeInput(weekScheduleEnd);
@@ -7122,13 +7126,14 @@ function TrainerSchedule(props: {
               <div
                   style={{
                     ...styles.clientScheduleSheet,
+                    ...styles.scheduleQuickSheet,
                     transform: weekScheduleDragY ? `translateY(${weekScheduleDragY}px)` : undefined,
                     transition: weekScheduleDragging ? "none" : "transform 180ms ease",
                   }}
                   onClick={(event) => event.stopPropagation()}
                 >
                     <div
-                      style={styles.clientScheduleHandle}
+                      style={styles.scheduleQuickHandle}
                       onPointerDown={(event) => {
                         weekScheduleDragStartRef.current = event.clientY;
                         weekScheduleDragYRef.current = 0;
@@ -7137,13 +7142,13 @@ function TrainerSchedule(props: {
                     />
                   <div style={{ height: 2 }} />
 
-                    <div style={styles.scheduleModeScroll}>
+                    <div style={styles.scheduleQuickSegment}>
                       <button
                         type="button"
                         onClick={() => setWeekScheduleMode("client")}
                         style={{
-                          ...styles.scheduleTab,
-                          ...(weekScheduleMode === "client" ? styles.scheduleTabActive : null),
+                          ...styles.scheduleQuickSegmentBtn,
+                          ...(weekScheduleMode === "client" ? styles.scheduleQuickSegmentBtnActive : null),
                         }}
                       >
                         {tr("Тренировка клиента", "Client session")}
@@ -7152,8 +7157,8 @@ function TrainerSchedule(props: {
                         type="button"
                         onClick={() => setWeekScheduleMode("one_time")}
                         style={{
-                          ...styles.scheduleTab,
-                          ...(weekScheduleMode === "one_time" ? styles.scheduleTabActive : null),
+                          ...styles.scheduleQuickSegmentBtn,
+                          ...(weekScheduleMode === "one_time" ? styles.scheduleQuickSegmentBtnActive : null),
                         }}
                       >
                         {tr("Разовая тренировка", "One-time session")}
@@ -7165,15 +7170,16 @@ function TrainerSchedule(props: {
                           setWeekScheduleGroupIds([]);
                         }}
                         style={{
-                          ...styles.scheduleTab,
-                          ...(weekScheduleMode === "group" ? styles.scheduleTabActive : null),
+                          ...styles.scheduleQuickSegmentBtn,
+                          ...(weekScheduleMode === "group" ? styles.scheduleQuickSegmentBtnActive : null),
                         }}
                       >
                         {tr("Групповая тренировка", "Group session")}
                       </button>
                     </div>
 
-                    <div ref={weekScheduleScrollerRef} style={styles.calendarStrip}>
+                    <div style={styles.scheduleQuickSectionLabel}>{tr("Дата", "Date")}</div>
+                    <div ref={weekScheduleScrollerRef} style={styles.scheduleQuickCalendarStrip}>
                       {weekScheduleDays.map((d) => {
                         const isToday = isSameDay(d.date, today);
                         const dateKey = formatDateKey(d.date);
@@ -7196,17 +7202,17 @@ function TrainerSchedule(props: {
                               if (weekScheduleError) setWeekScheduleError("");
                             }}
                             style={{
-                              ...styles.calendarDay,
-                              ...(isToday && !weekScheduleMulti ? styles.calendarDayActive : {}),
-                              ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
-                              ...(isSelected && weekScheduleMulti ? styles.calendarDaySelected : {}),
-                              ...(isPast ? styles.calendarDayPast : {}),
+                              ...styles.scheduleQuickDay,
+                              ...(isToday && !weekScheduleMulti ? styles.scheduleQuickDayActive : {}),
+                              ...(isSelected && !isToday ? styles.scheduleQuickDaySelected : {}),
+                              ...(isSelected && weekScheduleMulti ? styles.scheduleQuickDaySelected : {}),
+                              ...(isPast ? styles.scheduleQuickDayPast : {}),
                             }}
                             aria-current={isToday ? "date" : undefined}
                             type="button"
                           >
-                            <div style={styles.calendarDayDate}>{d.dateText}</div>
-                            <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
+                            <div style={styles.scheduleQuickDayDate}>{d.dateText}</div>
+                            <div style={styles.scheduleQuickDayWeek}>{d.weekdayText}</div>
                           </button>
                         );
                       })}
@@ -7214,13 +7220,13 @@ function TrainerSchedule(props: {
 
                   {weekScheduleMode === "client" ? (
                     <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-start" }}>
-                      <div style={{ ...styles.scheduleViewSwitch, display: "inline-flex" }}>
+                      <div style={styles.scheduleQuickSegment}>
                         <button
                           type="button"
                           onClick={() => setWeekScheduleMulti(false)}
                           style={{
-                            ...styles.scheduleViewSwitchBtn,
-                            ...(weekScheduleMulti ? null : styles.scheduleViewSwitchBtnActive),
+                            ...styles.scheduleQuickSegmentBtn,
+                            ...(weekScheduleMulti ? null : styles.scheduleQuickSegmentBtnActive),
                           }}
                         >
                           {tr("Одна дата", "Single date")}
@@ -7229,8 +7235,8 @@ function TrainerSchedule(props: {
                           type="button"
                           onClick={() => setWeekScheduleMulti(true)}
                           style={{
-                            ...styles.scheduleViewSwitchBtn,
-                            ...(weekScheduleMulti ? styles.scheduleViewSwitchBtnActive : null),
+                            ...styles.scheduleQuickSegmentBtn,
+                            ...(weekScheduleMulti ? styles.scheduleQuickSegmentBtnActive : null),
                           }}
                         >
                           {tr("Несколько", "Multiple")}
@@ -7239,43 +7245,45 @@ function TrainerSchedule(props: {
                     </div>
                   ) : null}
 
-                    <div style={styles.clientScheduleFields}>
-                      <div style={styles.freeField}>
-                        <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                    <input
-                      type="time"
-                      value={weekScheduleStart}
-                      onChange={(e) => {
-                        setWeekScheduleStart(e.target.value);
-                        if (weekScheduleError) setWeekScheduleError("");
-                      }}
-                      step={300}
-                      style={styles.inputCompact}
-                    />
-                  </div>
-                  <div style={styles.freeField}>
-                    <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                    <input
-                      type="time"
-                      value={weekScheduleEnd}
-                      onChange={(e) => {
-                        setWeekScheduleEnd(e.target.value);
-                        if (weekScheduleError) setWeekScheduleError("");
-                      }}
-                      step={300}
-                      style={styles.inputCompact}
-                    />
-                  </div>
+                    <div style={styles.scheduleQuickFields}>
+                      <div style={styles.scheduleQuickTimeRow}>
+                        <div style={styles.scheduleQuickField}>
+                          <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
+                          <input
+                            type="time"
+                            value={weekScheduleStart}
+                            onChange={(e) => {
+                              setWeekScheduleStart(e.target.value);
+                              if (weekScheduleError) setWeekScheduleError("");
+                            }}
+                            step={300}
+                            style={styles.scheduleQuickInput}
+                          />
+                        </div>
+                        <div style={styles.scheduleQuickField}>
+                          <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
+                          <input
+                            type="time"
+                            value={weekScheduleEnd}
+                            onChange={(e) => {
+                              setWeekScheduleEnd(e.target.value);
+                              if (weekScheduleError) setWeekScheduleError("");
+                            }}
+                            step={300}
+                            style={styles.scheduleQuickInput}
+                          />
+                        </div>
+                      </div>
                   {weekScheduleMode === "client" ? (
-                    <div style={{ marginTop: 12 }}>
-                      <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                    <div style={styles.scheduleQuickField}>
+                      <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                       <select
                         value={weekScheduleClientId}
                         onChange={(e) => {
                           setWeekScheduleClientId(e.target.value);
                           if (weekScheduleError) setWeekScheduleError("");
                         }}
-                        style={styles.selectCompact}
+                        style={styles.scheduleQuickInput}
                       >
                             {activeClients.length === 0 ? (
                               <option value="">{tr("Нет клиентов", "No clients")}</option>
@@ -7289,8 +7297,8 @@ function TrainerSchedule(props: {
                           </select>
                         </div>
                       ) : weekScheduleMode === "one_time" ? (
-                        <div style={{ marginTop: 12 }}>
-                          <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
+                        <div style={styles.scheduleQuickField}>
+                          <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                           <input
                             value={weekScheduleClientName}
                             onChange={(e) => {
@@ -7298,13 +7306,13 @@ function TrainerSchedule(props: {
                               if (weekScheduleError) setWeekScheduleError("");
                             }}
                             placeholder={tr("Введите имя клиента", "Enter client name")}
-                            style={styles.input}
+                            style={styles.scheduleQuickInput}
                           />
                         </div>
                       ) : (
-                        <div style={{ marginTop: 12 }}>
-                          <div style={styles.fieldLabel}>{tr("Клиенты", "Clients")}</div>
-                          <div style={styles.groupSelectList}>
+                        <div style={styles.scheduleQuickField}>
+                          <div style={styles.scheduleQuickLabel}>{tr("Клиенты", "Clients")}</div>
+                          <div style={styles.scheduleQuickGroupList}>
                             {activeClients.length === 0 ? (
                               <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
                             ) : (
@@ -7330,19 +7338,19 @@ function TrainerSchedule(props: {
                           </div>
                         </div>
                       )}
-                      <div style={{ marginTop: 12 }}>
-                        <div style={styles.fieldLabel}>{tr("Цвет", "Color")}</div>
+                      <div style={styles.scheduleQuickField}>
+                        <div style={styles.scheduleQuickLabel}>{tr("Цвет", "Color")}</div>
                         <div style={styles.colorSelectWrap}>
                           <button
                             type="button"
-                            style={styles.colorSelectButton}
+                            style={styles.scheduleQuickColorButton}
                             onClick={() => setWeekScheduleColorOpen((prev) => !prev)}
                           >
                             {selectedColorLabel(weekScheduleColor)}
                             <span style={styles.colorSelectChevron}>▾</span>
                           </button>
                           {weekScheduleColorOpen ? (
-                            <div style={styles.colorSelectMenu}>
+                            <div style={styles.scheduleQuickColorMenu}>
                               {sessionColorOptions.map((opt) => (
                                 <button
                                   key={opt.id}
@@ -7374,7 +7382,7 @@ function TrainerSchedule(props: {
                       {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                       <button
                         type="button"
-                        style={styles.saveBtn}
+                        style={styles.scheduleQuickSaveBtn}
                         onClick={async () => {
                           const start = normalizeTimeInput(weekScheduleStart);
                           const end = normalizeTimeInput(weekScheduleEnd);
@@ -14824,6 +14832,194 @@ const styles: Record<string, any> = {
   },
   clientScheduleFields: {
     marginTop: 6,
+  },
+  scheduleQuickSheet: {
+    height: "74vh",
+    background: "var(--glass-sheet-bg)",
+    border: "1px solid var(--glass-card-border)",
+    boxShadow: "var(--glass-sheet-shadow)",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: "12px 18px 22px",
+    backdropFilter: "blur(20px)",
+    WebkitBackdropFilter: "blur(20px)",
+  },
+  scheduleQuickHandle: {
+    width: 52,
+    height: 6,
+    borderRadius: 999,
+    background: "linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2))",
+    margin: "6px auto 12px",
+  },
+  scheduleQuickSectionLabel: {
+    marginTop: 8,
+    marginBottom: 6,
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+    color: "var(--muted)",
+  },
+  scheduleQuickCalendarStrip: {
+    display: "flex",
+    gap: 12,
+    overflowX: "auto",
+    paddingBottom: 10,
+    WebkitOverflowScrolling: "touch",
+  },
+  scheduleQuickDay: {
+    flex: "0 0 74px",
+    minWidth: 74,
+    borderRadius: 22,
+    border: "1px solid var(--glass-pill-border)",
+    padding: "12px 10px",
+    background: "var(--glass-pill-bg)",
+    boxShadow: "var(--glass-pill-shadow)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 6,
+    cursor: "pointer",
+    color: "var(--text)",
+  },
+  scheduleQuickDayActive: {
+    borderColor: "var(--accent-soft-border)",
+    background: "var(--accent-soft-bg)",
+    color: "var(--accent-soft-text)",
+  },
+  scheduleQuickDaySelected: {
+    background: "var(--schedule-day-active-bg)",
+    borderColor: "var(--accent-soft-border)",
+    color: "var(--schedule-day-active-text)",
+    boxShadow: "var(--schedule-switch-active-shadow)",
+  },
+  scheduleQuickDayPast: {
+    opacity: 0.45,
+  },
+  scheduleQuickDayDate: {
+    fontSize: 16,
+    fontWeight: 800,
+    letterSpacing: -0.2,
+  },
+  scheduleQuickDayWeek: {
+    fontSize: 12,
+    fontWeight: 600,
+    textTransform: "lowercase",
+    opacity: 0.7,
+  },
+  scheduleQuickSegment: {
+    display: "flex",
+    gap: 6,
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid var(--glass-tab-wrap-border)",
+    background: "var(--glass-tab-wrap-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+  },
+  scheduleQuickSegmentBtn: {
+    flex: 1,
+    border: "none",
+    background: "transparent",
+    color: "var(--text)",
+    fontWeight: 700,
+    fontSize: 12,
+    padding: "10px 12px",
+    borderRadius: 999,
+    cursor: "pointer",
+  },
+  scheduleQuickSegmentBtnActive: {
+    background: "var(--glass-tab-active-bg)",
+    color: "var(--glass-tab-active-text)",
+    boxShadow: "var(--glass-tab-active-shadow)",
+  },
+  scheduleQuickFields: {
+    marginTop: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  scheduleQuickTimeRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+  },
+  scheduleQuickField: {
+    display: "flex",
+    flexDirection: "column",
+  },
+  scheduleQuickLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    marginBottom: 6,
+  },
+  scheduleQuickInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 999,
+    border: "1px solid var(--glass-pill-border)",
+    padding: "12px 16px",
+    outline: "none",
+    fontSize: 16,
+    background: "var(--glass-pill-bg)",
+    color: "var(--text)",
+    boxShadow: "var(--glass-pill-shadow)",
+  },
+  scheduleQuickGroupList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    padding: 12,
+    borderRadius: 18,
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
+    boxShadow: "var(--glass-pill-shadow)",
+    maxHeight: 180,
+    overflowY: "auto",
+  },
+  scheduleQuickColorButton: {
+    width: "100%",
+    border: "1px solid var(--glass-pill-border)",
+    borderRadius: 999,
+    padding: "12px 16px",
+    fontSize: 15,
+    fontWeight: 700,
+    background: "var(--glass-pill-bg)",
+    color: "var(--text)",
+    cursor: "pointer",
+    boxShadow: "var(--glass-pill-shadow)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  scheduleQuickColorMenu: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    marginTop: 8,
+    background: "var(--glass-card-bg)",
+    border: "1px solid var(--glass-card-border)",
+    borderRadius: 16,
+    boxShadow: "var(--glass-card-shadow)",
+    padding: 8,
+    zIndex: 5,
+    minWidth: 220,
+  },
+  scheduleQuickSaveBtn: {
+    marginTop: 8,
+    width: "100%",
+    height: 54,
+    borderRadius: 999,
+    border: "1px solid rgba(130, 165, 215, 0.7)",
+    background: "var(--accent-grad)",
+    color: "#ffffff",
+    fontWeight: 800,
+    fontSize: 18,
+    cursor: "pointer",
+    boxShadow: "var(--accent-shadow)",
   },
   weightsStatsOverlay: {
     position: "fixed",
