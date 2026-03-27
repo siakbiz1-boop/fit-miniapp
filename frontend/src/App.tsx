@@ -9033,9 +9033,9 @@ function ClientDetailScreen(props: {
   };
 
   const renderReadOnly = (label: string, value?: string) => (
-    <div style={{ marginTop: 16 }}>
-      <div style={styles.fieldLabel}>{label}</div>
-      <div style={styles.readOnlyValue}>{value && String(value).trim() ? value : "—"}</div>
+    <div style={{ marginTop: 14 }}>
+      <div style={styles.clientDetailFieldLabel}>{label}</div>
+      <div style={styles.clientDetailValueBox}>{value && String(value).trim() ? value : "—"}</div>
     </div>
   );
 
@@ -9100,28 +9100,24 @@ function ClientDetailScreen(props: {
         <div style={{ width: 36 }} />
       </div>
 
-      <div style={styles.personalHeaderRow}>
-        <AvatarCircle name={client?.username || tr("Клиент", "Client")} photoUrl={client?.photoUrl || ""} size={44} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)", lineHeight: 1.2 }}>
-            {client?.fullName?.trim()
-              ? client.fullName
-              : client?.username
-                ? `@${client.username}`
-                : tr("Клиент", "Client")}
-          </div>
-          <div style={{ opacity: 0.62, fontSize: 13, marginTop: 2 }}>
-            {client?.status === "active" ? tr("Активен", "Active") : tr("Ожидает активации", "Pending activation")}
-          </div>
+      <div style={styles.clientDetailHeaderCard}>
+        <AvatarCircle name={client?.username || tr("Клиент", "Client")} photoUrl={client?.photoUrl || ""} size={64} />
+        <div style={styles.clientDetailName}>
+          {client?.fullName?.trim()
+            ? client.fullName
+            : client?.username
+              ? `@${client.username}`
+              : tr("Клиент", "Client")}
+        </div>
+        <div style={styles.clientDetailStatus}>
+          {client?.status === "active" ? tr("Активен", "Active") : tr("Ожидает активации", "Pending activation")}
         </div>
       </div>
 
-      <div style={styles.clientPrimaryActionWrap}>
-        <div style={styles.clientPrimaryActionDivider} />
-        <button type="button" style={styles.clientPrimaryActionBtn} onClick={() => setScheduleOpen(true)}>
+      <div style={styles.clientDetailActionWrap}>
+        <button type="button" style={styles.clientDetailActionBtn} onClick={() => setScheduleOpen(true)}>
           {tr("Записать клиента на тренировку", "Schedule client for a session")}
         </button>
-        <div style={styles.clientPrimaryActionDivider} />
       </div>
 
       {scheduleOpen ? (
@@ -9325,14 +9321,14 @@ function ClientDetailScreen(props: {
         </div>
       ) : null}
 
-      <div style={styles.clientTabsScroll}>
-        <div style={styles.clientTabs}>
+      <div style={styles.clientDetailTabsScroll}>
+        <div style={styles.clientDetailTabsWrap}>
           <button
             type="button"
             onClick={() => setTab("info")}
             style={{
-              ...styles.clientTab,
-              ...(visibleTab === "info" ? styles.clientTabActive : null),
+              ...styles.clientDetailTab,
+              ...(visibleTab === "info" ? styles.clientDetailTabActive : null),
             }}
           >
             {tr("Информация о клиенте", "Client info")}
@@ -9343,8 +9339,8 @@ function ClientDetailScreen(props: {
                 type="button"
                 onClick={() => setTab("subscription")}
                 style={{
-                  ...styles.clientTab,
-                  ...(visibleTab === "subscription" ? styles.clientTabActive : null),
+                  ...styles.clientDetailTab,
+                  ...(visibleTab === "subscription" ? styles.clientDetailTabActive : null),
                 }}
               >
                 {tr("Информация об абонементе", "Subscription info")}
@@ -9353,8 +9349,8 @@ function ClientDetailScreen(props: {
                 type="button"
                 onClick={() => setTab("weights")}
                 style={{
-                  ...styles.clientTab,
-                  ...(visibleTab === "weights" ? styles.clientTabActive : null),
+                  ...styles.clientDetailTab,
+                  ...(visibleTab === "weights" ? styles.clientDetailTabActive : null),
                 }}
               >
                 {tr("Статистика упражнений", "Exercise stats")}
@@ -9363,8 +9359,8 @@ function ClientDetailScreen(props: {
                 type="button"
                 onClick={() => setTab("history")}
                 style={{
-                  ...styles.clientTab,
-                  ...(visibleTab === "history" ? styles.clientTabActive : null),
+                  ...styles.clientDetailTab,
+                  ...(visibleTab === "history" ? styles.clientDetailTabActive : null),
                 }}
               >
                 {tr("История тренировок", "Training history")}
@@ -9374,37 +9370,37 @@ function ClientDetailScreen(props: {
         </div>
       </div>
 
-      <div style={styles.clientTabsDivider} />
+      <div style={styles.clientDetailTabsDivider} />
 
       {visibleTab === "info" ? (
         <div style={styles.clientPanelPlain}>
           {isLocalClient ? (
             <div style={{ marginTop: 16 }}>
-              <div style={styles.fieldLabel}>{tr("ФИО клиента", "Client full name")}</div>
+              <div style={styles.clientDetailFieldLabel}>{tr("ФИО клиента", "Client full name")}</div>
               <input
                 value={draftFullName}
                 onChange={(e) => setDraftFullName(e.target.value)}
                 onBlur={() => saveLocalClientField("fullName", draftFullName)}
                 placeholder={tr("Введите ФИО", "Enter full name")}
-                style={styles.input}
+                style={styles.clientDetailInput}
               />
             </div>
           ) : (
             renderReadOnly(tr("ФИО клиента", "Client full name"), client?.fullName)
           )}
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>Username</div>
-            <div style={styles.readOnlyValue}>
+            <div style={styles.clientDetailFieldLabel}>Username</div>
+            <div style={styles.clientDetailValueBox}>
               {isLocalClient ? "—" : client?.username ? `@${client.username}` : "—"}
             </div>
           </div>
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>{tr("Инвайт‑код", "Invite code")}</div>
+            <div style={styles.clientDetailFieldLabel}>{tr("Инвайт‑код", "Invite code")}</div>
             {isLocalClient ? (
-              <div style={styles.readOnlyValue}>—</div>
+              <div style={styles.clientDetailValueBox}>—</div>
             ) : (
-              <div style={styles.copyRow}>
-                <div style={styles.readOnlyValue}>{client?.code || "—"}</div>
+              <div style={styles.clientDetailCopyRow}>
+                <div style={styles.clientDetailValueBox}>{client?.code || "—"}</div>
                 <button
                   type="button"
                   onClick={() => {
@@ -9419,7 +9415,7 @@ function ClientDetailScreen(props: {
                       buttons: [{ type: "ok" }],
                     });
                   }}
-                  style={styles.copyBtn}
+                  style={styles.clientDetailCopyBtn}
                   aria-label="copy invite code"
                 >
                   <IconCopy />
@@ -9430,7 +9426,7 @@ function ClientDetailScreen(props: {
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>{tr("Пол", "Gender")}</div>
+            <div style={styles.clientDetailFieldLabel}>{tr("Пол", "Gender")}</div>
             {isLocalClient ? (
               <select
                 value={draftGender}
@@ -9439,14 +9435,14 @@ function ClientDetailScreen(props: {
                   setDraftGender(v);
                   saveLocalClientField("gender", v);
                 }}
-                style={styles.input}
+                style={styles.clientDetailInput}
               >
                 <option value="">{tr("Не выбран", "Not selected")}</option>
                 <option value="male">{tr("Мужской", "Male")}</option>
                 <option value="female">{tr("Женский", "Female")}</option>
               </select>
             ) : (
-              <div style={styles.readOnlyValue}>
+              <div style={styles.clientDetailValueBox}>
                 {client?.gender === "male"
                   ? tr("Мужской", "Male")
                   : client?.gender === "female"
@@ -9458,7 +9454,7 @@ function ClientDetailScreen(props: {
 
           <div style={styles.metricsRow}>
             <div style={{ flex: 1 }}>
-              <div style={styles.fieldLabel}>{tr("Рост", "Height")}</div>
+              <div style={styles.clientDetailFieldLabel}>{tr("Рост", "Height")}</div>
               {isLocalClient ? (
                 <input
                   inputMode="numeric"
@@ -9471,16 +9467,16 @@ function ClientDetailScreen(props: {
                     saveLocalClientField("height", v);
                   }}
                   placeholder={tr("см", "cm")}
-                  style={styles.input}
+                  style={styles.clientDetailInput}
                 />
               ) : (
-                <div style={styles.readOnlyValue}>
+                <div style={styles.clientDetailValueBox}>
                   {client?.height && String(client.height).trim() ? client.height : "—"}
                 </div>
               )}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
+              <div style={styles.clientDetailFieldLabel}>{tr("Вес", "Weight")}</div>
               {isLocalClient ? (
                 <input
                   inputMode="decimal"
@@ -9493,10 +9489,10 @@ function ClientDetailScreen(props: {
                     saveLocalClientField("weight", v);
                   }}
                   placeholder={tr("кг", "kg")}
-                  style={styles.input}
+                  style={styles.clientDetailInput}
                 />
               ) : (
-                <div style={styles.readOnlyValue}>
+                <div style={styles.clientDetailValueBox}>
                   {client?.weight && String(client.weight).trim() ? client.weight : "—"}
                 </div>
               )}
@@ -9506,7 +9502,7 @@ function ClientDetailScreen(props: {
           {isLocalClient ? (
             <>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Цель", "Goal")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Цель", "Goal")}</div>
                 <textarea
                   ref={goalRef}
                   value={draftGoal}
@@ -9519,11 +9515,11 @@ function ClientDetailScreen(props: {
                   onBlur={() => saveLocalClientField("goal", draftGoal)}
                   placeholder={tr("Цель", "Goal")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Комментарии", "Comments")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Комментарии", "Comments")}</div>
                 <textarea
                   ref={commentRef}
                   value={draftComment}
@@ -9536,16 +9532,16 @@ function ClientDetailScreen(props: {
                   onBlur={() => saveLocalClientField("comment", draftComment)}
                   placeholder={tr("Комментарий", "Comment")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
-              <div style={{ ...styles.clientTabsDivider, marginTop: 16 }} />
+              <div style={{ ...styles.clientDetailTabsDivider, marginTop: 16 }} />
             </>
           ) : (
             <>
               {renderReadOnly(tr("Цель", "Goal"), client?.goal)}
               {renderReadOnly(tr("Комментарии", "Comments"), client?.comment)}
-              <div style={{ ...styles.clientTabsDivider, marginTop: 16 }} />
+              <div style={{ ...styles.clientDetailTabsDivider, marginTop: 16 }} />
               {renderReadOnly(tr("Номер телефона", "Phone number"), client?.clientProfile?.phone)}
               {renderReadOnly("Instagram", client?.clientProfile?.instagram)}
               {renderReadOnly(tr("Иная социальная сеть", "Other social network"), client?.clientProfile?.otherSocial)}
@@ -9554,33 +9550,33 @@ function ClientDetailScreen(props: {
           {isLocalClient ? (
             <>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Номер телефона", "Phone number")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Номер телефона", "Phone number")}</div>
                 <input
                   value={draftContactPhone}
                   onChange={(e) => setDraftContactPhone(e.target.value)}
                   onBlur={() => saveLocalClientField("contactPhone", draftContactPhone)}
                   placeholder={tr("Телефон", "Phone")}
-                  style={styles.input}
+                  style={styles.clientDetailInput}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>Instagram</div>
+                <div style={styles.clientDetailFieldLabel}>Instagram</div>
                 <input
                   value={draftContactInstagram}
                   onChange={(e) => setDraftContactInstagram(e.target.value)}
                   onBlur={() => saveLocalClientField("contactInstagram", draftContactInstagram)}
                   placeholder="Instagram"
-                  style={styles.input}
+                  style={styles.clientDetailInput}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
                 <input
                   value={draftContactOtherSocial}
                   onChange={(e) => setDraftContactOtherSocial(e.target.value)}
                   onBlur={() => saveLocalClientField("contactOtherSocial", draftContactOtherSocial)}
                   placeholder={tr("Ссылка или ник", "Link or handle")}
-                  style={styles.input}
+                  style={styles.clientDetailInput}
                 />
               </div>
             </>
@@ -9642,7 +9638,7 @@ function ClientDetailScreen(props: {
         <div style={styles.clientPanelPlain}>
           <div style={styles.metricsRow}>
             <div style={{ flex: 1 }}>
-              <div style={styles.fieldLabel}>{tr("Дата начала", "Start date")}</div>
+              <div style={styles.clientDetailFieldLabel}>{tr("Дата начала", "Start date")}</div>
               <input
                 type="date"
                 value={toISODate(draftSubStart)}
@@ -9670,11 +9666,11 @@ function ClientDetailScreen(props: {
                     }
                   }
                 }}
-                style={styles.input}
+                style={styles.clientDetailInput}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={styles.fieldLabel}>{tr("Дата завершения", "End date")}</div>
+              <div style={styles.clientDetailFieldLabel}>{tr("Дата завершения", "End date")}</div>
               <input
                 type="date"
                 value={toISODate(draftSubEnd)}
@@ -9703,13 +9699,13 @@ function ClientDetailScreen(props: {
                   }
                   saveSubscriptionField("subscriptionEnd", draftSubEnd);
                 }}
-                style={styles.input}
+                style={styles.clientDetailInput}
               />
             </div>
           </div>
 
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+            <div style={styles.clientDetailFieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
             <div style={styles.inputRow}>
               <input
                 inputMode="numeric"
@@ -9725,7 +9721,7 @@ function ClientDetailScreen(props: {
                   saveSubscriptionField("subscriptionPrice", value);
                 }}
                 placeholder={tr("Введите стоимость", "Enter price")}
-                style={{ ...styles.input, flex: 1 }}
+                style={{ ...styles.clientDetailInput, flex: 1 }}
               />
               <button
                 type="button"
@@ -9742,7 +9738,7 @@ function ClientDetailScreen(props: {
 
           <div style={{ ...styles.metricsRow, marginTop: 16 }}>
             <div style={{ flex: 1 }}>
-              <div style={styles.fieldLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
+              <div style={styles.clientDetailFieldLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
@@ -9756,12 +9752,12 @@ function ClientDetailScreen(props: {
                   saveSubscriptionField("subscriptionLeft", value);
                 }}
                 placeholder={tr("Занятий", "Sessions")}
-                style={styles.input}
+                style={styles.clientDetailInput}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={styles.fieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
-              <div style={styles.readOnlyValue}>{draftSubLeft || draftSubTotal || "—"}</div>
+              <div style={styles.clientDetailFieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
+              <div style={styles.clientDetailValueBox}>{draftSubLeft || draftSubTotal || "—"}</div>
             </div>
           </div>
         </div>
@@ -14577,8 +14573,38 @@ const styles: Record<string, any> = {
     marginTop: 6,
     marginBottom: 14,
   },
+  clientDetailHeaderCard: {
+    marginTop: 6,
+    marginBottom: 14,
+    padding: "18px 16px",
+    borderRadius: 26,
+    border: "1px solid rgba(180, 210, 235, 0.7)",
+    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96))",
+    boxShadow: "0 18px 30px rgba(120, 150, 190, 0.2)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 8,
+    textAlign: "center",
+  },
+  clientDetailName: {
+    fontWeight: 700,
+    fontSize: 18,
+    color: "var(--text)",
+    letterSpacing: -0.2,
+    lineHeight: 1.2,
+  },
+  clientDetailStatus: {
+    fontSize: 13,
+    color: "var(--muted)",
+  },
   clientTabsScroll: {
     marginTop: 8,
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+  },
+  clientDetailTabsScroll: {
+    marginTop: 10,
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
   },
@@ -14646,6 +14672,22 @@ const styles: Record<string, any> = {
     fontWeight: 700,
     fontSize: 15,
     boxShadow: "0 10px 20px rgba(31, 107, 255, 0.18)",
+    cursor: "pointer",
+  },
+  clientDetailActionWrap: {
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  clientDetailActionBtn: {
+    width: "100%",
+    height: 52,
+    borderRadius: 999,
+    border: "1px solid rgba(120, 170, 220, 0.6)",
+    background: "linear-gradient(135deg, #6fa3ff, #6cc6ff)",
+    color: "#ffffff",
+    fontWeight: 700,
+    fontSize: 15,
+    boxShadow: "0 16px 28px rgba(80, 140, 220, 0.35)",
     cursor: "pointer",
   },
   clientScheduleOverlay: {
@@ -15148,9 +15190,23 @@ const styles: Record<string, any> = {
     gap: 10,
     minWidth: "max-content",
   },
+  clientDetailTabsWrap: {
+    display: "flex",
+    gap: 6,
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid rgba(170, 200, 230, 0.6)",
+    background: "linear-gradient(180deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    boxShadow: "0 12px 22px rgba(120, 150, 190, 0.2)",
+    width: "100%",
+  },
   clientTabsDivider: {
     marginTop: 12,
     borderBottom: "1px solid var(--border-2)",
+  },
+  clientDetailTabsDivider: {
+    marginTop: 12,
+    borderBottom: "1px solid rgba(170, 200, 230, 0.5)",
   },
   clientTab: {
     flex: 1,
@@ -15164,10 +15220,31 @@ const styles: Record<string, any> = {
     color: "var(--text)",
     padding: "0 10px",
   },
+  clientDetailTab: {
+    flex: 1,
+    height: 40,
+    borderRadius: 999,
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "var(--text)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 0,
+    padding: "0 12px",
+  },
   clientTabActive: {
     background: "var(--accent)",
     color: "var(--accent-contrast)",
     borderColor: "var(--accent)",
+  },
+  clientDetailTabActive: {
+    background: "linear-gradient(135deg, #7aa7ff, #86d5ff)",
+    color: "#ffffff",
+    boxShadow: "0 10px 20px rgba(110, 160, 230, 0.35)",
   },
   clientPanel: {
     marginTop: 12,
@@ -15182,6 +15259,70 @@ const styles: Record<string, any> = {
     borderRadius: 0,
     border: "none",
     background: "transparent",
+  },
+  clientDetailFieldLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    marginBottom: 6,
+  },
+  clientDetailValueBox: {
+    padding: "12px 16px",
+    borderRadius: 18,
+    border: "1px solid rgba(180, 210, 235, 0.7)",
+    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+    color: "var(--text)",
+    fontSize: 14,
+  },
+  clientDetailInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 18,
+    border: "1px solid rgba(180, 210, 235, 0.7)",
+    padding: "12px 16px",
+    outline: "none",
+    fontSize: 14,
+    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    color: "var(--text)",
+    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+  },
+  clientDetailTextarea: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 18,
+    border: "1px solid rgba(180, 210, 235, 0.7)",
+    padding: "12px 16px",
+    outline: "none",
+    fontSize: 14,
+    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    color: "var(--text)",
+    resize: "none",
+    overflow: "hidden",
+    minHeight: 42,
+    lineHeight: 1.35,
+    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+  },
+  clientDetailCopyRow: {
+    marginTop: 6,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  clientDetailCopyBtn: {
+    border: "1px solid rgba(180, 210, 235, 0.7)",
+    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    borderRadius: 18,
+    padding: "10px 14px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    color: "var(--text)",
+    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+    fontWeight: 600,
   },
   sessionInfoStack: {
     display: "flex",
