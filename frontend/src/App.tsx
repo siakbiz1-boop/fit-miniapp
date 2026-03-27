@@ -5515,14 +5515,15 @@ function TrainerSchedule(props: {
         <div style={styles.topBarTitle}>{tr("Тренировка", "Session")}</div>
         <div style={{ width: 36 }} />
       </div>
-        <div style={styles.clientTabsScroll}>
-          <div style={styles.clientTabs}>
+        <div style={styles.sessionTabsScroll}>
+          <div style={styles.sessionTabsWrap}>
+            <div style={styles.sessionTabs}>
             <button
               type="button"
               onClick={() => setSessionTab("info")}
               style={{
-                ...styles.clientTab,
-                ...(sessionTab === "info" ? styles.clientTabActive : null),
+                ...styles.sessionTabPill,
+                ...(sessionTab === "info" ? styles.sessionTabPillActive : null),
               }}
             >
               {tr("Информация о тренировке", "Session info")}
@@ -5533,8 +5534,8 @@ function TrainerSchedule(props: {
                   type="button"
                   onClick={() => setSessionTab("weights")}
                   style={{
-                    ...styles.clientTab,
-                    ...(sessionTab === "weights" ? styles.clientTabActive : null),
+                    ...styles.sessionTabPill,
+                    ...(sessionTab === "weights" ? styles.sessionTabPillActive : null),
                   }}
                 >
                   {tr("Статистика упражнений", "Exercise stats")}
@@ -5543,160 +5544,212 @@ function TrainerSchedule(props: {
                   type="button"
                   onClick={() => setSessionTab("history")}
                   style={{
-                    ...styles.clientTab,
-                    ...(sessionTab === "history" ? styles.clientTabActive : null),
+                    ...styles.sessionTabPill,
+                    ...(sessionTab === "history" ? styles.sessionTabPillActive : null),
                   }}
                 >
-                  {tr("История тренировок клиента", "Client history")}
+                  {tr("История тренировок", "Training history")}
                 </button>
               </>
             ) : null}
+            </div>
           </div>
         </div>
-        <div style={styles.clientTabsDivider} />
+        <div style={styles.sessionTabsDivider} />
         <div style={styles.clientPanelPlain}>
           {sessionTab === "info" ? (
-            <div>
-              <div style={styles.fieldLabel}>{isGroupSession ? tr("Клиенты", "Clients") : tr("Клиент", "Client")}</div>
-              {isOneTimeSession ? (
-                <input
-                  value={draftSessionClientName}
-                  onChange={(e) => setDraftSessionClientName(e.target.value)}
-                  onBlur={() => {
-                    if (!activeSession) return;
-                    const value = draftSessionClientName.trim();
-                    setActiveSession((prev) => (prev ? { ...prev, clientName: value } : prev));
-                    setSessionsByDate((prev) => {
-                      const dateKey = activeSession.dateKey;
-                      const list = prev[dateKey] ? [...prev[dateKey]] : [];
-                      const nextList = list.map((item) =>
-                        item.id === activeSession.id ? { ...item, clientName: value } : item
-                      );
-                      return { ...prev, [dateKey]: nextList };
-                    });
-                    saveSessionPatch(activeSession.id, { clientName: value });
-                  }}
-                  placeholder={tr("Введите имя клиента", "Enter client name")}
-                  style={styles.input}
-                />
-              ) : isGroupSession ? (
-                <div style={styles.groupClientChips}>
-                  {(participantClients.length ? participantClients : []).map((p) => {
-                    const label = p.client
-                      ? getClientLabel(clients, p.client.username)
-                      : p.name?.trim()
-                        ? p.name
-                        : p.username
-                          ? `@${p.username.replace(/^@/, "")}`
-                          : tr("Клиент", "Client");
-                    return (
-                      <div key={p.id} style={styles.groupClientChipWrap}>
+            <div style={styles.sessionInfoStack}>
+              <div style={styles.sessionInfoRow}>
+                <div style={styles.sessionCard}>
+                  <div style={styles.sessionCardLabel}>
+                    {isGroupSession ? tr("Клиенты", "Clients") : tr("Клиент", "Client")}
+                  </div>
+                  {isOneTimeSession ? (
+                    <input
+                      value={draftSessionClientName}
+                      onChange={(e) => setDraftSessionClientName(e.target.value)}
+                      onBlur={() => {
+                        if (!activeSession) return;
+                        const value = draftSessionClientName.trim();
+                        setActiveSession((prev) => (prev ? { ...prev, clientName: value } : prev));
+                        setSessionsByDate((prev) => {
+                          const dateKey = activeSession.dateKey;
+                          const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                          const nextList = list.map((item) =>
+                            item.id === activeSession.id ? { ...item, clientName: value } : item
+                          );
+                          return { ...prev, [dateKey]: nextList };
+                        });
+                        saveSessionPatch(activeSession.id, { clientName: value });
+                      }}
+                      placeholder={tr("Введите имя клиента", "Enter client name")}
+                      style={styles.sessionCardInput}
+                    />
+                  ) : isGroupSession ? (
+                    <div style={styles.groupClientChips}>
+                      {(participantClients.length ? participantClients : []).map((p) => {
+                        const label = p.client
+                          ? getClientLabel(clients, p.client.username)
+                          : p.name?.trim()
+                            ? p.name
+                            : p.username
+                              ? `@${p.username.replace(/^@/, "")}`
+                              : tr("Клиент", "Client");
+                        return (
+                          <div key={p.id} style={styles.groupClientChipWrap}>
+                            <button
+                              type="button"
+                              style={styles.groupClientChip}
+                              onPointerDown={() => {
+                                if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
+                                groupPressTimerRef.current = window.setTimeout(() => {
+                                  groupEditJustOpenedRef.current = true;
+                                  setGroupEditMode(true);
+                                }, 450);
+                              }}
+                              onPointerUp={() => {
+                                if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
+                              }}
+                              onPointerLeave={() => {
+                                if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
+                              }}
+                              onClick={() => {
+                                if (groupEditMode) {
+                                  if (groupEditJustOpenedRef.current) {
+                                    groupEditJustOpenedRef.current = false;
+                                    return;
+                                  }
+                                  setGroupEditMode(false);
+                                  return;
+                                }
+                                if (!p.client) return;
+                                setGroupClientId(p.client.id);
+                                setGroupClientTab("weights");
+                                onLoadHistory?.(p.client);
+                                setScheduleScreen("groupClient");
+                              }}
+                            >
+                              {label}
+                            </button>
+                            {groupEditMode && canDeleteByTime ? (
+                              <button
+                                type="button"
+                                style={styles.groupClientChipRemove}
+                                aria-label="remove client"
+                                data-group-remove="true"
+                                onClick={async (event) => {
+                                  event.stopPropagation();
+                                  if (!p.client || !token) return;
+                                  try {
+                                    const res = await fetch(
+                                      `${apiBase}/sessions/${encodeURIComponent(activeSession.id)}/group/remove`,
+                                      {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ clientId: p.client.id }),
+                                      }
+                                    );
+                                    if (!res.ok) return;
+                                    const data = (await res.json()) as { ok: boolean; session?: any };
+                                    if (data?.session) {
+                                      const mapped = mapSessionFromApi(data.session);
+                                      setActiveSession(mapped);
+                                      setSessionsByDate((prev) => {
+                                        const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
+                                        const nextList = list.map((item) =>
+                                          item.id === mapped.id ? { ...item, ...mapped } : item
+                                        );
+                                        return { ...prev, [mapped.dateKey]: nextList };
+                                      });
+                                      setGroupEditMode(false);
+                                    }
+                                  } catch {
+                                    // ignore
+                                  }
+                                }}
+                              >
+                                ×
+                              </button>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                      {canDeleteByTime ? (
                         <button
                           type="button"
-                          style={styles.groupClientChip}
-                          onPointerDown={() => {
-                            if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
-                            groupPressTimerRef.current = window.setTimeout(() => {
-                              groupEditJustOpenedRef.current = true;
-                              setGroupEditMode(true);
-                            }, 450);
-                          }}
-                          onPointerUp={() => {
-                            if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
-                          }}
-                          onPointerLeave={() => {
-                            if (groupPressTimerRef.current) window.clearTimeout(groupPressTimerRef.current);
-                          }}
+                          style={styles.groupClientChipAdd}
                           onClick={() => {
-                            if (groupEditMode) {
-                              if (groupEditJustOpenedRef.current) {
-                                groupEditJustOpenedRef.current = false;
-                                return;
-                              }
-                              setGroupEditMode(false);
-                              return;
+                            setGroupAddOpen((v) => !v);
+                            if (!groupAddClientId && availableGroupClients[0]?.id) {
+                              setGroupAddClientId(availableGroupClients[0].id);
                             }
-                            if (!p.client) return;
-                            setGroupClientId(p.client.id);
-                            setGroupClientTab("weights");
-                            onLoadHistory?.(p.client);
-                            setScheduleScreen("groupClient");
                           }}
                         >
-                          {label}
+                          +
                         </button>
-                        {groupEditMode && canDeleteByTime ? (
-                          <button
-                            type="button"
-                            style={styles.groupClientChipRemove}
-                            aria-label="remove client"
-                            data-group-remove="true"
-                            onClick={async (event) => {
-                              event.stopPropagation();
-                              if (!p.client || !token) return;
-                              try {
-                                const res = await fetch(
-                                  `${apiBase}/sessions/${encodeURIComponent(activeSession.id)}/group/remove`,
-                                  {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                    body: JSON.stringify({ clientId: p.client.id }),
-                                  }
-                                );
-                                if (!res.ok) return;
-                                const data = (await res.json()) as { ok: boolean; session?: any };
-                                if (data?.session) {
-                                  const mapped = mapSessionFromApi(data.session);
-                                  setActiveSession(mapped);
-                                  setSessionsByDate((prev) => {
-                                    const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
-                                    const nextList = list.map((item) =>
-                                      item.id === mapped.id ? { ...item, ...mapped } : item
-                                    );
-                                    return { ...prev, [mapped.dateKey]: nextList };
-                                  });
-                                  setGroupEditMode(false);
-                                }
-                              } catch {
-                                // ignore
-                              }
-                            }}
-                          >
-                            ×
-                          </button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                  {canDeleteByTime ? (
-                    <button
-                      type="button"
-                      style={styles.groupClientChipAdd}
-                      onClick={() => {
-                        setGroupAddOpen((v) => !v);
-                        if (!groupAddClientId && availableGroupClients[0]?.id) {
-                          setGroupAddClientId(availableGroupClients[0].id);
-                        }
-                      }}
-                    >
-                      +
-                    </button>
-                  ) : null}
-                  {participantClients.length === 0 ? (
-                    <div style={styles.readOnlyValue}>{tr("Нет клиентов", "No clients")}</div>
-                  ) : null}
+                      ) : null}
+                      {participantClients.length === 0 ? (
+                        <div style={styles.sessionCardValueMuted}>{tr("Нет клиентов", "No clients")}</div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div style={styles.sessionCardValue}>
+                      {sessionClientLabel(activeSession, tr, clients) || "—"}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div style={styles.readOnlyValue}>{sessionClientLabel(activeSession, tr, clients)}</div>
-              )}
+                <div style={styles.sessionCard}>
+                  <div style={styles.sessionCardLabel}>{tr("Дата", "Date")}</div>
+                  {canEditTime ? (
+                    <input
+                      type="date"
+                      value={draftSessionDate}
+                      onChange={(e) => {
+                        setDraftSessionDate(e.target.value);
+                        if (sessionTimeError) setSessionTimeError("");
+                      }}
+                      onBlur={() => {
+                        if (!activeSession) return;
+                        if (!draftSessionDate) return;
+                        const start = normalizeTimeInput(draftSessionStart);
+                        const end = normalizeTimeInput(draftSessionEnd);
+                        if (!start || !end) return;
+                        const nextKey = normalizeDateKeyInput(draftSessionDate);
+                        if (!nextKey) return;
+                        if (nextKey === activeSession.dateKey && start === activeSession.start && end === activeSession.end) {
+                          return;
+                        }
+                        if (end <= start) {
+                          setSessionTimeError(
+                            tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                          );
+                          return;
+                        }
+                        if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
+                          setSessionTimeError(
+                            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                          );
+                          return;
+                        }
+                        void saveSessionTimePatch(activeSession.id, start, end, nextKey);
+                      }}
+                      style={styles.sessionCardInput}
+                    />
+                  ) : (
+                    <div style={styles.sessionCardValue}>
+                      {formatDateShort(parseDateKey(draftSessionDate || activeSession.dateKey))}
+                    </div>
+                  )}
+                </div>
+              </div>
               {isGroupSession && groupAddOpen && canDeleteByTime ? (
-                <div style={{ marginTop: 12 }}>
-                  <div style={styles.fieldLabel}>{tr("Добавить клиента", "Add client")}</div>
-                  <div style={{ display: "flex", gap: 8 }}>
+                <div style={styles.sessionCard}>
+                  <div style={styles.sessionCardLabel}>{tr("Добавить клиента", "Add client")}</div>
+                  <div style={styles.sessionCardRow}>
                     <select
                       value={groupAddClientId}
                       onChange={(e) => setGroupAddClientId(e.target.value)}
-                      style={{ ...styles.input, flex: 1 }}
+                      style={{ ...styles.sessionCardInput, flex: 1, paddingRight: 12 }}
                     >
                       {availableGroupClients.length === 0 ? (
                         <option value="">{tr("Нет клиентов", "No clients")}</option>
@@ -5710,7 +5763,7 @@ function TrainerSchedule(props: {
                     </select>
                     <button
                       type="button"
-                      style={styles.inlineCheckBtn}
+                      style={styles.sessionCheckBtn}
                       onClick={async () => {
                         if (!groupAddClientId || !token) return;
                         try {
@@ -5746,152 +5799,102 @@ function TrainerSchedule(props: {
                   </div>
                 </div>
               ) : null}
-              <div style={{ marginTop: 16 }} />
-              <div>
-                <div style={styles.fieldLabel}>{tr("Дата", "Date")}</div>
-                {canEditTime ? (
-                  <input
-                    type="date"
-                    value={draftSessionDate}
-                    onChange={(e) => {
-                      setDraftSessionDate(e.target.value);
-                      if (sessionTimeError) setSessionTimeError("");
-                    }}
-                    onBlur={() => {
-                      if (!activeSession) return;
-                      if (!draftSessionDate) return;
-                      const start = normalizeTimeInput(draftSessionStart);
-                      const end = normalizeTimeInput(draftSessionEnd);
-                      if (!start || !end) return;
-                      const nextKey = normalizeDateKeyInput(draftSessionDate);
-                      if (!nextKey) return;
-                      if (nextKey === activeSession.dateKey && start === activeSession.start && end === activeSession.end) {
-                        return;
-                      }
-                      if (end <= start) {
-                        setSessionTimeError(
-                          tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
-                        );
-                        return;
-                      }
-                      if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
-                        setSessionTimeError(
-                          tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                        );
-                        return;
-                      }
-                      void saveSessionTimePatch(activeSession.id, start, end, nextKey);
-                    }}
-                    style={styles.input}
-                  />
-                ) : (
-                  <div style={styles.readOnlyValue}>
-                    {formatDateShort(parseDateKey(draftSessionDate || activeSession.dateKey))}
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardLabel}>{tr("Время", "Time")}</div>
+                <div style={styles.sessionTimeGrid}>
+                  <div>
+                    <div style={styles.sessionMiniLabel}>{tr("Начало", "Start")}</div>
+                    {canEditTime ? (
+                      <input
+                        type="time"
+                        value={draftSessionStart}
+                        step={300}
+                        onChange={(e) => {
+                          const nextStart = e.target.value;
+                          setDraftSessionStart(nextStart);
+                          const normalized = normalizeTimeInput(nextStart);
+                          if (normalized) {
+                            const nextMinutes = (timeToMinutes(normalized) + 60) % (24 * 60);
+                            const hours = Math.floor(nextMinutes / 60);
+                            const minutes = nextMinutes % 60;
+                            setDraftSessionEnd(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
+                          }
+                          if (sessionTimeError) setSessionTimeError("");
+                        }}
+                        onBlur={() => {
+                          if (!activeSession) return;
+                          const start = normalizeTimeInput(draftSessionStart);
+                          const end = normalizeTimeInput(draftSessionEnd);
+                          if (!start || !end) return;
+                          if (start === activeSession.start && end === activeSession.end) return;
+                          if (end <= start) {
+                            setSessionTimeError(
+                              tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                            );
+                            return;
+                          }
+                          const nextKey = normalizeDateKeyInput(draftSessionDate) || activeSession.dateKey;
+                          if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
+                            setSessionTimeError(
+                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                            );
+                            return;
+                          }
+                          void saveSessionTimePatch(activeSession.id, start, end, nextKey);
+                        }}
+                        style={styles.sessionCardInput}
+                      />
+                    ) : (
+                      <div style={styles.sessionCardValue}>{activeSession.start}</div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div style={{ marginTop: 16 }} />
-              <div style={styles.metricsRow}>
-                <div style={{ flex: 1 }}>
-                  <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                  {canEditTime ? (
-                    <input
-                      type="time"
-                      value={draftSessionStart}
-                      step={300}
-                      onChange={(e) => {
-                        const nextStart = e.target.value;
-                        setDraftSessionStart(nextStart);
-                        const normalized = normalizeTimeInput(nextStart);
-                        if (normalized) {
-                          const nextMinutes = (timeToMinutes(normalized) + 60) % (24 * 60);
-                          const hours = Math.floor(nextMinutes / 60);
-                          const minutes = nextMinutes % 60;
-                          setDraftSessionEnd(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
-                        }
-                        if (sessionTimeError) setSessionTimeError("");
-                      }}
-                      onBlur={() => {
-                        if (!activeSession) return;
-                        const start = normalizeTimeInput(draftSessionStart);
-                        const end = normalizeTimeInput(draftSessionEnd);
-                        if (!start || !end) return;
-                        if (start === activeSession.start && end === activeSession.end) return;
-                        if (end <= start) {
-                          setSessionTimeError(
-                            tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
-                          );
-                          return;
-                        }
-                      const nextKey = normalizeDateKeyInput(draftSessionDate) || activeSession.dateKey;
-                        if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
-                          setSessionTimeError(
-                            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                          );
-                          return;
-                        }
-                        void saveSessionTimePatch(activeSession.id, start, end, nextKey);
-                      }}
-                      style={styles.input}
-                    />
-                  ) : (
-                    <div style={styles.readOnlyValue}>{activeSession.start}</div>
-                  )}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                  {canEditTime ? (
-                    <input
-                      type="time"
-                      value={draftSessionEnd}
-                      step={300}
-                      onChange={(e) => {
-                        setDraftSessionEnd(e.target.value);
-                        if (sessionTimeError) setSessionTimeError("");
-                      }}
-                      onBlur={() => {
-                        if (!activeSession) return;
-                        const start = normalizeTimeInput(draftSessionStart);
-                        const end = normalizeTimeInput(draftSessionEnd);
-                        if (!start || !end) return;
-                        if (start === activeSession.start && end === activeSession.end) return;
-                        if (end <= start) {
-                          setSessionTimeError(
-                            tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
-                          );
-                          return;
-                        }
-                      const nextKey = normalizeDateKeyInput(draftSessionDate) || activeSession.dateKey;
-                        if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
-                          setSessionTimeError(
-                            tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
-                          );
-                          return;
-                        }
-                        void saveSessionTimePatch(activeSession.id, start, end, nextKey);
-                      }}
-                      style={styles.input}
-                    />
-                  ) : (
-                    <div style={styles.readOnlyValue}>{activeSession.end}</div>
-                  )}
+                  <div>
+                    <div style={styles.sessionMiniLabel}>{tr("Конец", "End")}</div>
+                    {canEditTime ? (
+                      <input
+                        type="time"
+                        value={draftSessionEnd}
+                        step={300}
+                        onChange={(e) => {
+                          setDraftSessionEnd(e.target.value);
+                          if (sessionTimeError) setSessionTimeError("");
+                        }}
+                        onBlur={() => {
+                          if (!activeSession) return;
+                          const start = normalizeTimeInput(draftSessionStart);
+                          const end = normalizeTimeInput(draftSessionEnd);
+                          if (!start || !end) return;
+                          if (start === activeSession.start && end === activeSession.end) return;
+                          if (end <= start) {
+                            setSessionTimeError(
+                              tr("Время окончания должно быть больше времени начала.", "End time must be after start time.")
+                            );
+                            return;
+                          }
+                          const nextKey = normalizeDateKeyInput(draftSessionDate) || activeSession.dateKey;
+                          if (hasSessionOverlap(nextKey, start, end, undefined, activeSession.id)) {
+                            setSessionTimeError(
+                              tr("На эту дату и время уже запланирована тренировка.", "A session is already scheduled for this date and time.")
+                            );
+                            return;
+                          }
+                          void saveSessionTimePatch(activeSession.id, start, end, nextKey);
+                        }}
+                        style={styles.sessionCardInput}
+                      />
+                    ) : (
+                      <div style={styles.sessionCardValue}>{activeSession.end}</div>
+                    )}
+                  </div>
                 </div>
               </div>
               {canEditTime && sessionTimeError ? <div style={styles.errorText}>{sessionTimeError}</div> : null}
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardLabel}>{tr("Тип тренировки", "Session type")}</div>
                 {isOneTimeSession ? (
-                  <input
-                    value={tr("Разовая тренировка", "One-time session")}
-                    readOnly
-                    style={{ ...styles.input, opacity: 0.8 }}
-                  />
+                  <div style={styles.sessionCardValue}>{tr("Разовая тренировка", "One-time session")}</div>
                 ) : isGroupSession ? (
-                  <input
-                    value={tr("Групповая тренировка", "Group session")}
-                    readOnly
-                    style={{ ...styles.input, opacity: 0.8 }}
-                  />
+                  <div style={styles.sessionCardValue}>{tr("Групповая тренировка", "Group session")}</div>
                 ) : (
                   <input
                     value={draftSessionType}
@@ -5913,13 +5916,13 @@ function TrainerSchedule(props: {
                       saveSessionPatch(activeSession.id, { type: value });
                     }}
                     placeholder={tr("Введите тип тренировки", "Enter session type")}
-                    style={styles.input}
+                    style={styles.sessionCardInput}
                   />
                 )}
               </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-start" }}>
-                  <div style={styles.fieldLabel}>
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardRow}>
+                  <div style={styles.sessionCardLabel}>
                     {isGroupSession
                       ? tr("Общая стоимость тренировки", "Total session price")
                       : tr("Стоимость тренировки", "Session price")}
@@ -5927,7 +5930,7 @@ function TrainerSchedule(props: {
                   {isGroupSession ? (
                     <button
                       type="button"
-                      style={{ ...styles.statsInfo, width: 20, height: 20, fontSize: 12 }}
+                      style={styles.sessionInfoBadge}
                       onClick={() => setGroupPriceInfoOpen(true)}
                       aria-label={tr("Информация", "Info")}
                     >
@@ -5935,7 +5938,7 @@ function TrainerSchedule(props: {
                     </button>
                   ) : null}
                 </div>
-                <div style={styles.inputRow}>
+                <div style={styles.sessionCardRow}>
                   <input
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -5959,11 +5962,11 @@ function TrainerSchedule(props: {
                       saveSessionPatch(activeSession.id, { price: value });
                     }}
                     placeholder={tr("Введите стоимость", "Enter price")}
-                    style={{ ...styles.input, flex: 1 }}
+                    style={{ ...styles.sessionCardInput, flex: 1 }}
                   />
                   <button
                     type="button"
-                    style={styles.inlineCheckBtn}
+                    style={styles.sessionCheckBtn}
                     onClick={() => {
                       (document.activeElement as HTMLElement | null)?.blur?.();
                     }}
@@ -5973,8 +5976,8 @@ function TrainerSchedule(props: {
                   </button>
                 </div>
               </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Комментарий к тренировке", "Session notes")}</div>
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardLabel}>{tr("Комментарий к тренировке", "Session notes")}</div>
                 <textarea
                   ref={sessionCommentRef}
                   value={draftSessionComment}
@@ -5997,19 +6000,12 @@ function TrainerSchedule(props: {
                   }}
                   placeholder={tr("Введите комментарий", "Enter notes")}
                   rows={3}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.sessionCardTextarea}
                 />
               </div>
               <button
                 type="button"
-                style={{
-                  ...styles.saveBtn,
-                  marginTop: 16,
-                  background: "rgba(77, 163, 255, 0.18)",
-                  border: "1px solid rgba(77, 163, 255, 0.35)",
-                  color: "var(--text)",
-                  boxShadow: "none",
-                }}
+                style={styles.sessionPrimaryBtn}
                 onClick={() => {
                   setRepeatOpen(true);
                   setRepeatError("");
@@ -14647,6 +14643,45 @@ const styles: Record<string, any> = {
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
   },
+  sessionTabsScroll: {
+    marginTop: 8,
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+  },
+  sessionTabsWrap: {
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid var(--glass-tab-wrap-border)",
+    background: "var(--glass-tab-wrap-bg)",
+    boxShadow: "var(--glass-pill-shadow)",
+    minWidth: "max-content",
+  },
+  sessionTabs: {
+    display: "flex",
+    gap: 8,
+    minWidth: "max-content",
+  },
+  sessionTabPill: {
+    height: 40,
+    borderRadius: 999,
+    border: "1px solid transparent",
+    background: "transparent",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "var(--text)",
+    padding: "0 16px",
+    whiteSpace: "nowrap",
+  },
+  sessionTabPillActive: {
+    background: "var(--glass-tab-active-bg)",
+    color: "var(--glass-tab-active-text)",
+    boxShadow: "var(--glass-tab-active-shadow)",
+  },
+  sessionTabsDivider: {
+    marginTop: 14,
+    borderBottom: "1px solid rgba(120, 150, 190, 0.25)",
+  },
   clientPrimaryActionWrap: {
     marginTop: 6,
     marginBottom: 6,
@@ -14957,6 +14992,134 @@ const styles: Record<string, any> = {
     borderRadius: 0,
     border: "none",
     background: "transparent",
+  },
+  sessionInfoStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  sessionInfoRow: {
+    display: "flex",
+    gap: 14,
+    alignItems: "stretch",
+    flexWrap: "wrap",
+  },
+  sessionCard: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 22,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "14px 16px",
+  },
+  sessionCardRow: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sessionCardLabel: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--text)",
+    opacity: 0.85,
+    letterSpacing: -0.1,
+  },
+  sessionMiniLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--text)",
+    opacity: 0.6,
+    marginBottom: 4,
+  },
+  sessionCardValue: {
+    marginTop: 6,
+    fontSize: 20,
+    fontWeight: 600,
+    color: "var(--text)",
+  },
+  sessionCardValueMuted: {
+    marginTop: 6,
+    fontSize: 16,
+    fontWeight: 600,
+    color: "var(--muted)",
+  },
+  sessionCardInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 10,
+    border: "none",
+    padding: 0,
+    outline: "none",
+    fontSize: 20,
+    fontWeight: 600,
+    background: "transparent",
+    color: "var(--text)",
+    marginTop: 6,
+  },
+  sessionCardTextarea: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 10,
+    border: "none",
+    padding: 0,
+    outline: "none",
+    fontSize: 16,
+    fontWeight: 500,
+    background: "transparent",
+    color: "var(--text)",
+    resize: "none",
+    overflow: "hidden",
+    marginTop: 6,
+    lineHeight: 1.4,
+  },
+  sessionTimeGrid: {
+    marginTop: 8,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 16,
+  },
+  sessionCheckBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    border: "1px solid rgba(120, 150, 190, 0.45)",
+    background: "rgba(255, 255, 255, 0.55)",
+    color: "var(--text)",
+    fontSize: 18,
+    fontWeight: 800,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sessionInfoBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 999,
+    border: "1px solid rgba(120, 150, 190, 0.45)",
+    background: "rgba(255, 255, 255, 0.65)",
+    color: "var(--text)",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sessionPrimaryBtn: {
+    marginTop: 6,
+    width: "100%",
+    height: 54,
+    borderRadius: 18,
+    border: "1px solid rgba(130, 180, 225, 0.65)",
+    background: "radial-gradient(circle at 30% 20%, rgba(195, 230, 255, 0.9), rgba(110, 175, 235, 0.85))",
+    color: "#ffffff",
+    fontWeight: 700,
+    fontSize: 17,
+    cursor: "pointer",
+    boxShadow: "0 16px 30px rgba(90, 150, 220, 0.3)",
   },
   clientPanelBody: {
     opacity: 0.7,
