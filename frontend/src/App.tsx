@@ -7742,16 +7742,20 @@ function TrainerSchedule(props: {
             style={styles.clientScheduleBackdrop}
             onClick={() => setShowFreeSchedule(false)}
           />
-          <div style={styles.clientScheduleSheet} onClick={(event) => event.stopPropagation()}>
-            <div style={styles.clientScheduleHandle} />
-            <div style={styles.clientScheduleTitleRow}>
-              <div style={styles.clientScheduleTitle}>{tr("Добавить окно", "Add slot")}</div>
-              <button type="button" onClick={() => setShowFreeSchedule(false)} style={styles.clientScheduleCloseBtn}>
+          <div
+            style={{ ...styles.clientScheduleSheet, ...styles.scheduleQuickSheet }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.scheduleQuickHandle} />
+            <div style={styles.freeScheduleTitleRow}>
+              <div style={styles.freeScheduleTitle}>{tr("Добавить окно", "Add slot")}</div>
+              <button type="button" onClick={() => setShowFreeSchedule(false)} style={styles.freeScheduleCloseBtn}>
                 {tr("Закрыть", "Close")}
               </button>
             </div>
 
-            <div ref={scrollerRef} style={styles.calendarStrip}>
+            <div style={styles.scheduleQuickSectionLabel}>{tr("Дата", "Date")}</div>
+            <div ref={scrollerRef} style={styles.scheduleQuickCalendarStrip}>
               {days.map((d) => {
                 const isToday = isSameDay(d.date, today);
                 const isSelected = isSameDay(d.date, selected);
@@ -7763,24 +7767,24 @@ function TrainerSchedule(props: {
                     ref={isSelected ? selectedRef : isToday ? todayRef : null}
                     onClick={() => setSelected(d.date)}
                     style={{
-                      ...styles.calendarDay,
-                      ...(isToday ? styles.calendarDayActive : {}),
-                      ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
-                      ...(isPast ? styles.calendarDayPast : {}),
+                      ...styles.scheduleQuickDay,
+                      ...(isToday ? styles.scheduleQuickDayActive : {}),
+                      ...(isSelected && !isToday ? styles.scheduleQuickDaySelected : {}),
+                      ...(isPast ? styles.scheduleQuickDayPast : {}),
                     }}
                     aria-current={isToday ? "date" : undefined}
                     type="button"
                   >
-                    <div style={styles.calendarDayDate}>{d.dateText}</div>
-                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
+                    <div style={styles.scheduleQuickDayDate}>{d.dateText}</div>
+                    <div style={styles.scheduleQuickDayWeek}>{d.weekdayText}</div>
                   </button>
                 );
               })}
             </div>
 
-            <div style={styles.clientScheduleFields}>
-              <div style={styles.freeField}>
-                <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
+            <div style={styles.scheduleQuickFields}>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
                 <input
                   type="time"
                   value={freeStart}
@@ -7791,17 +7795,17 @@ function TrainerSchedule(props: {
                     if (nextEnd) setFreeEnd(nextEnd);
                   }}
                   step={300}
-                  style={styles.input}
+                  style={styles.scheduleQuickInput}
                 />
               </div>
-              <div style={styles.freeField}>
-                <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
                 <input
                   type="time"
                   value={freeEnd}
                   onChange={(e) => setFreeEnd(e.target.value)}
                   step={300}
-                  style={styles.input}
+                  style={styles.scheduleQuickInput}
                 />
               </div>
               {freeError ? <div style={styles.errorText}>{freeError}</div> : null}
@@ -7871,7 +7875,7 @@ function TrainerSchedule(props: {
                   setFreeEnd("");
                   setIsCreatingSlot(false);
                 }}
-                style={styles.saveBtn}
+                style={styles.scheduleQuickSaveBtn}
               >
                 {tr("Добавить", "Add")}
               </button>
@@ -14823,6 +14827,26 @@ const styles: Record<string, any> = {
     color: "var(--text)",
   },
   clientScheduleCloseBtn: {
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontWeight: 700,
+    cursor: "pointer",
+    padding: 4,
+  },
+  freeScheduleTitleRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 8,
+  },
+  freeScheduleTitle: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  freeScheduleCloseBtn: {
     border: "none",
     background: "transparent",
     color: "var(--muted)",
