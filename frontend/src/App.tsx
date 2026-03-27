@@ -12064,6 +12064,34 @@ function GlobalStyles() {
         --schedule-session-bg: radial-gradient(circle at 40% 35%, rgba(170, 220, 255, 0.85), rgba(130, 190, 235, 0.85));
         --schedule-session-border: rgba(150, 200, 240, 0.8);
         --schedule-session-shadow: 0 10px 20px rgba(90, 150, 220, 0.25);
+        --session-panel-bg: linear-gradient(180deg, rgba(188, 221, 242, 0.75) 0%, rgba(214, 232, 246, 0.65) 36%, rgba(236, 243, 250, 0.45) 72%, rgba(248, 251, 255, 0.25) 100%);
+        --session-tabs-wrap-bg: linear-gradient(180deg, rgba(214, 232, 246, 0.9), rgba(236, 243, 250, 0.9));
+        --session-tabs-wrap-border: rgba(160, 190, 215, 0.55);
+        --session-tabs-wrap-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 22px rgba(135, 160, 190, 0.18);
+        --session-tab-text: #2b3442;
+        --session-tab-active-bg: linear-gradient(90deg, #7f92f5 0%, #93c8f0 100%);
+        --session-tab-active-shadow: 0 10px 20px rgba(110, 150, 220, 0.35);
+        --session-tab-active-text: #ffffff;
+        --session-divider: rgba(160, 190, 215, 0.45);
+        --session-card-bg: #f7f9fc;
+        --session-card-border: #d4dce9;
+        --session-card-shadow: 0 10px 20px rgba(160, 175, 195, 0.12);
+        --session-card-label: #2b3442;
+        --session-mini-label: #6b7280;
+        --session-card-value: #1f2937;
+        --session-card-muted: #9aa3af;
+        --session-check-bg: #f7f9fc;
+        --session-check-border: #cbd6e6;
+        --session-check-text: #1f2937;
+        --session-info-bg: #f7f9fc;
+        --session-info-border: #cbd6e6;
+        --session-info-text: #1f2937;
+        --session-primary-bg: linear-gradient(180deg, #c3ddf7 0%, #8fb7e8 100%);
+        --session-primary-border: #bcd3ef;
+        --session-primary-shadow: 0 16px 28px rgba(115, 150, 205, 0.28);
+        --session-danger-bg: #d45656;
+        --session-danger-border: #d46a6a;
+        --session-danger-shadow: 0 10px 20px rgba(212, 86, 86, 0.25);
         --keyboard-inset: 0px;
         color-scheme: light;
       }
@@ -12181,6 +12209,34 @@ function GlobalStyles() {
         --schedule-session-bg: radial-gradient(circle at 40% 35%, rgba(90, 140, 220, 0.85), rgba(60, 100, 180, 0.85));
         --schedule-session-border: rgba(120, 170, 230, 0.6);
         --schedule-session-shadow: 0 10px 20px rgba(20, 40, 80, 0.5);
+        --session-panel-bg: linear-gradient(180deg, rgba(36, 48, 70, 0.85) 0%, rgba(28, 38, 56, 0.75) 40%, rgba(22, 30, 44, 0.55) 80%, rgba(18, 24, 34, 0.35) 100%);
+        --session-tabs-wrap-bg: linear-gradient(180deg, rgba(36, 48, 70, 0.9), rgba(28, 38, 56, 0.9));
+        --session-tabs-wrap-border: rgba(120, 150, 200, 0.35);
+        --session-tabs-wrap-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 22px rgba(0, 0, 0, 0.35);
+        --session-tab-text: #e5e9f0;
+        --session-tab-active-bg: linear-gradient(90deg, #6f7fe8 0%, #7cb4e8 100%);
+        --session-tab-active-shadow: 0 10px 20px rgba(45, 90, 150, 0.45);
+        --session-tab-active-text: #ffffff;
+        --session-divider: rgba(120, 150, 190, 0.35);
+        --session-card-bg: #262c36;
+        --session-card-border: #384254;
+        --session-card-shadow: 0 12px 22px rgba(0, 0, 0, 0.45);
+        --session-card-label: #e3e8f0;
+        --session-mini-label: #a9b3c2;
+        --session-card-value: #f4f7fb;
+        --session-card-muted: #9aa6b6;
+        --session-check-bg: #2c3340;
+        --session-check-border: #475268;
+        --session-check-text: #f4f7fb;
+        --session-info-bg: #2c3340;
+        --session-info-border: #475268;
+        --session-info-text: #f4f7fb;
+        --session-primary-bg: linear-gradient(180deg, #6fa0e8 0%, #4f7fd6 100%);
+        --session-primary-border: #5f8fda;
+        --session-primary-shadow: 0 16px 28px rgba(35, 70, 120, 0.45);
+        --session-danger-bg: #c94d4d;
+        --session-danger-border: #d36060;
+        --session-danger-shadow: 0 10px 20px rgba(201, 77, 77, 0.35);
         color-scheme: dark;
       }
       input, textarea { caret-color: var(--text); font-size: 16px; }
@@ -14652,15 +14708,14 @@ const styles: Record<string, any> = {
     marginTop: 10,
     padding: "14px 12px 16px",
     borderRadius: 26,
-    background:
-      "linear-gradient(180deg, rgba(188, 221, 242, 0.75) 0%, rgba(214, 232, 246, 0.65) 36%, rgba(236, 243, 250, 0.45) 72%, rgba(248, 251, 255, 0.25) 100%)",
+    background: "var(--session-panel-bg)",
   },
   sessionTabsWrap: {
     padding: 6,
     borderRadius: 999,
-    border: "1px solid rgba(160, 190, 215, 0.55)",
-    background: "linear-gradient(180deg, rgba(214, 232, 246, 0.9), rgba(236, 243, 250, 0.9))",
-    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 22px rgba(135, 160, 190, 0.18)",
+    border: "1px solid var(--session-tabs-wrap-border)",
+    background: "var(--session-tabs-wrap-bg)",
+    boxShadow: "var(--session-tabs-wrap-shadow)",
     minWidth: "max-content",
   },
   sessionTabs: {
@@ -14676,18 +14731,18 @@ const styles: Record<string, any> = {
     cursor: "pointer",
     fontWeight: 700,
     fontSize: 13,
-    color: "#2b3442",
+    color: "var(--session-tab-text)",
     padding: "0 16px",
     whiteSpace: "nowrap",
   },
   sessionTabPillActive: {
-    background: "linear-gradient(90deg, #7f92f5 0%, #93c8f0 100%)",
-    color: "#ffffff",
-    boxShadow: "0 10px 20px rgba(110, 150, 220, 0.35)",
+    background: "var(--session-tab-active-bg)",
+    color: "var(--session-tab-active-text)",
+    boxShadow: "var(--session-tab-active-shadow)",
   },
   sessionTabsDivider: {
     marginTop: 14,
-    borderBottom: "1px solid rgba(160, 190, 215, 0.45)",
+    borderBottom: "1px solid var(--session-divider)",
   },
   clientPrimaryActionWrap: {
     marginTop: 6,
@@ -15015,9 +15070,9 @@ const styles: Record<string, any> = {
     flex: 1,
     minWidth: 0,
     borderRadius: 22,
-    border: "1px solid #d4dce9",
-    background: "#f7f9fc",
-    boxShadow: "0 10px 20px rgba(160, 175, 195, 0.12)",
+    border: "1px solid var(--session-card-border)",
+    background: "var(--session-card-bg)",
+    boxShadow: "var(--session-card-shadow)",
     padding: "14px 16px",
   },
   sessionCardRow: {
@@ -15029,14 +15084,14 @@ const styles: Record<string, any> = {
   sessionCardLabel: {
     fontSize: 13,
     fontWeight: 700,
-    color: "#2b3442",
+    color: "var(--session-card-label)",
     opacity: 0.9,
     letterSpacing: -0.1,
   },
   sessionMiniLabel: {
     fontSize: 12,
     fontWeight: 700,
-    color: "#6b7280",
+    color: "var(--session-mini-label)",
     opacity: 1,
     marginBottom: 4,
   },
@@ -15044,13 +15099,13 @@ const styles: Record<string, any> = {
     marginTop: 6,
     fontSize: 22,
     fontWeight: 700,
-    color: "#1f2937",
+    color: "var(--session-card-value)",
   },
   sessionCardValueMuted: {
     marginTop: 6,
     fontSize: 18,
     fontWeight: 600,
-    color: "#9aa3af",
+    color: "var(--session-card-muted)",
   },
   sessionCardInput: {
     width: "100%",
@@ -15062,7 +15117,7 @@ const styles: Record<string, any> = {
     fontSize: 22,
     fontWeight: 700,
     background: "transparent",
-    color: "#1f2937",
+    color: "var(--session-card-value)",
     marginTop: 6,
   },
   sessionCardTextarea: {
@@ -15075,7 +15130,7 @@ const styles: Record<string, any> = {
     fontSize: 16,
     fontWeight: 600,
     background: "transparent",
-    color: "#1f2937",
+    color: "var(--session-card-value)",
     resize: "none",
     overflow: "hidden",
     marginTop: 6,
@@ -15091,9 +15146,9 @@ const styles: Record<string, any> = {
     width: 44,
     height: 44,
     borderRadius: 999,
-    border: "2px solid #cbd6e6",
-    background: "#f7f9fc",
-    color: "#1f2937",
+    border: "2px solid var(--session-check-border)",
+    background: "var(--session-check-bg)",
+    color: "var(--session-check-text)",
     fontSize: 20,
     fontWeight: 800,
     cursor: "pointer",
@@ -15105,9 +15160,9 @@ const styles: Record<string, any> = {
     width: 22,
     height: 22,
     borderRadius: 999,
-    border: "1px solid #cbd6e6",
-    background: "#f7f9fc",
-    color: "#1f2937",
+    border: "1px solid var(--session-info-border)",
+    background: "var(--session-info-bg)",
+    color: "var(--session-info-text)",
     fontSize: 12,
     fontWeight: 700,
     cursor: "pointer",
@@ -15120,26 +15175,26 @@ const styles: Record<string, any> = {
     width: "100%",
     height: 54,
     borderRadius: 18,
-    border: "1px solid #bcd3ef",
-    background: "linear-gradient(180deg, #c3ddf7 0%, #8fb7e8 100%)",
+    border: "1px solid var(--session-primary-border)",
+    background: "var(--session-primary-bg)",
     color: "#ffffff",
     fontWeight: 700,
     fontSize: 17,
     cursor: "pointer",
-    boxShadow: "0 16px 28px rgba(115, 150, 205, 0.28)",
+    boxShadow: "var(--session-primary-shadow)",
   },
   sessionDangerBtn: {
     marginTop: 14,
     width: "100%",
     height: 54,
     borderRadius: 18,
-    border: "1px solid #d46a6a",
-    background: "#d45656",
+    border: "1px solid var(--session-danger-border)",
+    background: "var(--session-danger-bg)",
     color: "#ffffff",
     fontWeight: 700,
     fontSize: 17,
     cursor: "pointer",
-    boxShadow: "0 10px 20px rgba(212, 86, 86, 0.25)",
+    boxShadow: "var(--session-danger-shadow)",
   },
   clientPanelBody: {
     opacity: 0.7,
