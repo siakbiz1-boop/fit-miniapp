@@ -11879,6 +11879,33 @@ function GlobalStyles() {
         --accent-soft-bg: linear-gradient(180deg, rgba(217, 232, 245, 0.9), rgba(255, 255, 255, 0.96));
         --accent-soft-border: rgba(156, 186, 216, 0.8);
         --accent-soft-text: #3a4b5f;
+        --exercise-card-bg: linear-gradient(135deg, rgba(214, 232, 248, 0.85), rgba(242, 248, 255, 0.95));
+        --exercise-card-border: rgba(170, 205, 235, 0.7);
+        --exercise-card-shadow: 0 14px 26px rgba(120, 150, 190, 0.18);
+        --add-exercise-btn-bg: linear-gradient(135deg, rgba(214, 232, 248, 0.85), rgba(242, 248, 255, 0.95));
+        --add-exercise-btn-border: rgba(110, 170, 220, 0.7);
+        --add-exercise-btn-text: #1f6bff;
+        --add-exercise-btn-shadow: 0 14px 26px rgba(120, 150, 190, 0.18);
+        --history-card-bg: linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96));
+        --history-card-border: rgba(180, 205, 230, 0.7);
+        --history-card-shadow: 0 16px 28px rgba(120, 150, 190, 0.2);
+        --client-detail-card-bg: linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96));
+        --client-detail-card-border: rgba(180, 210, 235, 0.7);
+        --client-detail-card-shadow: 0 18px 30px rgba(120, 150, 190, 0.2);
+        --client-detail-field-bg: linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95));
+        --client-detail-field-border: rgba(180, 210, 235, 0.7);
+        --client-detail-field-shadow: 0 10px 20px rgba(120, 150, 190, 0.18);
+        --client-detail-tabs-bg: linear-gradient(180deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95));
+        --client-detail-tabs-border: rgba(170, 200, 230, 0.6);
+        --client-detail-tabs-shadow: 0 12px 22px rgba(120, 150, 190, 0.2);
+        --client-detail-tab-active-bg: linear-gradient(135deg, #7aa7ff, #86d5ff);
+        --client-detail-tab-active-shadow: 0 10px 20px rgba(110, 160, 230, 0.35);
+        --client-detail-action-bg: linear-gradient(135deg, #6fa3ff, #6cc6ff);
+        --client-detail-action-border: rgba(120, 170, 220, 0.6);
+        --client-detail-action-shadow: 0 16px 28px rgba(80, 140, 220, 0.35);
+        --client-detail-copy-bg: linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95));
+        --client-detail-copy-border: rgba(180, 210, 235, 0.7);
+        --client-detail-copy-shadow: 0 10px 20px rgba(120, 150, 190, 0.18);
         --bottom-nav-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 244, 246, 0.98));
         --bottom-nav-border: rgba(200, 210, 220, 0.6);
         --bottom-nav-shadow: 0 -18px 36px rgba(15, 23, 42, 0.12);
@@ -12024,6 +12051,33 @@ function GlobalStyles() {
         --accent-soft-bg: linear-gradient(180deg, rgba(47, 74, 120, 0.5), rgba(28, 40, 58, 0.65));
         --accent-soft-border: rgba(90, 120, 180, 0.55);
         --accent-soft-text: #d6e2f5;
+        --exercise-card-bg: linear-gradient(135deg, rgba(44, 60, 88, 0.9), rgba(34, 46, 68, 0.9));
+        --exercise-card-border: rgba(120, 150, 200, 0.35);
+        --exercise-card-shadow: 0 14px 26px rgba(0, 0, 0, 0.45);
+        --add-exercise-btn-bg: linear-gradient(135deg, rgba(44, 60, 88, 0.9), rgba(34, 46, 68, 0.9));
+        --add-exercise-btn-border: rgba(120, 170, 220, 0.5);
+        --add-exercise-btn-text: #8fb7ff;
+        --add-exercise-btn-shadow: 0 14px 26px rgba(0, 0, 0, 0.45);
+        --history-card-bg: linear-gradient(135deg, rgba(44, 60, 88, 0.9), rgba(34, 46, 68, 0.9));
+        --history-card-border: rgba(120, 150, 200, 0.35);
+        --history-card-shadow: 0 16px 28px rgba(0, 0, 0, 0.5);
+        --client-detail-card-bg: linear-gradient(135deg, rgba(44, 60, 88, 0.9), rgba(34, 46, 68, 0.9));
+        --client-detail-card-border: rgba(120, 150, 200, 0.35);
+        --client-detail-card-shadow: 0 18px 30px rgba(0, 0, 0, 0.5);
+        --client-detail-field-bg: linear-gradient(135deg, rgba(36, 48, 70, 0.9), rgba(28, 38, 56, 0.9));
+        --client-detail-field-border: rgba(120, 150, 200, 0.35);
+        --client-detail-field-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        --client-detail-tabs-bg: linear-gradient(180deg, rgba(32, 42, 60, 0.9), rgba(26, 34, 48, 0.9));
+        --client-detail-tabs-border: rgba(120, 150, 200, 0.35);
+        --client-detail-tabs-shadow: 0 12px 22px rgba(0, 0, 0, 0.45);
+        --client-detail-tab-active-bg: linear-gradient(135deg, #5d7bff, #5bb7ff);
+        --client-detail-tab-active-shadow: 0 10px 20px rgba(40, 90, 180, 0.45);
+        --client-detail-action-bg: linear-gradient(135deg, #5d7bff, #5bb7ff);
+        --client-detail-action-border: rgba(120, 170, 220, 0.5);
+        --client-detail-action-shadow: 0 16px 28px rgba(0, 0, 0, 0.5);
+        --client-detail-copy-bg: linear-gradient(135deg, rgba(36, 48, 70, 0.9), rgba(28, 38, 56, 0.9));
+        --client-detail-copy-border: rgba(120, 150, 200, 0.35);
+        --client-detail-copy-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
         --bottom-nav-bg: linear-gradient(180deg, rgba(28, 34, 44, 0.98), rgba(18, 22, 30, 0.98));
         --bottom-nav-border: rgba(70, 85, 110, 0.6);
         --bottom-nav-shadow: 0 -18px 36px rgba(0, 0, 0, 0.45);
@@ -12792,10 +12846,10 @@ const styles: Record<string, any> = {
     alignItems: "center",
     gap: 10,
     borderRadius: 22,
-    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.85), rgba(242, 248, 255, 0.95))",
+    background: "var(--exercise-card-bg)",
     padding: "14px 16px",
-    border: "1px solid rgba(170, 205, 235, 0.7)",
-    boxShadow: "0 14px 26px rgba(120, 150, 190, 0.18)",
+    border: "1px solid var(--exercise-card-border)",
+    boxShadow: "var(--exercise-card-shadow)",
     cursor: "pointer",
   },
 
@@ -14567,9 +14621,9 @@ const styles: Record<string, any> = {
     marginBottom: 14,
     padding: "14px 16px",
     borderRadius: 26,
-    border: "1px solid rgba(180, 210, 235, 0.7)",
-    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96))",
-    boxShadow: "0 18px 30px rgba(120, 150, 190, 0.2)",
+    border: "1px solid var(--client-detail-card-border)",
+    background: "var(--client-detail-card-bg)",
+    boxShadow: "var(--client-detail-card-shadow)",
     display: "flex",
     flexDirection: "row",
     alignItems: "center",
@@ -14672,12 +14726,12 @@ const styles: Record<string, any> = {
     width: "100%",
     height: 52,
     borderRadius: 999,
-    border: "1px solid rgba(120, 170, 220, 0.6)",
-    background: "linear-gradient(135deg, #6fa3ff, #6cc6ff)",
+    border: "1px solid var(--client-detail-action-border)",
+    background: "var(--client-detail-action-bg)",
     color: "#ffffff",
     fontWeight: 700,
     fontSize: 15,
-    boxShadow: "0 16px 28px rgba(80, 140, 220, 0.35)",
+    boxShadow: "var(--client-detail-action-shadow)",
     cursor: "pointer",
   },
   clientScheduleOverlay: {
@@ -15165,9 +15219,9 @@ const styles: Record<string, any> = {
   sessionHistoryCard: {
     borderRadius: 22,
     padding: "16px 18px",
-    border: "1px solid rgba(180, 205, 230, 0.7)",
-    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96))",
-    boxShadow: "0 16px 28px rgba(120, 150, 190, 0.2)",
+    border: "1px solid var(--history-card-border)",
+    background: "var(--history-card-bg)",
+    boxShadow: "var(--history-card-shadow)",
   },
   sessionHistoryTitle: {
     fontWeight: 700,
@@ -15191,9 +15245,9 @@ const styles: Record<string, any> = {
     gap: 6,
     padding: 6,
     borderRadius: 999,
-    border: "1px solid rgba(170, 200, 230, 0.6)",
-    background: "linear-gradient(180deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
-    boxShadow: "0 12px 22px rgba(120, 150, 190, 0.2)",
+    border: "1px solid var(--client-detail-tabs-border)",
+    background: "var(--client-detail-tabs-bg)",
+    boxShadow: "var(--client-detail-tabs-shadow)",
     minWidth: "max-content",
   },
   clientTabsDivider: {
@@ -15202,7 +15256,7 @@ const styles: Record<string, any> = {
   },
   clientDetailTabsDivider: {
     marginTop: 12,
-    borderBottom: "1px solid rgba(170, 200, 230, 0.5)",
+    borderBottom: "1px solid var(--client-detail-tabs-border)",
   },
   clientTab: {
     flex: 1,
@@ -15238,9 +15292,9 @@ const styles: Record<string, any> = {
     borderColor: "var(--accent)",
   },
   clientDetailTabActive: {
-    background: "linear-gradient(135deg, #7aa7ff, #86d5ff)",
+    background: "var(--client-detail-tab-active-bg)",
     color: "#ffffff",
-    boxShadow: "0 10px 20px rgba(110, 160, 230, 0.35)",
+    boxShadow: "var(--client-detail-tab-active-shadow)",
   },
   clientPanel: {
     marginTop: 12,
@@ -15267,9 +15321,9 @@ const styles: Record<string, any> = {
   clientDetailValueBox: {
     padding: "12px 16px",
     borderRadius: 18,
-    border: "1px solid rgba(180, 210, 235, 0.7)",
-    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
-    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+    border: "1px solid var(--client-detail-field-border)",
+    background: "var(--client-detail-field-bg)",
+    boxShadow: "var(--client-detail-field-shadow)",
     color: "var(--text)",
     fontSize: 14,
   },
@@ -15277,29 +15331,29 @@ const styles: Record<string, any> = {
     width: "100%",
     boxSizing: "border-box",
     borderRadius: 18,
-    border: "1px solid rgba(180, 210, 235, 0.7)",
+    border: "1px solid var(--client-detail-field-border)",
     padding: "12px 16px",
     outline: "none",
     fontSize: 14,
-    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    background: "var(--client-detail-field-bg)",
     color: "var(--text)",
-    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+    boxShadow: "var(--client-detail-field-shadow)",
   },
   clientDetailTextarea: {
     width: "100%",
     boxSizing: "border-box",
     borderRadius: 18,
-    border: "1px solid rgba(180, 210, 235, 0.7)",
+    border: "1px solid var(--client-detail-field-border)",
     padding: "12px 16px",
     outline: "none",
     fontSize: 14,
-    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    background: "var(--client-detail-field-bg)",
     color: "var(--text)",
     resize: "none",
     overflow: "hidden",
     minHeight: 42,
     lineHeight: 1.35,
-    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+    boxShadow: "var(--client-detail-field-shadow)",
   },
   clientDetailCopyRow: {
     marginTop: 6,
@@ -15308,8 +15362,8 @@ const styles: Record<string, any> = {
     gap: 10,
   },
   clientDetailCopyBtn: {
-    border: "1px solid rgba(180, 210, 235, 0.7)",
-    background: "linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
+    border: "1px solid var(--client-detail-copy-border)",
+    background: "var(--client-detail-copy-bg)",
     borderRadius: 18,
     padding: "10px 14px",
     cursor: "pointer",
@@ -15317,7 +15371,7 @@ const styles: Record<string, any> = {
     alignItems: "center",
     gap: 8,
     color: "var(--text)",
-    boxShadow: "0 10px 20px rgba(120, 150, 190, 0.18)",
+    boxShadow: "var(--client-detail-copy-shadow)",
     fontWeight: 600,
   },
   sessionInfoStack: {
@@ -16341,14 +16395,14 @@ const styles: Record<string, any> = {
     width: "100%",
     height: 54,
     borderRadius: 999,
-    border: "2px solid rgba(110, 170, 220, 0.7)",
-    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.85), rgba(242, 248, 255, 0.95))",
+    border: "2px solid var(--add-exercise-btn-border)",
+    background: "var(--add-exercise-btn-bg)",
     cursor: "pointer",
     fontWeight: 800,
     fontSize: 16,
-    color: "#1f6bff",
+    color: "var(--add-exercise-btn-text)",
     marginBottom: 12,
-    boxShadow: "0 14px 26px rgba(120, 150, 190, 0.18)",
+    boxShadow: "var(--add-exercise-btn-shadow)",
   },
   scheduleAddWindowBtn: {
     width: "100%",
