@@ -14644,16 +14644,23 @@ const styles: Record<string, any> = {
     WebkitOverflowScrolling: "touch",
   },
   sessionTabsScroll: {
-    marginTop: 8,
+    marginTop: 0,
     overflowX: "auto",
     WebkitOverflowScrolling: "touch",
+  },
+  sessionPanelBg: {
+    marginTop: 10,
+    padding: "14px 12px 16px",
+    borderRadius: 26,
+    background:
+      "linear-gradient(180deg, rgba(188, 221, 242, 0.75) 0%, rgba(214, 232, 246, 0.65) 36%, rgba(236, 243, 250, 0.45) 72%, rgba(248, 251, 255, 0.25) 100%)",
   },
   sessionTabsWrap: {
     padding: 6,
     borderRadius: 999,
-    border: "1px solid #d3dbe8",
-    background: "#f4f7fb",
-    boxShadow: "0 10px 20px rgba(145, 165, 190, 0.12)",
+    border: "1px solid rgba(160, 190, 215, 0.55)",
+    background: "linear-gradient(180deg, rgba(214, 232, 246, 0.9), rgba(236, 243, 250, 0.9))",
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 12px 22px rgba(135, 160, 190, 0.18)",
     minWidth: "max-content",
   },
   sessionTabs: {
@@ -14680,7 +14687,7 @@ const styles: Record<string, any> = {
   },
   sessionTabsDivider: {
     marginTop: 14,
-    borderBottom: "1px solid #dde4ee",
+    borderBottom: "1px solid rgba(160, 190, 215, 0.45)",
   },
   clientPrimaryActionWrap: {
     marginTop: 6,
