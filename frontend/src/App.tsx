@@ -9101,16 +9101,18 @@ function ClientDetailScreen(props: {
       </div>
 
       <div style={styles.clientDetailHeaderCard}>
-        <AvatarCircle name={client?.username || tr("Клиент", "Client")} photoUrl={client?.photoUrl || ""} size={64} />
-        <div style={styles.clientDetailName}>
-          {client?.fullName?.trim()
-            ? client.fullName
-            : client?.username
-              ? `@${client.username}`
-              : tr("Клиент", "Client")}
-        </div>
-        <div style={styles.clientDetailStatus}>
-          {client?.status === "active" ? tr("Активен", "Active") : tr("Ожидает активации", "Pending activation")}
+        <AvatarCircle name={client?.username || tr("Клиент", "Client")} photoUrl={client?.photoUrl || ""} size={52} />
+        <div style={{ minWidth: 0 }}>
+          <div style={styles.clientDetailName}>
+            {client?.fullName?.trim()
+              ? client.fullName
+              : client?.username
+                ? `@${client.username}`
+                : tr("Клиент", "Client")}
+          </div>
+          <div style={styles.clientDetailStatus}>
+            {client?.status === "active" ? tr("Активен", "Active") : tr("Ожидает активации", "Pending activation")}
+          </div>
         </div>
       </div>
 
@@ -14576,16 +14578,16 @@ const styles: Record<string, any> = {
   clientDetailHeaderCard: {
     marginTop: 6,
     marginBottom: 14,
-    padding: "18px 16px",
+    padding: "14px 16px",
     borderRadius: 26,
     border: "1px solid rgba(180, 210, 235, 0.7)",
     background: "linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96))",
     boxShadow: "0 18px 30px rgba(120, 150, 190, 0.2)",
     display: "flex",
-    flexDirection: "column",
+    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    textAlign: "center",
+    gap: 12,
+    textAlign: "left",
   },
   clientDetailName: {
     fontWeight: 700,
@@ -14597,6 +14599,7 @@ const styles: Record<string, any> = {
   clientDetailStatus: {
     fontSize: 13,
     color: "var(--muted)",
+    marginTop: 2,
   },
   clientTabsScroll: {
     marginTop: 8,
@@ -15198,7 +15201,7 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(170, 200, 230, 0.6)",
     background: "linear-gradient(180deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95))",
     boxShadow: "0 12px 22px rgba(120, 150, 190, 0.2)",
-    width: "100%",
+    minWidth: "max-content",
   },
   clientTabsDivider: {
     marginTop: 12,
@@ -15221,7 +15224,6 @@ const styles: Record<string, any> = {
     padding: "0 10px",
   },
   clientDetailTab: {
-    flex: 1,
     height: 40,
     borderRadius: 999,
     border: "none",
@@ -15233,8 +15235,9 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 0,
+    minWidth: "max-content",
     padding: "0 12px",
+    whiteSpace: "nowrap",
   },
   clientTabActive: {
     background: "var(--accent)",
