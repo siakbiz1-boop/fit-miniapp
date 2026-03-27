@@ -8094,9 +8094,9 @@ function TrainerClients(props: {
                             <span style={styles.clientsAvatarText}>{displayName.trim().charAt(0).toUpperCase()}</span>
                           </div>
                         )}
-                        <div style={{ textAlign: "center" }}>
+                        <div style={{ textAlign: "left" }}>
                           <div style={styles.clientsName}>{displayName}</div>
-                          <div style={styles.clientsStatus}>
+                          <div style={styles.rowSubtitle}>
                             {clientsTab === "pending" ? (
                               <span>{tr("Ожидает активации", "Pending activation")}</span>
                             ) : clientsTab === "archive" ? (
@@ -8120,7 +8120,7 @@ function TrainerClients(props: {
                             // ignore
                           });
                         }}
-                        style={styles.clientsTrashBtn}
+                        style={styles.trashBtn}
                         aria-label={`delete ${inv.username}`}
                         title={tr("Удалить", "Delete")}
                       >
@@ -12735,12 +12735,11 @@ const styles: Record<string, any> = {
     gap: 14,
   },
   clientsCard: {
-    position: "relative",
-    borderRadius: 26,
-    border: "1px solid rgba(180, 210, 235, 0.7)",
-    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96))",
-    boxShadow: "0 18px 30px rgba(120, 150, 190, 0.2)",
-    padding: "8px 12px",
+    borderRadius: 24,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "8px 10px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -12750,62 +12749,39 @@ const styles: Record<string, any> = {
     flex: 1,
     border: "none",
     background: "transparent",
-    padding: "16px 8px",
+    padding: "12px 8px",
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "column",
+    justifyContent: "space-between",
     cursor: "pointer",
     minWidth: 0,
   },
   clientsRowLeft: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    flexDirection: "column",
+    gap: 16,
     minWidth: 0,
   },
   clientsName: {
     fontWeight: 700,
-    fontSize: 17,
+    fontSize: 18,
     color: "var(--text)",
     letterSpacing: -0.2,
     lineHeight: 1.2,
   },
   clientsAvatar: {
-    width: 58,
-    height: 58,
+    width: 52,
+    height: 52,
     borderRadius: "50%",
-    background: "linear-gradient(135deg, #f7b36a, #f08a4a)",
+    background: "var(--accent-grad)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0 14px 24px rgba(240, 138, 74, 0.35)",
+    boxShadow: "var(--accent-shadow)",
     color: "#ffffff",
     fontWeight: 800,
-    fontSize: 20,
+    fontSize: 22,
     flex: "0 0 auto",
-  },
-  clientsStatus: {
-    marginTop: 2,
-    fontSize: 13,
-    color: "var(--muted)",
-  },
-  clientsTrashBtn: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 999,
-    border: "1px solid rgba(180, 210, 235, 0.7)",
-    background: "rgba(255, 255, 255, 0.7)",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "var(--text)",
-    opacity: 0.8,
   },
   clientsAvatarText: {
     lineHeight: 1,
