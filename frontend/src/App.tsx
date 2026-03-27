@@ -198,19 +198,6 @@ type SessionItem = {
   participants?: { clientId: string; clientUsername: string; clientName?: string }[];
 };
 
-const SESSION_COLOR_DEFAULT = { id: "default", value: "", labelRu: "По умолчанию", labelEn: "Default" };
-const SESSION_COLOR_OPTIONS = [
-  { id: "tomato", value: "#E5484D", labelRu: "Помидор", labelEn: "Tomato" },
-  { id: "mandarin", value: "#F97316", labelRu: "Мандарин", labelEn: "Mandarin" },
-  { id: "banana", value: "#FACC15", labelRu: "Банан", labelEn: "Banana" },
-  { id: "basil", value: "#22C55E", labelRu: "Базилик", labelEn: "Basil" },
-  { id: "mint", value: "#10B981", labelRu: "Мята", labelEn: "Mint" },
-  { id: "teal", value: "#14B8A6", labelRu: "Бирюза", labelEn: "Teal" },
-  { id: "peacock", value: "#3B82F6", labelRu: "Павлин", labelEn: "Peacock" },
-  { id: "blueberry", value: "#6366F1", labelRu: "Черника", labelEn: "Blueberry" },
-  { id: "lavender", value: "#8B5CF6", labelRu: "Лаванда", labelEn: "Lavender" },
-  { id: "flamingo", value: "#EC4899", labelRu: "Фламинго", labelEn: "Flamingo" },
-];
 
 type NotesListItem = {
   id: string;
@@ -4656,8 +4643,6 @@ function TrainerSchedule(props: {
   const [weekScheduleDates, setWeekScheduleDates] = useState<string[]>([]);
   const [weekScheduleStart, setWeekScheduleStart] = useState("12:30");
   const [weekScheduleEnd, setWeekScheduleEnd] = useState("13:30");
-  const [weekScheduleColor, setWeekScheduleColor] = useState("");
-  const [weekScheduleColorOpen, setWeekScheduleColorOpen] = useState(false);
   const [weekScheduleClientId, setWeekScheduleClientId] = useState<string>("");
   const [weekScheduleGroupIds, setWeekScheduleGroupIds] = useState<string[]>([]);
   const [weekScheduleError, setWeekScheduleError] = useState("");
@@ -4671,23 +4656,6 @@ function TrainerSchedule(props: {
   const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
   const weekScheduleTodayRef = useRef<HTMLButtonElement | null>(null);
   const bookingMode = trainerProfile?.bookingMode === "both" ? "both" : "trainer";
-  const sessionColorOptions = useMemo(
-    () =>
-      SESSION_COLOR_OPTIONS.map((opt) => ({
-        ...opt,
-        label: tr(opt.labelRu, opt.labelEn),
-      })),
-    [tr]
-  );
-  const sessionColorDefault = useMemo(
-    () => ({ ...SESSION_COLOR_DEFAULT, label: tr(SESSION_COLOR_DEFAULT.labelRu, SESSION_COLOR_DEFAULT.labelEn) }),
-    [tr]
-  );
-  const selectedColorLabel = (value: string) => {
-    if (!value) return sessionColorDefault.label;
-    const found = sessionColorOptions.find((opt) => opt.value === value);
-    return found?.label ?? sessionColorDefault.label;
-  };
 
   useEffect(() => {
     if (!pendingSession) return;
@@ -5249,8 +5217,6 @@ function TrainerSchedule(props: {
   useEffect(() => {
     if (!showWeekSchedule) return;
     setWeekScheduleError("");
-    setWeekScheduleColor("");
-    setWeekScheduleColorOpen(false);
     if (weekScheduleMode === "client" && !weekScheduleClientId) {
       const first = activeClients[0];
       if (first?.id) setWeekScheduleClientId(first.id);
@@ -6105,7 +6071,7 @@ function TrainerSchedule(props: {
           ) : sessionTab === "history" && !isOneTimeSession && !isGroupSession ? (
             <div>
               {(historyByClient[activeSession.clientUsername] || []).some((s) => isSessionEnded(s, new Date())) ? (
-                <div style={styles.listBlock}>
+                <div style={styles.sessionHistoryList}>
                   {(historyByClient[activeSession.clientUsername] || [])
                     .filter((s) => isSessionEnded(s, new Date()))
                     .slice()
@@ -6114,22 +6080,12 @@ function TrainerSchedule(props: {
                       const bEnd = sessionEndTime(b).getTime();
                       return bEnd - aEnd;
                     })
-                    .map((s, idx, arr) => {
-                      const isLast = idx === arr.length - 1;
+                    .map((s) => {
                       return (
-                        <div
-                          key={s.id}
-                          style={{
-                            ...styles.rowWrap,
-                            borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                            padding: "12px 0",
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.rowTitle}>{sessionTitle(s, tr)}</div>
-                            <div style={styles.rowSubtitle}>
-                              {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
-                            </div>
+                        <div key={s.id} style={styles.sessionHistoryCard}>
+                          <div style={styles.sessionHistoryTitle}>{sessionTitle(s, tr)}</div>
+                          <div style={styles.sessionHistorySubtitle}>
+                            {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
                           </div>
                         </div>
                       );
@@ -6656,47 +6612,6 @@ function TrainerSchedule(props: {
                       </div>
                     </div>
                   )}
-                  <div style={styles.scheduleQuickField}>
-                    <div style={styles.scheduleQuickLabel}>{tr("Цвет", "Color")}</div>
-                    <div style={styles.colorSelectWrap}>
-                      <button
-                        type="button"
-                        style={styles.scheduleQuickColorButton}
-                        onClick={() => setWeekScheduleColorOpen((prev) => !prev)}
-                      >
-                        {selectedColorLabel(weekScheduleColor)}
-                        <span style={styles.colorSelectChevron}>▾</span>
-                      </button>
-                      {weekScheduleColorOpen ? (
-                        <div style={styles.scheduleQuickColorMenu}>
-                          {sessionColorOptions.map((opt) => (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              style={styles.colorSelectItem}
-                              onClick={() => {
-                                setWeekScheduleColor(opt.value);
-                                setWeekScheduleColorOpen(false);
-                              }}
-                            >
-                              <span style={{ ...styles.colorSwatchSquare, background: opt.value }} />
-                              <span>{opt.label}</span>
-                            </button>
-                          ))}
-                          <button
-                            type="button"
-                            style={styles.colorSelectItem}
-                            onClick={() => {
-                              setWeekScheduleColor("");
-                              setWeekScheduleColorOpen(false);
-                            }}
-                          >
-                            <span>{sessionColorDefault.label}</span>
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
                   {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                   <button
                     type="button"
@@ -6804,7 +6719,6 @@ function TrainerSchedule(props: {
                               start,
                               end,
                               tzOffset: new Date().getTimezoneOffset(),
-                              ...(weekScheduleColor ? { color: weekScheduleColor } : {}),
                               ...payload,
                             }),
                           });
@@ -7338,47 +7252,6 @@ function TrainerSchedule(props: {
                           </div>
                         </div>
                       )}
-                      <div style={styles.scheduleQuickField}>
-                        <div style={styles.scheduleQuickLabel}>{tr("Цвет", "Color")}</div>
-                        <div style={styles.colorSelectWrap}>
-                          <button
-                            type="button"
-                            style={styles.scheduleQuickColorButton}
-                            onClick={() => setWeekScheduleColorOpen((prev) => !prev)}
-                          >
-                            {selectedColorLabel(weekScheduleColor)}
-                            <span style={styles.colorSelectChevron}>▾</span>
-                          </button>
-                          {weekScheduleColorOpen ? (
-                            <div style={styles.scheduleQuickColorMenu}>
-                              {sessionColorOptions.map((opt) => (
-                                <button
-                                  key={opt.id}
-                                  type="button"
-                                  style={styles.colorSelectItem}
-                                  onClick={() => {
-                                    setWeekScheduleColor(opt.value);
-                                    setWeekScheduleColorOpen(false);
-                                  }}
-                                >
-                                  <span style={{ ...styles.colorSwatchSquare, background: opt.value }} />
-                                  <span>{opt.label}</span>
-                                </button>
-                              ))}
-                              <button
-                                type="button"
-                                style={styles.colorSelectItem}
-                                onClick={() => {
-                                  setWeekScheduleColor("");
-                                  setWeekScheduleColorOpen(false);
-                                }}
-                              >
-                                <span>{sessionColorDefault.label}</span>
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
                       {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
                       <button
                         type="button"
@@ -7486,7 +7359,6 @@ function TrainerSchedule(props: {
                                   start,
                                   end,
                                   tzOffset: new Date().getTimezoneOffset(),
-                                  ...(weekScheduleColor ? { color: weekScheduleColor } : {}),
                                   ...payload,
                                 }),
                               });
@@ -15246,6 +15118,30 @@ const styles: Record<string, any> = {
     fontSize: 16,
     fontWeight: 800,
     color: "var(--text)",
+  },
+  sessionHistoryList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  },
+  sessionHistoryCard: {
+    borderRadius: 22,
+    padding: "16px 18px",
+    border: "1px solid rgba(180, 205, 230, 0.7)",
+    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.9), rgba(242, 248, 255, 0.96))",
+    boxShadow: "0 16px 28px rgba(120, 150, 190, 0.2)",
+  },
+  sessionHistoryTitle: {
+    fontWeight: 700,
+    fontSize: 18,
+    color: "var(--text)",
+    letterSpacing: -0.2,
+  },
+  sessionHistorySubtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    color: "var(--text)",
+    opacity: 0.75,
   },
   clientTabs: {
     display: "flex",
