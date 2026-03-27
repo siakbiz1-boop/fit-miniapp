@@ -6404,13 +6404,13 @@ function TrainerSchedule(props: {
           </div>
 
           {bookingMode === "both" ? (
-            <div style={styles.scheduleTabs}>
+            <div style={styles.scheduleDualTabs}>
               <button
                 type="button"
                 onClick={() => setSection("sessions")}
                 style={{
-                  ...styles.scheduleTab,
-                  ...(section === "sessions" ? styles.scheduleTabActive : null),
+                  ...styles.scheduleDualTab,
+                  ...(section === "sessions" ? styles.scheduleDualTabActive : null),
                 }}
               >
                 {tr("Занятия сегодня", "Today's sessions")}
@@ -6419,8 +6419,8 @@ function TrainerSchedule(props: {
                 type="button"
                 onClick={() => setSection("free")}
                 style={{
-                  ...styles.scheduleTab,
-                  ...(section === "free" ? styles.scheduleTabActive : null),
+                  ...styles.scheduleDualTab,
+                  ...(section === "free" ? styles.scheduleDualTabActive : null),
                 }}
               >
                 {tr("Свободные окна", "Available slots")}
@@ -7552,7 +7552,7 @@ function TrainerSchedule(props: {
               setShowFreeSchedule(true);
               setFreeError("");
             }}
-            style={styles.addWindowBtn}
+            style={styles.scheduleAddWindowBtn}
           >
             {tr("Добавить окно тренировки", "Add session slot")}
           </button>
@@ -14911,6 +14911,7 @@ const styles: Record<string, any> = {
     display: "flex",
     gap: 6,
     padding: 6,
+    width: "100%",
     borderRadius: 999,
     border: "1px solid var(--glass-tab-wrap-border)",
     background: "var(--glass-tab-wrap-bg)",
@@ -15694,6 +15695,17 @@ const styles: Record<string, any> = {
     gap: 10,
     width: "100%",
   },
+  scheduleDualTabs: {
+    marginTop: 14,
+    display: "flex",
+    gap: 6,
+    width: "100%",
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid var(--schedule-switch-border)",
+    background: "var(--schedule-switch-bg)",
+    boxShadow: "var(--schedule-switch-shadow)",
+  },
   clientsTabs: {
     marginTop: 16,
     display: "flex",
@@ -15866,6 +15878,26 @@ const styles: Record<string, any> = {
     background: "var(--accent)",
     color: "var(--accent-contrast)",
     border: "1px solid var(--accent)",
+  },
+  scheduleDualTab: {
+    flex: 1,
+    height: 44,
+    borderRadius: 999,
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 14,
+    color: "var(--text)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 0,
+  },
+  scheduleDualTabActive: {
+    background: "var(--schedule-switch-active-bg)",
+    color: "#ffffff",
+    boxShadow: "var(--schedule-switch-active-shadow)",
   },
   groupSelectList: {
     display: "flex",
@@ -16247,6 +16279,19 @@ const styles: Record<string, any> = {
     fontSize: 14,
     color: "var(--accent)",
     marginBottom: 12,
+  },
+  scheduleAddWindowBtn: {
+    width: "100%",
+    height: 54,
+    borderRadius: 999,
+    border: "2px solid rgba(120, 170, 220, 0.6)",
+    background: "var(--glass-pill-bg)",
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 16,
+    color: "var(--accent)",
+    marginBottom: 12,
+    boxShadow: "0 12px 22px rgba(120, 150, 190, 0.22)",
   },
   schedulePanelTitle: {
     fontWeight: 800,
