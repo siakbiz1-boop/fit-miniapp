@@ -10499,17 +10499,15 @@ function PersonalDataScreen(props: {
           <div style={styles.clientDetailStatus}>{username ? `@${username}` : ""}</div>
         </div>
       </div>
-      <div style={styles.personalBottomSpacer} />
 
       <div style={{ marginTop: 16 }}>
-        <div style={styles.personalTabsRow}>
+        <div style={styles.clientDetailTabsWrap}>
           <button
             type="button"
             onClick={() => setPersonalTab("about")}
             style={{
-              ...styles.scheduleTab,
-              ...styles.personalTabButton,
-              ...(personalTab === "about" ? styles.scheduleTabActive : null),
+              ...styles.clientDetailTab,
+              ...(personalTab === "about" ? styles.clientDetailTabActive : null),
             }}
           >
             {tr("Личная информация", "Personal info")}
@@ -10518,9 +10516,8 @@ function PersonalDataScreen(props: {
             type="button"
             onClick={() => setPersonalTab("contacts")}
             style={{
-              ...styles.scheduleTab,
-              ...styles.personalTabButton,
-              ...(personalTab === "contacts" ? styles.scheduleTabActive : null),
+              ...styles.clientDetailTab,
+              ...(personalTab === "contacts" ? styles.clientDetailTabActive : null),
             }}
           >
             {tr("Контакты", "Contacts")}
@@ -10530,9 +10527,8 @@ function PersonalDataScreen(props: {
               type="button"
               onClick={() => setPersonalTab("mySubscription")}
               style={{
-                ...styles.scheduleTab,
-                ...styles.personalTabButton,
-                ...(personalTab === "mySubscription" ? styles.scheduleTabActive : null),
+                ...styles.clientDetailTab,
+                ...(personalTab === "mySubscription" ? styles.clientDetailTabActive : null),
               }}
             >
               {tr("Мой абонемент", "My subscription")}
@@ -10543,9 +10539,8 @@ function PersonalDataScreen(props: {
               type="button"
               onClick={() => setPersonalTab("weights")}
               style={{
-                ...styles.scheduleTab,
-                ...styles.personalTabButton,
-                ...(personalTab === "weights" ? styles.scheduleTabActive : null),
+                ...styles.clientDetailTab,
+                ...(personalTab === "weights" ? styles.clientDetailTabActive : null),
               }}
             >
               {tr("Статистика упражнений", "Exercise stats")}
@@ -10556,9 +10551,8 @@ function PersonalDataScreen(props: {
               type="button"
               onClick={() => setPersonalTab("subscription")}
               style={{
-                ...styles.scheduleTab,
-                ...styles.personalTabButton,
-                ...(personalTab === "subscription" ? styles.scheduleTabActive : null),
+                ...styles.clientDetailTab,
+                ...(personalTab === "subscription" ? styles.clientDetailTabActive : null),
               }}
             >
               {resolvedSubscriptionTabLabel}
@@ -15365,9 +15359,6 @@ const styles: Record<string, any> = {
     fontSize: 14,
     color: "var(--text)",
     fontWeight: 600,
-  },
-  personalBottomSpacer: {
-    height: 90,
   },
   sessionInfoStack: {
     display: "flex",
