@@ -6124,12 +6124,13 @@ function TrainerSchedule(props: {
         {repeatOpen ? (
           <div style={styles.statsInfoOverlay} onClick={() => setRepeatOpen(false)}>
             <div style={styles.statsInfoSheet} onClick={(event) => event.stopPropagation()}>
+              <div style={styles.statsInfoHandle} />
               <button type="button" style={styles.statsInfoClose} onClick={() => setRepeatOpen(false)}>
                 ×
               </button>
               <div style={styles.statsInfoTitle}>{tr("Повторить тренировку", "Repeat session")}</div>
               <div style={{ marginTop: 12 }}>
-                <div style={styles.fieldLabel}>{tr("Дата", "Date")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Дата", "Date")}</div>
                 <input
                   type="date"
                   value={repeatDate}
@@ -6137,13 +6138,13 @@ function TrainerSchedule(props: {
                     setRepeatDate(e.target.value);
                     if (repeatError) setRepeatError("");
                   }}
-                  style={styles.input}
+                  style={styles.clientDetailInput}
                 />
               </div>
               {repeatError ? <div style={{ ...styles.errorText, marginTop: 8 }}>{repeatError}</div> : null}
               <button
                 type="button"
-                style={{ ...styles.saveBtn, marginTop: 14 }}
+                style={{ ...styles.statsInfoAction, marginTop: 14 }}
                 disabled={repeatSaving}
                 onClick={async () => {
                   if (!activeSession || repeatSaving) return;
@@ -11863,6 +11864,7 @@ function GlobalStyles() {
         --glass-btn-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
         --glass-sheet-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 250, 0.98));
         --glass-sheet-shadow: 0 -18px 30px rgba(15, 23, 42, 0.18);
+        --sheet-handle-bg: rgba(15, 23, 42, 0.16);
         --accent-grad: linear-gradient(135deg, #6f83f6, #7ccfe6);
         --accent-shadow: 0 18px 30px rgba(79, 124, 230, 0.35);
         --accent-soft-bg: linear-gradient(180deg, rgba(217, 232, 245, 0.9), rgba(255, 255, 255, 0.96));
@@ -12041,6 +12043,7 @@ function GlobalStyles() {
         --glass-btn-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
         --glass-sheet-bg: linear-gradient(180deg, rgba(30, 40, 56, 0.98), rgba(20, 28, 40, 0.98));
         --glass-sheet-shadow: 0 -18px 30px rgba(0, 0, 0, 0.5);
+        --sheet-handle-bg: rgba(255, 255, 255, 0.18);
         --accent-grad: linear-gradient(135deg, #5d7bff, #5bb7ff);
         --accent-shadow: 0 18px 30px rgba(40, 90, 180, 0.45);
         --accent-soft-bg: linear-gradient(180deg, rgba(47, 74, 120, 0.5), rgba(28, 40, 58, 0.65));
@@ -13925,19 +13928,29 @@ const styles: Record<string, any> = {
     width: "100%",
     maxWidth: 520,
     background: "var(--glass-sheet-bg)",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    padding: "16px 18px 18px",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: "12px 18px 22px",
+    border: "1px solid var(--glass-card-border)",
     boxShadow: "var(--glass-sheet-shadow)",
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
     position: "relative",
     minHeight: "34vh",
   },
+  statsInfoHandle: {
+    width: 52,
+    height: 6,
+    borderRadius: 999,
+    background: "var(--sheet-handle-bg)",
+    margin: "4px auto 14px",
+  },
   statsInfoClose: {
     position: "absolute",
-    top: 14,
-    right: 14,
-    width: 32,
-    height: 32,
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
     borderRadius: "50%",
     border: "1px solid var(--glass-btn-border)",
     background: "var(--glass-btn-bg)",
@@ -13945,41 +13958,43 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 18,
+    fontSize: 20,
     cursor: "pointer",
   },
   statsInfoTitle: {
-    fontSize: 18,
-    fontWeight: 800,
-    color: "var(--text)",
-    marginTop: 8,
+    fontSize: 20,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    marginTop: 0,
   },
   statsInfoTitleRow: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    fontSize: 18,
-    fontWeight: 800,
-    color: "var(--text)",
-    marginTop: 8,
+    fontSize: 20,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    marginTop: 0,
   },
   statsInfoText: {
     marginTop: 8,
     fontSize: 13,
     lineHeight: 1.5,
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
   },
   statsInfoAction: {
     marginTop: 18,
     width: "100%",
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(77, 163, 255, 0.2)",
-    background: "rgba(77, 163, 255, 0.12)",
-    color: "var(--primary)",
-    fontWeight: 700,
+    height: 52,
+    padding: "0 16px",
+    borderRadius: 999,
+    border: "1px solid rgba(120, 170, 220, 0.6)",
+    background: "var(--accent-grad)",
+    color: "#ffffff",
+    fontWeight: "var(--font-strong)",
     fontSize: 16,
     cursor: "pointer",
+    boxShadow: "var(--accent-shadow)",
   },
   statsRangeMenu: {
     position: "absolute",
