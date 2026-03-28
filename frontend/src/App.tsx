@@ -11803,6 +11803,12 @@ function GlobalStyles() {
         --text: #111827;
         --text-strong: #1f2d3d;
         --muted: #6b7280;
+        --text-primary: #111827;
+        --text-secondary: #6b7280;
+        --text-accent: #1677ff;
+        --font-regular: 500;
+        --font-medium: 600;
+        --font-strong: 800;
         --border: #e5e7eb;
         --border-2: #ececec;
         --nav-border: #e6e6e6;
@@ -11975,6 +11981,12 @@ function GlobalStyles() {
         --text: #f0f3f7;
         --text-strong: #ffffff;
         --muted: #b1bccb;
+        --text-primary: #f0f3f7;
+        --text-secondary: #b1bccb;
+        --text-accent: #66afff;
+        --font-regular: 500;
+        --font-medium: 600;
+        --font-strong: 800;
         --border: #323a4a;
         --border-2: #2b3242;
         --nav-border: #2a3140;
@@ -12355,7 +12367,8 @@ const styles: Record<string, any> = {
       '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif',
     background: "var(--bg)",
     minHeight: "100vh",
-    color: "var(--text)",
+    color: "var(--text-primary)",
+    fontWeight: "var(--font-regular)",
     overflowX: "hidden",
   },
 
@@ -12404,7 +12417,7 @@ const styles: Record<string, any> = {
   loadingText: {
     width: "100%",
     textAlign: "center",
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     opacity: 0.72,
     fontSize: 16,
   },
@@ -12468,7 +12481,7 @@ const styles: Record<string, any> = {
     opacity: 0.7,
     lineHeight: 1.3,
     textAlign: "center",
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
   },
   rolePill: {
     marginTop: 10,
@@ -12495,7 +12508,7 @@ const styles: Record<string, any> = {
   },
   settingsHeroName: {
     fontSize: 22,
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     letterSpacing: -0.3,
     color: "#fff",
     lineHeight: 1.1,
@@ -12620,7 +12633,7 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(248, 113, 113, 0.5)",
     background: "linear-gradient(135deg, rgba(248, 113, 113, 0.9), rgba(239, 68, 68, 0.9))",
     color: "#fff",
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     fontSize: 16,
     cursor: "pointer",
     boxShadow: "0 16px 26px rgba(239, 68, 68, 0.35)",
@@ -12671,7 +12684,7 @@ const styles: Record<string, any> = {
   roleName: {
     marginTop: 4,
     fontSize: 18,
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     color: "var(--text)",
     letterSpacing: -0.2,
   },
@@ -12720,8 +12733,8 @@ const styles: Record<string, any> = {
   },
   aboutTitle: {
     fontSize: 16,
-    fontWeight: 800,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
     letterSpacing: -0.2,
   },
   aboutText: {
@@ -12733,18 +12746,18 @@ const styles: Record<string, any> = {
 
   sectionHeader: {
     fontSize: 16,
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     marginBottom: 10,
     letterSpacing: -0.2,
-    color: "var(--text)",
+    color: "var(--text-primary)",
     lineHeight: 1.3,
   },
   sectionHeaderSmall: {
     fontSize: 16,
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     letterSpacing: -0.15,
     marginBottom: 8,
-    color: "var(--text)",
+    color: "var(--text-primary)",
   },
 
   listBlock: {
@@ -13415,7 +13428,7 @@ const styles: Record<string, any> = {
   notesTitle: {
     fontFamily: "inherit",
     fontSize: 24,
-    fontWeight: 700,
+    fontWeight: "var(--font-strong)",
     letterSpacing: -0.2,
     color: "var(--notes-title)",
     paddingLeft: 0,
@@ -14288,8 +14301,8 @@ const styles: Record<string, any> = {
     borderRadius: 999,
     border: "1px solid var(--glass-btn-border)",
     background: "var(--glass-btn-bg)",
-    color: "var(--text)",
-    fontWeight: 700,
+    color: "var(--text-primary)",
+    fontWeight: "var(--font-medium)",
     fontSize: 14,
     cursor: "pointer",
     whiteSpace: "nowrap",
@@ -14614,15 +14627,15 @@ const styles: Record<string, any> = {
     textAlign: "left",
   },
   clientDetailName: {
-    fontWeight: 700,
+    fontWeight: "var(--font-strong)",
     fontSize: 18,
-    color: "var(--text)",
+    color: "var(--text-primary)",
     letterSpacing: -0.2,
     lineHeight: 1.2,
   },
   clientDetailStatus: {
     fontSize: 13,
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
     marginTop: 2,
   },
   clientTabsScroll: {
@@ -14665,7 +14678,7 @@ const styles: Record<string, any> = {
     border: "1px solid transparent",
     background: "transparent",
     cursor: "pointer",
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     fontSize: 13,
     color: "var(--session-tab-text)",
     padding: "0 16px",
@@ -14696,7 +14709,7 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(0, 0, 0, 0.06)",
     background: "linear-gradient(135deg, #1F6BFF 0%, #2F8CFF 100%)",
     color: "var(--accent-contrast)",
-    fontWeight: 700,
+    fontWeight: "var(--font-strong)",
     fontSize: 15,
     boxShadow: "0 10px 20px rgba(31, 107, 255, 0.18)",
     cursor: "pointer",
@@ -14712,7 +14725,7 @@ const styles: Record<string, any> = {
     border: "1px solid var(--client-detail-action-border)",
     background: "var(--client-detail-action-bg)",
     color: "#ffffff",
-    fontWeight: 700,
+    fontWeight: "var(--font-strong)",
     fontSize: 15,
     boxShadow: "var(--client-detail-action-shadow)",
     cursor: "pointer",
@@ -14766,8 +14779,8 @@ const styles: Record<string, any> = {
   },
   clientScheduleTitle: {
     fontSize: 20,
-    fontWeight: 800,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   clientScheduleCloseBtn: {
     border: "none",
@@ -14820,7 +14833,7 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(120, 170, 220, 0.6)",
     background: "var(--accent-grad)",
     cursor: "pointer",
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     fontSize: 16,
     color: "#fff",
     boxShadow: "var(--accent-shadow)",
@@ -15072,8 +15085,8 @@ const styles: Record<string, any> = {
   },
   exerciseFormTitle: {
     fontSize: 20,
-    fontWeight: 800,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   exerciseFormCloseBtn: {
     border: "none",
@@ -15085,9 +15098,9 @@ const styles: Record<string, any> = {
   },
   exerciseFormLabel: {
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: "var(--font-medium)",
     marginBottom: 6,
-    color: "var(--text)",
+    color: "var(--text-secondary)",
   },
   exerciseFormInput: {
     width: "100%",
@@ -15109,7 +15122,7 @@ const styles: Record<string, any> = {
     border: "1px solid rgba(120, 170, 220, 0.6)",
     background: "var(--accent-grad)",
     cursor: "pointer",
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     fontSize: 16,
     color: "#fff",
     boxShadow: "var(--accent-shadow)",
@@ -15150,8 +15163,8 @@ const styles: Record<string, any> = {
   },
   weightsStatsTitle: {
     fontSize: 22,
-    fontWeight: 800,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   weightsStatsCloseBtn: {
     border: "1px solid var(--glass-pill-border)",
@@ -15267,15 +15280,15 @@ const styles: Record<string, any> = {
     boxShadow: "var(--history-card-shadow)",
   },
   sessionHistoryTitle: {
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     fontSize: 16,
-    color: "var(--text)",
+    color: "var(--text-primary)",
     letterSpacing: -0.2,
   },
   sessionHistorySubtitle: {
     marginTop: 4,
     fontSize: 13,
-    color: "var(--text)",
+    color: "var(--text-secondary)",
     opacity: 0.75,
   },
   clientTabs: {
@@ -15308,9 +15321,9 @@ const styles: Record<string, any> = {
     border: "1px solid var(--border)",
     background: "var(--surface)",
     cursor: "pointer",
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     fontSize: 13,
-    color: "var(--text)",
+    color: "var(--text-primary)",
     padding: "0 10px",
   },
   clientDetailTab: {
@@ -15319,9 +15332,9 @@ const styles: Record<string, any> = {
     border: "none",
     background: "transparent",
     cursor: "pointer",
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     fontSize: 13,
-    color: "var(--text)",
+    color: "var(--text-primary)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -15355,10 +15368,10 @@ const styles: Record<string, any> = {
   },
   clientDetailFieldLabel: {
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     letterSpacing: 0.3,
     textTransform: "uppercase",
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
     marginBottom: 6,
   },
   clientDetailValueBox: {
@@ -15413,14 +15426,14 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    color: "var(--text)",
+    color: "var(--text-primary)",
     boxShadow: "none",
-    fontWeight: 600,
+    fontWeight: "var(--font-medium)",
   },
   clientDetailPlainValue: {
     fontSize: 14,
-    color: "var(--text)",
-    fontWeight: 600,
+    color: "var(--text-primary)",
+    fontWeight: "var(--font-medium)",
   },
   sessionInfoStack: {
     display: "flex",
@@ -15575,9 +15588,9 @@ const styles: Record<string, any> = {
 
   fieldLabel: {
     fontSize: 13,
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     marginBottom: 6,
-    color: "var(--text)",
+    color: "var(--text-secondary)",
     letterSpacing: -0.05,
   },
 
