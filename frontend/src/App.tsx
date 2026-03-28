@@ -8580,7 +8580,7 @@ function ExerciseStatsPanel(props: {
               </button>
             </div>
             <div style={{ marginTop: 12 }}>
-              <div style={styles.fieldLabel}>{tr("Название упражнения", "Exercise name")}</div>
+              <div style={styles.exerciseFormLabel}>{tr("Название упражнения", "Exercise name")}</div>
               <input
                 value={draftExerciseName}
                 onChange={(e) => {
@@ -8588,10 +8588,10 @@ function ExerciseStatsPanel(props: {
                   if (exerciseError) setExerciseError("");
                 }}
                 placeholder={tr("Например: Жим лёжа", "e.g., Bench press")}
-                style={styles.input}
+                style={styles.exerciseFormInput}
               />
               <div style={{ marginTop: 12 }}>
-                <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
+                <div style={styles.exerciseFormLabel}>{tr("Вес", "Weight")}</div>
                 <input
                   value={draftExerciseWeight}
                   onChange={(e) => {
@@ -8599,7 +8599,7 @@ function ExerciseStatsPanel(props: {
                     if (exerciseError) setExerciseError("");
                   }}
                   placeholder={tr("Например: 60 кг", "e.g., 60 kg")}
-                  style={styles.input}
+                  style={styles.exerciseFormInput}
                 />
               </div>
               {exerciseError ? <div style={styles.errorText}>{exerciseError}</div> : null}
@@ -8628,7 +8628,7 @@ function ExerciseStatsPanel(props: {
                   setShowExerciseForm(false);
                   setExerciseError("");
                 }}
-                style={styles.saveBtn}
+                style={styles.exerciseFormSaveBtn}
               >
                 {tr("Сохранить", "Save")}
               </button>
@@ -13824,15 +13824,15 @@ const styles: Record<string, any> = {
   },
   homeSubscriptionBlock: {
     marginTop: 12,
-    padding: "14px",
+    padding: "12px",
     borderRadius: 22,
     border: "1px solid var(--glass-card-border)",
     background: "var(--glass-card-bg)",
     boxShadow: "var(--glass-card-shadow)",
   },
   homeSubscriptionRow: {
-    marginTop: 8,
-    padding: "12px 14px",
+    marginTop: 6,
+    padding: "10px 12px",
     borderRadius: 999,
     border: "1px solid var(--glass-card-border)",
     background: "var(--glass-card-bg)",
@@ -13842,12 +13842,12 @@ const styles: Record<string, any> = {
     gap: 12,
   },
   homeSubscriptionLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 600,
     color: "var(--muted)",
   },
   homeSubscriptionValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 800,
     color: "var(--text)",
   },
@@ -15019,21 +15019,22 @@ const styles: Record<string, any> = {
     position: "relative",
     width: "100%",
     maxWidth: 520,
-    height: "50vh",
-    background: "var(--bg)",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    padding: "10px 18px 18px",
+    height: "52vh",
+    background: "var(--glass-sheet-bg)",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: "12px 18px 22px",
     boxSizing: "border-box",
-    boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
+    border: "1px solid var(--glass-card-border)",
+    boxShadow: "var(--glass-sheet-shadow)",
     overflowY: "auto",
   },
   exerciseFormHandle: {
-    width: 46,
-    height: 4,
+    width: 52,
+    height: 6,
     borderRadius: 999,
-    background: "rgba(15, 23, 42, 0.12)",
-    margin: "4px auto 12px",
+    background: "rgba(15, 23, 42, 0.16)",
+    margin: "4px auto 14px",
   },
   exerciseFormHeader: {
     display: "flex",
@@ -15042,7 +15043,7 @@ const styles: Record<string, any> = {
     gap: 12,
   },
   exerciseFormTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 800,
     color: "var(--text)",
   },
@@ -15050,9 +15051,40 @@ const styles: Record<string, any> = {
     border: "none",
     background: "transparent",
     color: "var(--muted)",
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: "pointer",
-    padding: 4,
+    padding: 6,
+  },
+  exerciseFormLabel: {
+    fontSize: 14,
+    fontWeight: 600,
+    marginBottom: 6,
+    color: "var(--text)",
+  },
+  exerciseFormInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    padding: "12px 14px",
+    outline: "none",
+    fontSize: 16,
+    background: "var(--glass-card-bg)",
+    color: "var(--text)",
+    boxShadow: "var(--glass-card-shadow)",
+  },
+  exerciseFormSaveBtn: {
+    marginTop: 18,
+    width: "100%",
+    height: 50,
+    borderRadius: 999,
+    border: "1px solid rgba(120, 170, 220, 0.6)",
+    background: "var(--accent-grad)",
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 16,
+    color: "#fff",
+    boxShadow: "var(--accent-shadow)",
   },
   weightsStatsBackdrop: {
     position: "absolute",
@@ -15197,24 +15229,24 @@ const styles: Record<string, any> = {
   sessionHistoryList: {
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: 10,
   },
   sessionHistoryCard: {
-    borderRadius: 22,
-    padding: "16px 18px",
+    borderRadius: 18,
+    padding: "12px 14px",
     border: "1px solid var(--history-card-border)",
     background: "var(--history-card-bg)",
     boxShadow: "var(--history-card-shadow)",
   },
   sessionHistoryTitle: {
     fontWeight: 700,
-    fontSize: 18,
+    fontSize: 16,
     color: "var(--text)",
     letterSpacing: -0.2,
   },
   sessionHistorySubtitle: {
-    marginTop: 6,
-    fontSize: 14,
+    marginTop: 4,
+    fontSize: 13,
     color: "var(--text)",
     opacity: 0.75,
   },
