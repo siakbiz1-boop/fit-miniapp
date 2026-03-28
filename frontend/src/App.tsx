@@ -3918,31 +3918,33 @@ function ClientSchedule(props: {
           <div style={{ width: 36 }} />
         </div>
 
-        <div style={styles.clientTabsScroll}>
-          <div style={styles.clientTabs}>
-            <button
-              type="button"
-              onClick={() => setSessionTab("info")}
-              style={{
-                ...styles.clientTab,
-                ...(sessionTab === "info" ? styles.clientTabActive : null),
-              }}
-            >
-              {tr("Информация о тренировке", "Session info")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSessionTab("weights")}
-              style={{
-                ...styles.clientTab,
-                ...(sessionTab === "weights" ? styles.clientTabActive : null),
-              }}
-            >
-              {tr("Статистика упражнений", "Exercise stats")}
-            </button>
+        <div style={styles.sessionTabsScroll}>
+          <div style={styles.sessionTabsWrap}>
+            <div style={styles.sessionTabs}>
+              <button
+                type="button"
+                onClick={() => setSessionTab("info")}
+                style={{
+                  ...styles.sessionTabPill,
+                  ...(sessionTab === "info" ? styles.sessionTabPillActive : null),
+                }}
+              >
+                {tr("Информация о тренировке", "Session info")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionTab("weights")}
+                style={{
+                  ...styles.sessionTabPill,
+                  ...(sessionTab === "weights" ? styles.sessionTabPillActive : null),
+                }}
+              >
+                {tr("Статистика упражнений", "Exercise stats")}
+              </button>
+            </div>
           </div>
         </div>
-        <div style={styles.clientTabsDivider} />
+        <div style={styles.sessionTabsDivider} />
 
         <div style={styles.clientPanelPlain}>
           {sessionTab === "info" ? (
@@ -3976,11 +3978,8 @@ function ClientSchedule(props: {
                 <div style={styles.sessionCardLabel}>{tr("Тип тренировки", "Session type")}</div>
                 <div style={styles.sessionCardValue}>{sessionTitle(activeSession, tr)}</div>
               </div>
-              <div style={styles.sessionCard}>
-                <div style={styles.sessionCardRow}>
-                  <div style={styles.sessionCardLabel}>{tr("Стоимость тренировки", "Session price")}</div>
-                  <div style={{ ...styles.sessionCheckBtn, pointerEvents: "none" }}>✓</div>
-                </div>
+              <div style={{ ...styles.sessionCard, padding: "10px 12px" }}>
+                <div style={styles.sessionCardLabel}>{tr("Стоимость тренировки", "Session price")}</div>
                 <div style={styles.sessionCardValue}>
                   {(() => {
                     const isGroup = activeSession.clientUsername === "group" || activeSession.type === "group";
