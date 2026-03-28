@@ -3946,36 +3946,42 @@ function ClientSchedule(props: {
 
         <div style={styles.clientPanelPlain}>
           {sessionTab === "info" ? (
-            <div>
-              <div style={styles.fieldLabel}>{tr("Клиент", "Client")}</div>
-              <div style={styles.readOnlyValue}>
-                {activeSession.clientUsername ? sessionClientLabel(activeSession, tr, invites) : "—"}
-              </div>
-              <div style={{ marginTop: 16 }} />
-              <div>
-                <div style={styles.fieldLabel}>{tr("Дата", "Date")}</div>
-                <div style={styles.readOnlyValue}>{formatDateShort(parseDateKey(activeSession.dateKey))}</div>
-              </div>
-              <div style={{ marginTop: 16 }} />
-              <div style={styles.metricsRow}>
-                <div style={{ flex: 1 }}>
-                  <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                  <div style={styles.readOnlyValue}>{activeSession.start}</div>
+            <div style={styles.sessionInfoStack}>
+              <div style={styles.sessionInfoRow}>
+                <div style={styles.sessionCard}>
+                  <div style={styles.sessionCardLabel}>{tr("Клиент", "Client")}</div>
+                  <div style={styles.sessionCardValue}>
+                    {activeSession.clientUsername ? sessionClientLabel(activeSession, tr, invites) : "—"}
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                  <div style={styles.readOnlyValue}>{activeSession.end}</div>
+                <div style={styles.sessionCard}>
+                  <div style={styles.sessionCardLabel}>{tr("Дата", "Date")}</div>
+                  <div style={styles.sessionCardValue}>{formatDateShort(parseDateKey(activeSession.dateKey))}</div>
                 </div>
               </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Тип тренировки", "Session type")}</div>
-                <div style={styles.readOnlyValue}>
-                  {sessionTitle(activeSession, tr)}
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardLabel}>{tr("Время", "Time")}</div>
+                <div style={styles.sessionTimeGrid}>
+                  <div>
+                    <div style={styles.sessionMiniLabel}>{tr("Начало", "Start")}</div>
+                    <div style={styles.sessionCardValue}>{activeSession.start}</div>
+                  </div>
+                  <div>
+                    <div style={styles.sessionMiniLabel}>{tr("Конец", "End")}</div>
+                    <div style={styles.sessionCardValue}>{activeSession.end}</div>
+                  </div>
                 </div>
               </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
-                <div style={styles.readOnlyValue}>
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardLabel}>{tr("Тип тренировки", "Session type")}</div>
+                <div style={styles.sessionCardValue}>{sessionTitle(activeSession, tr)}</div>
+              </div>
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardRow}>
+                  <div style={styles.sessionCardLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+                  <div style={{ ...styles.sessionCheckBtn, pointerEvents: "none" }}>✓</div>
+                </div>
+                <div style={styles.sessionCardValue}>
                   {(() => {
                     const isGroup = activeSession.clientUsername === "group" || activeSession.type === "group";
                     if (isGroup) {
@@ -3993,9 +3999,9 @@ function ClientSchedule(props: {
                   })()}
                 </div>
               </div>
-              <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Комментарий к тренировке", "Session notes")}</div>
-                <div style={styles.readOnlyValue}>
+              <div style={styles.sessionCard}>
+                <div style={styles.sessionCardLabel}>{tr("Комментарий к тренировке", "Session notes")}</div>
+                <div style={activeSession.comment && activeSession.comment.trim() ? styles.sessionCardValue : styles.sessionCardValueMuted}>
                   {activeSession.comment && activeSession.comment.trim()
                     ? activeSession.comment
                     : "—"}
