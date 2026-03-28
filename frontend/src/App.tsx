@@ -10492,13 +10492,11 @@ function PersonalDataScreen(props: {
 
   return (
     <div style={styles.pageContainer}>
-      <div style={styles.personalHeaderRow}>
-        <AvatarCircle name={fio || name || username || tr("Пользователь", "User")} photoUrl={photoUrl} size={44} />
+      <div style={styles.clientDetailHeaderCard}>
+        <AvatarCircle name={fio || name || username || tr("Пользователь", "User")} photoUrl={photoUrl} size={52} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)", lineHeight: 1.2 }}>
-            {fio || name || tr("Пользователь", "User")}
-          </div>
-          <div style={{ opacity: 0.62, fontSize: 13, marginTop: 2 }}>{username ? `@${username}` : ""}</div>
+          <div style={styles.clientDetailName}>{fio || name || tr("Пользователь", "User")}</div>
+          <div style={styles.clientDetailStatus}>{username ? `@${username}` : ""}</div>
         </div>
       </div>
 
@@ -10570,7 +10568,7 @@ function PersonalDataScreen(props: {
       <div style={{ ...styles.topBarDivider, marginTop: 8 }} />
       {personalTab === "about" ? (
         <div style={styles.clientPanelPlain}>
-          <div style={styles.fieldLabel}>
+          <div style={styles.clientDetailFieldLabel}>
             {isClientProfile
               ? tr("ФИО (так будет видеть вас тренер)", "Full name (visible to coach)")
               : tr("ФИО (так будут видеть вас клиенты)", "Full name (visible to clients)")}
@@ -10590,12 +10588,12 @@ function PersonalDataScreen(props: {
               }
             }}
             placeholder={tr("Введите ФИО", "Enter full name")}
-            style={styles.input}
+            style={styles.clientDetailInput}
           />
           {showClientBasics ? (
             <>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Пол", "Gender")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Пол", "Gender")}</div>
                 <select
                   value={gender}
                   onChange={(e) => {
@@ -10603,7 +10601,7 @@ function PersonalDataScreen(props: {
                     setGender(v);
                     if (isClientProfile) saveClientField("gender", v);
                   }}
-                  style={styles.input}
+                  style={styles.clientDetailInput}
                 >
                   <option value="">{tr("Не выбран", "Not selected")}</option>
                   <option value="male">{tr("Мужской", "Male")}</option>
@@ -10612,7 +10610,7 @@ function PersonalDataScreen(props: {
               </div>
               <div style={styles.metricsRow}>
                 <div style={{ flex: 1 }}>
-                  <div style={styles.fieldLabel}>{tr("Рост", "Height")}</div>
+                  <div style={styles.clientDetailFieldLabel}>{tr("Рост", "Height")}</div>
                   <input
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -10624,11 +10622,11 @@ function PersonalDataScreen(props: {
                       if (isClientProfile) saveClientField("height", v);
                     }}
                     placeholder={tr("см", "cm")}
-                    style={styles.input}
+                    style={styles.clientDetailInput}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={styles.fieldLabel}>{tr("Вес", "Weight")}</div>
+                  <div style={styles.clientDetailFieldLabel}>{tr("Вес", "Weight")}</div>
                   <input
                     inputMode="decimal"
                     pattern="[0-9.,]*"
@@ -10640,12 +10638,12 @@ function PersonalDataScreen(props: {
                       if (isClientProfile) saveClientField("weight", v);
                     }}
                     placeholder={tr("кг", "kg")}
-                    style={styles.input}
+                    style={styles.clientDetailInput}
                   />
                 </div>
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Цель", "Goal")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Цель", "Goal")}</div>
                 <textarea
                   value={about}
                   onChange={(e) => setAbout(e.target.value)}
@@ -10659,11 +10657,11 @@ function PersonalDataScreen(props: {
                   }}
                   placeholder={tr("Например: сбросить 5 кг", "e.g., lose 5 kg")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Комментарии", "Comments")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Комментарии", "Comments")}</div>
                 <textarea
                   value={extraInfo}
                   onChange={(e) => setExtraInfo(e.target.value)}
@@ -10677,7 +10675,7 @@ function PersonalDataScreen(props: {
                   }}
                   placeholder={tr("Комментарий", "Comment")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
             </>
@@ -10685,7 +10683,7 @@ function PersonalDataScreen(props: {
           {showExtendedAbout ? (
             <>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Фитнес-клуб", "Fitness club")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Фитнес-клуб", "Fitness club")}</div>
                 <textarea
                   ref={fitnessClubRef}
                   value={fitnessClub}
@@ -10698,11 +10696,11 @@ function PersonalDataScreen(props: {
                   onBlur={() => saveTrainerField("fitnessClub", fitnessClub)}
                   placeholder={tr("Введите адрес проведения занятий", "Enter the training address")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Специаллизация", "Specialization")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Специаллизация", "Specialization")}</div>
                 <textarea
                   ref={specializationRef}
                   value={specialization}
@@ -10715,11 +10713,11 @@ function PersonalDataScreen(props: {
                   onBlur={() => saveTrainerField("specialization", specialization)}
                   placeholder={tr("Например: силовые тренировки...", "e.g., strength training...")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Опыт работы", "Experience")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Опыт работы", "Experience")}</div>
                 <textarea
                   ref={experienceRef}
                   value={experience}
@@ -10732,11 +10730,11 @@ function PersonalDataScreen(props: {
                   onBlur={() => saveTrainerField("experience", experience)}
                   placeholder={tr("Например: 5 лет", "e.g., 5 years")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("О себе", "About")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("О себе", "About")}</div>
                 <textarea
                   ref={aboutRef}
                   value={about}
@@ -10749,11 +10747,11 @@ function PersonalDataScreen(props: {
                   onBlur={() => saveTrainerField("about", about)}
                   placeholder={tr("Коротко о себе...", "Short bio...")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Требования к проведению занятий", "Session requirements")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Требования к проведению занятий", "Session requirements")}</div>
                 <textarea
                   ref={requirementsRef}
                   value={requirements}
@@ -10766,11 +10764,11 @@ function PersonalDataScreen(props: {
                   onBlur={() => saveTrainerField("requirements", requirements)}
                   placeholder={tr("Опишите требования...", "Describe requirements...")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
               <div style={{ marginTop: 16 }}>
-                <div style={styles.fieldLabel}>{tr("Дополнительная информация", "Additional info")}</div>
+                <div style={styles.clientDetailFieldLabel}>{tr("Дополнительная информация", "Additional info")}</div>
                 <textarea
                   ref={extraInfoRef}
                   value={extraInfo}
@@ -10783,7 +10781,7 @@ function PersonalDataScreen(props: {
                   onBlur={() => saveTrainerField("extraInfo", extraInfo)}
                   placeholder={tr("Добавьте информацию...", "Add information...")}
                   rows={1}
-                  style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+                  style={styles.clientDetailTextarea}
                 />
               </div>
             </>
@@ -10791,7 +10789,7 @@ function PersonalDataScreen(props: {
         </div>
       ) : personalTab === "contacts" ? (
         <div style={styles.clientPanelPlain}>
-          <div style={styles.fieldLabel}>{tr("Номер телефона", "Phone number")}</div>
+          <div style={styles.clientDetailFieldLabel}>{tr("Номер телефона", "Phone number")}</div>
           <textarea
             ref={phoneRef}
             inputMode="tel"
@@ -10805,10 +10803,10 @@ function PersonalDataScreen(props: {
             onBlur={() => saveTrainerField("phone", phone)}
             placeholder={tr("Введите номер телефона", "Enter phone number")}
             rows={1}
-            style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+            style={styles.clientDetailTextarea}
           />
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>Telegram</div>
+            <div style={styles.clientDetailFieldLabel}>Telegram</div>
             <button
               type="button"
               onClick={() => {
@@ -10820,14 +10818,14 @@ function PersonalDataScreen(props: {
                   buttons: [{ type: "ok" }],
                 });
               }}
-              style={styles.copyRowBtn}
+              style={styles.clientDetailCopyBtn}
               aria-label="copy telegram username"
             >
-              <div style={styles.readOnlyValue}>{username ? `@${username}` : "—"}</div>
+              <div style={styles.clientDetailValueBox}>{username ? `@${username}` : "—"}</div>
             </button>
           </div>
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>Instagram</div>
+            <div style={styles.clientDetailFieldLabel}>Instagram</div>
           <textarea
             ref={instagramRef}
             value={instagram}
@@ -10840,12 +10838,12 @@ function PersonalDataScreen(props: {
             onBlur={() => saveTrainerField("instagram", instagram)}
             placeholder={tr("Введите Instagram", "Enter Instagram")}
             rows={1}
-            style={{ ...styles.input, resize: "none", overflow: "hidden" }}
+            style={styles.clientDetailTextarea}
           />
           </div>
           <div style={{ marginTop: 16 }}>
-            <div style={styles.fieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
-          <textarea
+            <div style={styles.clientDetailFieldLabel}>{tr("Иная социальная сеть", "Other social network")}</div>
+            <textarea
             ref={otherSocialRef}
             value={otherSocial}
             onChange={(e) => setOtherSocial(e.target.value)}
@@ -10857,8 +10855,8 @@ function PersonalDataScreen(props: {
             onBlur={() => saveTrainerField("otherSocial", otherSocial)}
             placeholder={tr("Введите ссылку или ник", "Enter link or handle")}
             rows={1}
-            style={{ ...styles.input, resize: "none", overflow: "hidden" }}
-          />
+              style={styles.clientDetailTextarea}
+            />
           </div>
         </div>
       ) : personalTab === "mySubscription" ? (
