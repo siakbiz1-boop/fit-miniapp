@@ -3607,94 +3607,119 @@ function ClientHome(props: {
   const todaySessions = sessionsByDate[todayKey] || [];
   const todayCount = todaySessions.length;
   const todayRemaining = todaySessions.filter((s) => sessionEndTime(s).getTime() > now.getTime()).length;
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  const completedThisMonth = allSessions.filter((s) => {
+  const weekStart = startOfWeekMonday(now);
+  const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6, 23, 59, 59, 999);
+  const completedThisWeek = allSessions.filter((s) => {
     const end = sessionEndTime(s);
-    return end.getTime() <= now.getTime() && end.getTime() >= monthStart.getTime() && end.getTime() <= monthEnd.getTime();
+    return end.getTime() <= now.getTime() && end.getTime() >= weekStart.getTime() && end.getTime() <= weekEnd.getTime();
   }).length;
+  const formatNearestTime = (s: SessionItem) => {
+    const startDate = parseDateKey(s.dateKey);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const sessionDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    let prefix = formatDateShort(startDate);
+    if (sessionDay.getTime() === today.getTime()) prefix = tr("Сегодня", "Today");
+    else if (sessionDay.getTime() === tomorrow.getTime()) prefix = tr("Завтра", "Tomorrow");
+    return `${prefix} ${s.start}—${s.end}`;
+  };
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.homeWorkPage }}>
-      <div style={styles.homeIntro}>
-        <div style={styles.homeAvatarRow}>
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            style={styles.homeAvatarBtn}
-            aria-label={tr("настройки", "settings")}
-          >
-            <AvatarCircle name={name || tr("Пользователь", "User")} photoUrl={photoUrl} size={44} />
-          </button>
-          <div />
-        </div>
-        <div style={styles.homeGreeting}>
-          {getGreetingByTime()}, {name || tr("Пользователь", "User")}
-        </div>
-        <div style={styles.homeNextBlock}>
-          <div style={styles.homeNextTitle}>{tr("Ближайшее занятие", "Next session")}</div>
-          {nearest ? (
-            <>
-              <div style={styles.homeNextCard}>
-                <div style={styles.homeNextRow}>
-                  <div style={styles.homeNextTime}>{`${nearest.start}—${nearest.end}`}</div>
-                  <div style={{ ...styles.homeNextStatus, color: sessionStatusColor(nearest, new Date()) }}>
-                    {sessionStatusLabel(nearest, new Date())}
-                  </div>
-                </div>
-                <div style={styles.homeNextMeta}>{tr("Тренировка", "Session")}</div>
-              </div>
-              {trainerHandle ? (
-                <div style={styles.homeNextContactRow}>
-                  <div style={styles.homeNextContactLabel}>
-                    {tr("Связаться с тренером:", "Contact the trainer:")}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const handle = trainerHandle.replace(/^@/, "");
-                      if (!handle) return;
-                      const link = `https://t.me/${handle}`;
-                      if (typeof WebApp?.openTelegramLink === "function") {
-                        WebApp.openTelegramLink(link);
-                      } else {
-                        window.open(link, "_blank");
-                      }
-                    }}
-                    style={styles.homeNextContactLink}
-                  >
-                    @{trainerHandle.replace(/^@/, "")}
-                  </button>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div style={styles.homeNextEmpty}>
-              {tr("У вас пока нет запланированных занятий", "You don't have any scheduled sessions yet")}
+      <div style={{ ...styles.homeIntro, ...styles.homeIntroWork }}>
+        <div style={styles.homeHero}>
+          <div style={styles.homeHeroTop}>
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              style={styles.homeAvatarBtn}
+              aria-label={tr("настройки", "settings")}
+            >
+              <AvatarCircle name={name || tr("Пользователь", "User")} photoUrl={photoUrl} size={52} />
+            </button>
+          </div>
+          <div style={styles.homeHeroText}>
+            <div style={styles.homeHeroTitle}>
+              {getGreetingByTime()}, {name || tr("Пользователь", "User")}
             </div>
-          )}
+            <div style={styles.homeHeroSubtitle}>{tr("Ваш день начинается здесь", "Your day starts here")}</div>
+          </div>
         </div>
-        <div style={styles.homeTodayBlock}>
-          <div style={styles.homeNextTitle}>{tr("Тренировки сегодня", "Today's sessions")}</div>
-          <div style={styles.homeTodayCard}>
-            <div style={styles.homeTodayGrid}>
-              <div style={styles.homeTodayRow}>
-                <span>{tr("Запланировано", "Planned")}</span>
-                <span>{tr("Осталось", "Remaining")}</span>
+        <>
+          <div style={styles.homeNextBlockWork}>
+            {nearest ? (
+              <>
+                <button type="button" className="home-next-card" style={styles.homeNextCardWork}>
+                  <div style={styles.homeNextHeader}>
+                    <div style={styles.homeNextLabel}>{tr("Ближайшее занятие", "Next session")}</div>
+                    <div
+                      style={{
+                        ...styles.homeNextStatusPill,
+                        color: sessionStatusColor(nearest, now),
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...styles.homeNextStatusDot,
+                          background: sessionStatusColor(nearest, now),
+                        }}
+                      />
+                      {sessionStatusLabel(nearest, now)}
+                    </div>
+                  </div>
+                  <div style={styles.homeNextTimeWork}>{formatNearestTime(nearest)}</div>
+                  <div style={styles.homeNextMetaWork}>{sessionTitle(nearest, tr)}</div>
+                </button>
+                {trainerHandle ? (
+                  <div style={styles.homeNextContactRow}>
+                    <div style={styles.homeNextContactLabel}>
+                      {tr("Связаться с тренером:", "Contact the trainer:")}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const handle = trainerHandle.replace(/^@/, "");
+                        if (!handle) return;
+                        const link = `https://t.me/${handle}`;
+                        if (typeof WebApp?.openTelegramLink === "function") {
+                          WebApp.openTelegramLink(link);
+                        } else {
+                          window.open(link, "_blank");
+                        }
+                      }}
+                      style={styles.homeNextContactLink}
+                    >
+                      @{trainerHandle.replace(/^@/, "")}
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div style={styles.homeNextEmpty}>
+                {tr("У вас пока нет запланированных занятий", "You don't have any scheduled sessions yet")}
               </div>
-              <div style={styles.homeTodayRowValues}>
-                <span>{todayCount}</span>
-                <span>{todayRemaining}</span>
+            )}
+          </div>
+          <div style={styles.homeStatsBlock}>
+            <div style={styles.homeStatsTitle}>{tr("Статистика за сегодня", "Today's stats")}</div>
+            <div style={styles.homeStatsGrid}>
+              <div style={styles.homeStatsCard}>
+                <div style={styles.homeStatsLabel}>{tr("Запланировано", "Planned")}</div>
+                <div style={styles.homeStatsValue}>{todayCount}</div>
+              </div>
+              <div style={styles.homeStatsCard}>
+                <div style={styles.homeStatsLabel}>{tr("Осталось", "Remaining")}</div>
+                <div style={styles.homeStatsValue}>{todayRemaining}</div>
               </div>
             </div>
           </div>
-        </div>
-        <div style={styles.homeWeekBlock}>
-          <div style={styles.homeNextTitle}>{tr("Тренировок в этом месяце", "Sessions this month")}</div>
-          <div style={styles.homeWeekCard}>
-            <div style={styles.homeWeekValue}>{completedThisMonth}</div>
+          <div style={styles.homeWeekBlockWork}>
+            <div style={styles.homeWeekCardWork}>
+              <div style={styles.homeWeekLabelWork}>{tr("Тренировок за неделю", "Sessions this week")}</div>
+              <div style={styles.homeWeekValueWork}>{completedThisWeek}</div>
+            </div>
           </div>
-        </div>
+        </>
       </div>
     </div>
   );
