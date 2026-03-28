@@ -10499,6 +10499,7 @@ function PersonalDataScreen(props: {
           <div style={styles.clientDetailStatus}>{username ? `@${username}` : ""}</div>
         </div>
       </div>
+      <div style={styles.personalBottomSpacer} />
 
       <div style={{ marginTop: 16 }}>
         <div style={styles.personalTabsRow}>
@@ -10821,7 +10822,7 @@ function PersonalDataScreen(props: {
               style={styles.clientDetailCopyBtn}
               aria-label="copy telegram username"
             >
-              <div style={styles.clientDetailValueBox}>{username ? `@${username}` : "—"}</div>
+              <div style={styles.clientDetailPlainValue}>{username ? `@${username}` : "—"}</div>
             </button>
           </div>
           <div style={{ marginTop: 16 }}>
@@ -10902,33 +10903,21 @@ function PersonalDataScreen(props: {
             trainerHistory.length === 0 ? (
               <div style={styles.clientPanelBody}>{tr("Пока нет завершённых тренировок.", "No completed sessions yet.")}</div>
             ) : (
-              <div style={styles.listBlock}>
+              <div style={styles.sessionHistoryList}>
                 {trainerHistory
                   .slice()
                   .sort((a, b) => sessionEndTime(b).getTime() - sessionEndTime(a).getTime())
-                  .map((s, idx, arr) => {
-                    const isLast = idx === arr.length - 1;
-                    return (
-                      <div
-                        key={s.id}
-                        style={{
-                          ...styles.rowWrap,
-                          borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                          padding: "12px 0",
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={styles.rowTitle}>{sessionTitle(s, tr)}</div>
-                          <div style={styles.rowSubtitle}>
-                            {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
-                          </div>
-                          <div style={styles.rowSubtitle}>
-                            {sessionClientLabel(s, tr, subscriptionItems || [])}
-                          </div>
-                        </div>
+                  .map((s) => (
+                    <div key={s.id} style={styles.sessionHistoryCard}>
+                      <div style={styles.sessionHistoryTitle}>{sessionTitle(s, tr)}</div>
+                      <div style={styles.sessionHistorySubtitle}>
+                        {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
                       </div>
-                    );
-                  })}
+                      <div style={styles.sessionHistorySubtitle}>
+                        {sessionClientLabel(s, tr, subscriptionItems || [])}
+                      </div>
+                    </div>
+                  ))}
               </div>
             )
           ) : subscriptionItems ? (
@@ -15369,8 +15358,16 @@ const styles: Record<string, any> = {
     alignItems: "center",
     gap: 8,
     color: "var(--text)",
-    boxShadow: "var(--client-detail-copy-shadow)",
+    boxShadow: "none",
     fontWeight: 600,
+  },
+  clientDetailPlainValue: {
+    fontSize: 14,
+    color: "var(--text)",
+    fontWeight: 600,
+  },
+  personalBottomSpacer: {
+    height: 90,
   },
   sessionInfoStack: {
     display: "flex",
