@@ -9184,41 +9184,41 @@ function ClientDetailScreen(props: {
 
             <div style={styles.clientScheduleFields}>
               <div style={styles.freeField}>
-                <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-                <input
-                  type="time"
-                  value={scheduleStart}
-                  onChange={(e) => {
-                    const nextStart = e.target.value;
-                    setScheduleStart(nextStart);
+              <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
+              <input
+                type="time"
+                value={scheduleStart}
+                onChange={(e) => {
+                  const nextStart = e.target.value;
+                  setScheduleStart(nextStart);
                     const nextEnd = addHourToTime(nextStart);
                     if (nextEnd) setScheduleEnd(nextEnd);
                     if (scheduleError) setScheduleError("");
-                  }}
-                  step={300}
-                  style={styles.inputCompact}
-                />
-              </div>
-              <div style={styles.freeField}>
-                <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-                <input
-                  type="time"
-                  value={scheduleEnd}
-                  onChange={(e) => {
-                    setScheduleEnd(e.target.value);
-                    if (scheduleError) setScheduleError("");
-                  }}
-                  step={300}
-                  style={styles.inputCompact}
-                />
-              </div>
-              {scheduleError ? <div style={styles.errorText}>{scheduleError}</div> : null}
-              <button
-                type="button"
-                style={styles.saveBtn}
-                disabled={scheduleSaving}
-                onClick={async () => {
-                  if (scheduleSaving) return;
+                }}
+                step={300}
+                style={styles.clientScheduleInput}
+              />
+            </div>
+            <div style={styles.freeField}>
+              <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
+              <input
+                type="time"
+                value={scheduleEnd}
+                onChange={(e) => {
+                  setScheduleEnd(e.target.value);
+                  if (scheduleError) setScheduleError("");
+                }}
+                step={300}
+                style={styles.clientScheduleInput}
+              />
+            </div>
+            {scheduleError ? <div style={styles.errorText}>{scheduleError}</div> : null}
+            <button
+              type="button"
+              style={styles.clientScheduleSaveBtn}
+              disabled={scheduleSaving}
+              onClick={async () => {
+                if (scheduleSaving) return;
                   if (!client) return;
                   setScheduleSaving(true);
                   const dateKey = formatDateKey(scheduleSelected);
@@ -14737,23 +14737,26 @@ const styles: Record<string, any> = {
     width: "100%",
     maxWidth: 520,
     height: "68vh",
-    background: "var(--bg)",
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    padding: "10px 18px 18px",
+    background: "var(--glass-sheet-bg)",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: "12px 18px 22px",
     boxSizing: "border-box",
-    boxShadow: "0 -16px 30px rgba(15, 23, 42, 0.18)",
+    border: "1px solid var(--glass-card-border)",
+    boxShadow: "var(--glass-sheet-shadow)",
     overflowY: "auto",
     overscrollBehavior: "contain",
     WebkitOverflowScrolling: "touch",
     touchAction: "pan-y",
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
   },
   clientScheduleHandle: {
-    width: 46,
-    height: 4,
+    width: 52,
+    height: 6,
     borderRadius: 999,
-    background: "rgba(15, 23, 42, 0.12)",
-    margin: "4px auto 12px",
+    background: "rgba(15, 23, 42, 0.16)",
+    margin: "4px auto 14px",
   },
   clientScheduleTitleRow: {
     display: "flex",
@@ -14762,7 +14765,7 @@ const styles: Record<string, any> = {
     gap: 12,
   },
   clientScheduleTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 800,
     color: "var(--text)",
   },
@@ -14770,9 +14773,9 @@ const styles: Record<string, any> = {
     border: "none",
     background: "transparent",
     color: "var(--muted)",
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: "pointer",
-    padding: 4,
+    padding: 6,
   },
   freeScheduleTitleRow: {
     display: "flex",
@@ -14796,6 +14799,31 @@ const styles: Record<string, any> = {
   },
   clientScheduleFields: {
     marginTop: 6,
+  },
+  clientScheduleInput: {
+    width: 140,
+    boxSizing: "border-box",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    padding: "10px 12px",
+    outline: "none",
+    fontSize: 16,
+    background: "var(--glass-card-bg)",
+    color: "var(--text)",
+    boxShadow: "var(--glass-card-shadow)",
+  },
+  clientScheduleSaveBtn: {
+    marginTop: 18,
+    width: "100%",
+    height: 52,
+    borderRadius: 999,
+    border: "1px solid rgba(120, 170, 220, 0.6)",
+    background: "var(--accent-grad)",
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 16,
+    color: "#fff",
+    boxShadow: "var(--accent-shadow)",
   },
   scheduleQuickSheet: {
     height: "74vh",
