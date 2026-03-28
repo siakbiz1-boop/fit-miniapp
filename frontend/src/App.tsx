@@ -3615,7 +3615,7 @@ function ClientHome(props: {
   }).length;
 
   return (
-    <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
+    <div style={{ ...styles.pageContainer, ...styles.homeWorkPage }}>
       <div style={styles.homeIntro}>
         <div style={styles.homeAvatarRow}>
           <button
@@ -3873,7 +3873,7 @@ function ClientSchedule(props: {
     const isGroupSession = activeSession.clientUsername === "group" || activeSession.type === "group";
 
     return (
-      <div style={styles.pageContainer}>
+      <div style={{ ...styles.pageContainer, ...styles.schedulePage }}>
         <div style={styles.topBar}>
           {hasTgBack ? (
             <div style={{ width: 36 }} />
@@ -4079,7 +4079,7 @@ function ClientSchedule(props: {
   }
 
   return (
-    <div style={{ ...styles.pageContainer, ...styles.addClientPage }}>
+    <div style={{ ...styles.pageContainer, ...styles.schedulePage }}>
       <div style={styles.scheduleHeaderRow}>
         <div style={styles.pageTitle}>{t.scheduleTitle}</div>
         {section === "book" ? (
@@ -4393,7 +4393,7 @@ function ClientBook(props: {
   }
 
   return (
-    <div style={styles.pageContainer}>
+    <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
       <div style={styles.pageTitle}>{t.myTrainerTitle}</div>
       <div style={styles.scheduleTabs}>
         <button
@@ -12436,10 +12436,10 @@ const styles: Record<string, any> = {
 
   pageTitle: {
     fontSize: 22,
-    fontWeight: 700,
+    fontWeight: "var(--font-strong)",
     letterSpacing: -0.25,
     marginTop: 6,
-    color: "var(--text)",
+    color: "var(--text-primary)",
   },
 
   hint: {
@@ -12452,13 +12452,14 @@ const styles: Record<string, any> = {
 
   primaryBtn: {
     padding: "12px 14px",
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
+    borderRadius: 18,
+    border: "1px solid var(--glass-btn-border)",
+    background: "var(--glass-btn-bg)",
     cursor: "pointer",
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     width: "100%",
-    color: "var(--text)",
+    color: "var(--text-primary)",
+    boxShadow: "var(--glass-btn-shadow)",
   },
 
   profileBox: {
@@ -12548,8 +12549,8 @@ const styles: Record<string, any> = {
   },
   settingsPersonalLabel: {
     fontSize: 16,
-    fontWeight: 700,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   settingsPersonalPlus: {
     width: 36,
@@ -12566,8 +12567,8 @@ const styles: Record<string, any> = {
   settingsSectionLabel: {
     marginTop: 16,
     fontSize: 14,
-    fontWeight: 700,
-    color: "var(--muted)",
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-secondary)",
   },
   settingsGroup: {
     marginTop: 8,
@@ -12603,13 +12604,13 @@ const styles: Record<string, any> = {
   },
   settingsRowTitle: {
     fontSize: 15,
-    fontWeight: 700,
-    color: "var(--text)",
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-primary)",
   },
   settingsRowSubtitle: {
     marginTop: 2,
     fontSize: 13,
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
   },
   settingsRowRight: {
     display: "flex",
@@ -12619,8 +12620,8 @@ const styles: Record<string, any> = {
   },
   settingsRowRightText: {
     fontSize: 13,
-    color: "var(--muted)",
-    fontWeight: 600,
+    color: "var(--text-secondary)",
+    fontWeight: "var(--font-medium)",
   },
   settingsRowChevron: {
     display: "flex",
@@ -12892,9 +12893,9 @@ const styles: Record<string, any> = {
     flex: "0 0 auto",
   },
   rowTitle: {
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     fontSize: 15,
-    color: "var(--text)",
+    color: "var(--text-primary)",
     letterSpacing: -0.1,
     lineHeight: 1.25,
   },
@@ -12959,7 +12960,7 @@ const styles: Record<string, any> = {
     fontSize: 13,
     opacity: 0.75,
     lineHeight: 1.35,
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
   },
   rowRight: {
     display: "flex",
@@ -12994,7 +12995,7 @@ const styles: Record<string, any> = {
   rowRightText: {
     fontSize: 13,
     opacity: 0.8,
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
     display: "flex",
     alignItems: "center",
   },
@@ -13572,13 +13573,13 @@ const styles: Record<string, any> = {
   },
   homeGreeting: {
     padding: "12px 16px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "linear-gradient(180deg, rgba(77, 163, 255, 0.14), rgba(77, 163, 255, 0.06))",
-    boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
-    color: "var(--text)",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    color: "var(--text-primary)",
     fontSize: 17,
-    fontWeight: 650,
+    fontWeight: "var(--font-medium)",
     letterSpacing: -0.2,
     lineHeight: 1.25,
     display: "block",
@@ -13590,11 +13591,11 @@ const styles: Record<string, any> = {
   },
   homeNextBlock: {
     marginTop: 10,
-    padding: "10px 12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "rgba(77, 163, 255, 0.03)",
-    overflow: "hidden",
+    padding: "12px 14px 14px",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   homeNextBlockWork: {
     marginTop: 8,
@@ -13652,16 +13653,16 @@ const styles: Record<string, any> = {
   },
   homeNextTitle: {
     fontSize: 14,
-    fontWeight: 700,
-    color: "var(--text)",
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-secondary)",
     marginBottom: 8,
   },
   homeNextCard: {
     padding: "12px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "linear-gradient(180deg, rgba(77, 163, 255, 0.12), rgba(77, 163, 255, 0.04))",
-    boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     width: "100%",
     maxWidth: "100%",
     boxSizing: "border-box",
@@ -13677,25 +13678,24 @@ const styles: Record<string, any> = {
   },
   homeNextTime: {
     fontSize: 16,
-    fontWeight: 700,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   homeNextStatus: {
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     letterSpacing: -0.1,
   },
   homeNextMeta: {
     marginTop: 6,
     fontSize: 14,
-    color: "var(--text)",
-    opacity: 0.9,
+    color: "var(--text-secondary)",
   },
   homeNextEmpty: {
     padding: "10px 12px",
-    borderRadius: 12,
-    border: "1px dashed var(--border)",
-    color: "var(--muted)",
+    borderRadius: 14,
+    border: "1px dashed var(--glass-card-border)",
+    color: "var(--text-secondary)",
     fontSize: 14,
   },
   homeNextContactRow: {
@@ -13707,23 +13707,24 @@ const styles: Record<string, any> = {
   },
   homeNextContactLabel: {
     fontSize: 13,
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
   },
   homeNextContactLink: {
     border: "none",
     background: "transparent",
     padding: 0,
-    color: "var(--accent)",
+    color: "var(--text-accent)",
     fontSize: 14,
-    fontWeight: 700,
+    fontWeight: "var(--font-strong)",
     cursor: "pointer",
   },
   homeTodayBlock: {
     marginTop: 10,
-    padding: "10px 12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "rgba(77, 163, 255, 0.03)",
+    padding: "12px 14px 14px",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   homeStatsBlock: {
     marginTop: 16,
@@ -13733,9 +13734,9 @@ const styles: Record<string, any> = {
   },
   homeStatsTitle: {
     fontSize: 18,
-    fontWeight: 700,
+    fontWeight: "var(--font-strong)",
     letterSpacing: -0.2,
-    color: "var(--text)",
+    color: "var(--text-primary)",
   },
   homeStatsGrid: {
     display: "grid",
@@ -13754,20 +13755,20 @@ const styles: Record<string, any> = {
   },
   homeStatsLabel: {
     fontSize: 12,
-    fontWeight: 700,
-    color: "var(--muted)",
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-secondary)",
   },
   homeStatsValue: {
     fontSize: 24,
-    fontWeight: 800,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   homeTodayCard: {
     padding: "12px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "linear-gradient(180deg, rgba(77, 163, 255, 0.12), rgba(77, 163, 255, 0.04))",
-    boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   homeTodayGrid: {
     maxWidth: 260,
@@ -13778,8 +13779,8 @@ const styles: Record<string, any> = {
     gridTemplateColumns: "1fr 1fr",
     columnGap: 16,
     fontSize: 12,
-    fontWeight: 600,
-    color: "var(--muted)",
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-secondary)",
     textAlign: "center",
   },
   homeTodayRowValues: {
@@ -13788,16 +13789,17 @@ const styles: Record<string, any> = {
     gridTemplateColumns: "1fr 1fr",
     columnGap: 16,
     fontSize: 20,
-    fontWeight: 800,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
     textAlign: "center",
   },
   homeWeekBlock: {
     marginTop: 10,
-    padding: "10px 12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "rgba(77, 163, 255, 0.03)",
+    padding: "12px 14px 14px",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     textAlign: "left",
   },
   homeWeekBlockWork: {
@@ -13827,16 +13829,16 @@ const styles: Record<string, any> = {
   homeWeekCard: {
     marginTop: 6,
     padding: "12px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(77, 163, 255, 0.25)",
-    background: "linear-gradient(180deg, rgba(77, 163, 255, 0.12), rgba(77, 163, 255, 0.04))",
-    boxShadow: "0 1px 0 rgba(17, 24, 39, 0.04)",
+    borderRadius: 18,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
     textAlign: "center",
   },
   homeWeekValue: {
     fontSize: 22,
-    fontWeight: 800,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   homeSubscriptionBlock: {
     marginTop: 12,
@@ -15895,8 +15897,13 @@ const styles: Record<string, any> = {
   scheduleTabs: {
     marginTop: 14,
     display: "flex",
-    gap: 10,
+    gap: 6,
     width: "100%",
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid var(--glass-tab-wrap-border)",
+    background: "var(--glass-tab-wrap-bg)",
+    boxShadow: "var(--glass-card-shadow)",
   },
   scheduleDualTabs: {
     marginTop: 14,
@@ -16057,14 +16064,14 @@ const styles: Record<string, any> = {
   },
   scheduleTab: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
+    height: 40,
+    borderRadius: 999,
+    border: "none",
+    background: "transparent",
     cursor: "pointer",
-    fontWeight: 700,
-    fontSize: 14,
-    color: "var(--text)",
+    fontWeight: "var(--font-medium)",
+    fontSize: 13,
+    color: "var(--text-secondary)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -16078,9 +16085,9 @@ const styles: Record<string, any> = {
     scrollSnapAlign: "start",
   },
   scheduleTabActive: {
-    background: "var(--accent)",
-    color: "var(--accent-contrast)",
-    border: "1px solid var(--accent)",
+    background: "var(--glass-tab-active-bg)",
+    color: "var(--glass-tab-active-text)",
+    boxShadow: "var(--glass-tab-active-shadow)",
   },
   scheduleDualTab: {
     flex: 1,
@@ -16167,7 +16174,7 @@ const styles: Record<string, any> = {
   },
   scheduleTabsDivider: {
     height: 1,
-    background: "var(--border-2)",
+    background: "var(--glass-tab-wrap-border)",
     marginTop: 12,
   },
   schedulePanel: {
@@ -16381,10 +16388,10 @@ const styles: Record<string, any> = {
   },
   trainerSelectLabel: {
     fontSize: 11,
-    fontWeight: 700,
+    fontWeight: "var(--font-medium)",
     letterSpacing: 0.2,
     textTransform: "uppercase",
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
   },
   trainerSelect: {
     border: "1px solid rgba(22, 119, 255, 0.35)",
@@ -16498,16 +16505,16 @@ const styles: Record<string, any> = {
     boxShadow: "0 12px 22px rgba(120, 150, 190, 0.22)",
   },
   schedulePanelTitle: {
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     fontSize: 15,
     letterSpacing: -0.2,
-    color: "var(--text)",
+    color: "var(--text-primary)",
   },
   schedulePanelBody: {
     marginTop: 8,
-    opacity: 0.7,
     fontSize: 14,
     lineHeight: 1.35,
+    color: "var(--text-secondary)",
   },
   sessionList: {
     display: "flex",
@@ -16519,10 +16526,10 @@ const styles: Record<string, any> = {
     padding: "14px 16px 14px 18px",
     borderRadius: 22,
     border: "1px solid var(--glass-card-border)",
-    borderLeft: "4px solid rgba(126, 175, 220, 0.9)",
+    borderLeft: "4px solid var(--accent-soft-border)",
     background: "var(--glass-card-bg)",
     boxShadow: "var(--glass-card-shadow)",
-    color: "var(--text)",
+    color: "var(--text-primary)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -16544,33 +16551,32 @@ const styles: Record<string, any> = {
     flex: "0 0 auto",
   },
   sessionBannerTitle: {
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     fontSize: 14,
-    color: "var(--text)",
+    color: "var(--text-primary)",
   },
   sessionBannerTime: {
     marginTop: 6,
     fontSize: 14,
-    opacity: 0.9,
-    color: "var(--text)",
+    color: "var(--text-secondary)",
   },
   sessionBannerClient: {
     marginTop: 6,
     fontSize: 13,
-    opacity: 0.9,
-    color: "var(--text)",
+    color: "var(--text-secondary)",
   },
   sessionBannerStatus: {
     position: "absolute",
     top: 12,
     right: 12,
     fontSize: 12,
-    fontWeight: 700,
-    color: "#2e5da8",
-    background: "rgba(205, 229, 255, 0.9)",
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-accent)",
+    background: "var(--glass-pill-bg)",
     padding: "4px 10px",
     borderRadius: 999,
-    border: "1px solid rgba(155, 195, 235, 0.8)",
+    border: "1px solid var(--glass-pill-border)",
+    boxShadow: "var(--glass-pill-shadow)",
   },
   freeForm: {
     marginTop: 12,
@@ -16586,11 +16592,11 @@ const styles: Record<string, any> = {
   },
   freeBanner: {
     padding: 14,
-    borderRadius: 16,
-    background: "linear-gradient(180deg, rgba(22, 119, 255, 0.14), rgba(22, 119, 255, 0.06))",
-    border: "1px solid rgba(22, 119, 255, 0.28)",
-    boxShadow: "0 10px 24px rgba(22, 119, 255, 0.12)",
-    color: "var(--text)",
+    borderRadius: 22,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    color: "var(--text-primary)",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -16600,26 +16606,28 @@ const styles: Record<string, any> = {
     minWidth: 0,
   },
   freeBannerTitle: {
-    fontWeight: 800,
+    fontWeight: "var(--font-strong)",
     fontSize: 15,
+    color: "var(--text-primary)",
   },
   freeBannerTime: {
     marginTop: 6,
     fontSize: 13,
-    color: "var(--muted)",
+    color: "var(--text-secondary)",
   },
   freeBannerDelete: {
     width: 38,
     height: 38,
-    borderRadius: 12,
-    border: "1px solid #cbd5e1",
-    background: "#fff",
+    borderRadius: 999,
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
     cursor: "pointer",
-    color: "#0f172a",
+    color: "var(--text-primary)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flex: "0 0 auto",
+    boxShadow: "var(--glass-pill-shadow)",
   },
   freeBannerActions: {
     display: "flex",
@@ -16630,16 +16638,16 @@ const styles: Record<string, any> = {
   freeBannerAdd: {
     width: 38,
     height: 38,
-    borderRadius: 12,
-    border: "1px solid #cbd5e1",
-    background: "#fff",
+    borderRadius: 999,
+    border: "none",
+    background: "var(--accent-grad)",
     cursor: "pointer",
-    color: "#0f172a",
+    color: "#ffffff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     flex: "0 0 auto",
-    boxShadow: "0 6px 14px rgba(15, 23, 42, 0.08)",
+    boxShadow: "var(--accent-shadow)",
   },
   assignRow: {
     marginTop: 8,
