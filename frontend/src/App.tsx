@@ -10501,7 +10501,8 @@ function PersonalDataScreen(props: {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <div style={styles.clientDetailTabsWrap}>
+        <div style={styles.clientDetailTabsScroll}>
+          <div style={styles.clientDetailTabsWrap}>
           <button
             type="button"
             onClick={() => setPersonalTab("about")}
@@ -10558,6 +10559,7 @@ function PersonalDataScreen(props: {
               {resolvedSubscriptionTabLabel}
             </button>
           ) : null}
+          </div>
         </div>
       </div>
       <div style={{ ...styles.topBarDivider, marginTop: 8 }} />
@@ -13411,10 +13413,10 @@ const styles: Record<string, any> = {
     marginBottom: 18,
   },
   notesTitle: {
-    fontFamily: "Georgia, 'Times New Roman', serif",
-    fontSize: 32,
+    fontFamily: "inherit",
+    fontSize: 24,
     fontWeight: 700,
-    letterSpacing: 0.2,
+    letterSpacing: -0.2,
     color: "var(--notes-title)",
     paddingLeft: 0,
     paddingRight: 0,
@@ -13427,14 +13429,14 @@ const styles: Record<string, any> = {
   notesList: {
     display: "flex",
     flexDirection: "column",
-    gap: 14,
+    gap: 10,
     paddingBottom: 20,
   },
   notesRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "18px 22px",
+    padding: "14px 18px",
     borderRadius: 999,
     border: "1px solid var(--notes-row-border)",
     background: "var(--notes-row-bg)",
@@ -13442,7 +13444,7 @@ const styles: Record<string, any> = {
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
     color: "var(--notes-row-text)",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 600,
     letterSpacing: -0.1,
     textAlign: "left",
@@ -13517,7 +13519,7 @@ const styles: Record<string, any> = {
     opacity: 0.92,
   },
   notesRowAction: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: 700,
     color: "var(--notes-action)",
     textShadow: "var(--notes-action-shadow)",
@@ -13530,7 +13532,7 @@ const styles: Record<string, any> = {
     border: "none",
     outline: "none",
     background: "transparent",
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 600,
     letterSpacing: -0.2,
     color: "var(--notes-row-text)",
