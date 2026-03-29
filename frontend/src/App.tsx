@@ -4470,14 +4470,9 @@ function ClientBook(props: {
                   >
                     <div style={styles.clientsRowLeft}>
                       <AvatarCircle name={label} photoUrl={trainer.trainerPhotoUrl || ""} size={52} />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={styles.clientsName}>{label}</div>
-                        <div style={styles.rowSubtitle}>
-                          {trainer.status === "active"
-                            ? tr("Активен", "Active")
-                            : tr("Ожидает активации", "Pending activation")}
-                        </div>
-                      </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={styles.clientsName}>{label}</div>
+                    </div>
                     </div>
                   </button>
                 </div>
@@ -12796,8 +12791,8 @@ const styles: Record<string, any> = {
   },
   clientsCard: {
     borderRadius: 24,
-    border: "1px solid var(--glass-card-border)",
-    background: "var(--glass-card-bg)",
+    border: "1px solid rgba(170, 205, 235, 0.6)",
+    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.6), rgba(242, 248, 255, 0.9))",
     boxShadow: "var(--glass-card-shadow)",
     padding: "8px 10px",
     display: "flex",
@@ -15342,7 +15337,9 @@ const styles: Record<string, any> = {
     border: "1px solid var(--client-detail-tabs-border)",
     background: "var(--client-detail-tabs-bg)",
     boxShadow: "var(--client-detail-tabs-shadow)",
-    minWidth: "max-content",
+    minWidth: 0,
+    width: "100%",
+    boxSizing: "border-box",
   },
   clientTabsDivider: {
     marginTop: 12,
@@ -15376,7 +15373,8 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: "max-content",
+    minWidth: 0,
+    flex: 1,
     padding: "0 12px",
     whiteSpace: "nowrap",
   },
