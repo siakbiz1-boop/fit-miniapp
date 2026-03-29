@@ -4455,30 +4455,23 @@ function ClientBook(props: {
       </div>
       {section === "list" ? (
         <div style={{ marginTop: 14 }}>
-          <div style={styles.listBlock}>
-            {trainersToShow.map((trainer, idx) => {
-              const isLast = idx === trainersToShow.length - 1;
+          <div style={styles.clientsList}>
+            {trainersToShow.map((trainer) => {
               const label = getTrainerLabel(trainer, tr);
               return (
-                <div
-                  key={trainer.id}
-                  style={{
-                    ...styles.rowWrap,
-                    borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                  }}
-                >
+                <div key={trainer.id} style={styles.clientsCard}>
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedTrainerId(trainer.id);
                       setView("detail");
                     }}
-                    style={styles.rowBtnNoBorder}
+                    style={styles.clientsCardBtn}
                   >
-                    <div style={styles.rowLeft}>
-                      <AvatarCircle name={label} photoUrl={trainer.trainerPhotoUrl || ""} size={36} />
-                      <div style={{ textAlign: "left" }}>
-                        <div style={styles.rowTitle}>{label}</div>
+                    <div style={styles.clientsRowLeft}>
+                      <AvatarCircle name={label} photoUrl={trainer.trainerPhotoUrl || ""} size={52} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={styles.clientsName}>{label}</div>
                         <div style={styles.rowSubtitle}>
                           {trainer.status === "active"
                             ? tr("Активен", "Active")
@@ -11142,13 +11135,13 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
 
   const renderReadOnly = (label: string, value?: string) => (
     <div style={{ marginTop: 16 }}>
-      <div style={styles.fieldLabel}>{label}</div>
-      <div style={styles.readOnlyValue}>{value && value.trim() ? value : "—"}</div>
+      <div style={styles.clientDetailFieldLabel}>{label}</div>
+      <div style={styles.clientDetailValueBox}>{value && value.trim() ? value : "—"}</div>
     </div>
   );
 
   return (
-    <div style={styles.pageContainer}>
+    <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
       <div style={styles.topBar}>
         {hasTgBack ? (
           <div style={{ width: 36 }} />
@@ -11161,26 +11154,24 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
         <div style={{ width: 36 }} />
       </div>
 
-      <div style={styles.personalHeaderRow}>
-        <AvatarCircle name={displayName} photoUrl={trainer.trainerPhotoUrl || ""} size={44} />
+      <div style={styles.clientDetailHeaderCard}>
+        <AvatarCircle name={displayName} photoUrl={trainer.trainerPhotoUrl || ""} size={56} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text)", lineHeight: 1.2 }}>
-            {displayName}
-          </div>
-          <div style={{ opacity: 0.62, fontSize: 13, marginTop: 2 }}>
+          <div style={styles.clientDetailName}>{displayName}</div>
+          <div style={styles.clientDetailStatus}>
             {trainer.trainerUsername ? `@${trainer.trainerUsername}` : ""}
           </div>
         </div>
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <div style={styles.scheduleTabs}>
+      <div style={styles.clientDetailTabsScroll}>
+        <div style={styles.clientDetailTabsWrap}>
           <button
             type="button"
             onClick={() => setTab("about")}
             style={{
-              ...styles.scheduleTab,
-              ...(tab === "about" ? styles.scheduleTabActive : null),
+              ...styles.clientDetailTab,
+              ...(tab === "about" ? styles.clientDetailTabActive : null),
             }}
           >
             {tr("Личная информация", "Personal info")}
@@ -11189,15 +11180,15 @@ function ClientTrainerDetailScreen(props: { trainer: TrainerClientInvite; onBack
             type="button"
             onClick={() => setTab("contacts")}
             style={{
-              ...styles.scheduleTab,
-              ...(tab === "contacts" ? styles.scheduleTabActive : null),
+              ...styles.clientDetailTab,
+              ...(tab === "contacts" ? styles.clientDetailTabActive : null),
             }}
           >
             {tr("Контакты", "Contacts")}
           </button>
         </div>
       </div>
-      <div style={{ ...styles.topBarDivider, marginTop: 8 }} />
+      <div style={styles.clientDetailTabsDivider} />
 
       {tab === "about" ? (
         <div style={styles.clientPanelPlain}>
