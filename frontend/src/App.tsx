@@ -10521,63 +10521,68 @@ function PersonalDataScreen(props: {
 
       <div style={{ marginTop: 16 }}>
         <div style={styles.clientDetailTabsScroll}>
-          <div style={styles.clientDetailTabsWrap}>
-          <button
-            type="button"
-            onClick={() => setPersonalTab("about")}
-            style={{
-              ...styles.clientDetailTab,
-              ...(personalTab === "about" ? styles.clientDetailTabActive : null),
-            }}
-          >
-            {tr("Личная информация", "Personal info")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPersonalTab("contacts")}
-            style={{
-              ...styles.clientDetailTab,
-              ...(personalTab === "contacts" ? styles.clientDetailTabActive : null),
-            }}
-          >
-            {tr("Контакты", "Contacts")}
-          </button>
-          {showMySubscriptionTab ? (
+          <div style={styles.personalTabsWrap}>
             <button
               type="button"
-              onClick={() => setPersonalTab("mySubscription")}
+              onClick={() => setPersonalTab("about")}
               style={{
                 ...styles.clientDetailTab,
-                ...(personalTab === "mySubscription" ? styles.clientDetailTabActive : null),
+                ...styles.personalTabButton,
+                ...(personalTab === "about" ? styles.clientDetailTabActive : null),
               }}
             >
-              {tr("Мой абонемент", "My subscription")}
+              {tr("Личная информация", "Personal info")}
             </button>
-          ) : null}
-          {showClientWeights ? (
             <button
               type="button"
-              onClick={() => setPersonalTab("weights")}
+              onClick={() => setPersonalTab("contacts")}
               style={{
                 ...styles.clientDetailTab,
-                ...(personalTab === "weights" ? styles.clientDetailTabActive : null),
+                ...styles.personalTabButton,
+                ...(personalTab === "contacts" ? styles.clientDetailTabActive : null),
               }}
             >
-              {tr("Статистика упражнений", "Exercise stats")}
+              {tr("Контакты", "Contacts")}
             </button>
-          ) : null}
-          {showSubscriptionTab ? (
-            <button
-              type="button"
-              onClick={() => setPersonalTab("subscription")}
-              style={{
-                ...styles.clientDetailTab,
-                ...(personalTab === "subscription" ? styles.clientDetailTabActive : null),
-              }}
-            >
-              {resolvedSubscriptionTabLabel}
-            </button>
-          ) : null}
+            {showMySubscriptionTab ? (
+              <button
+                type="button"
+                onClick={() => setPersonalTab("mySubscription")}
+                style={{
+                  ...styles.clientDetailTab,
+                  ...styles.personalTabButton,
+                  ...(personalTab === "mySubscription" ? styles.clientDetailTabActive : null),
+                }}
+              >
+                {tr("Мой абонемент", "My subscription")}
+              </button>
+            ) : null}
+            {showClientWeights ? (
+              <button
+                type="button"
+                onClick={() => setPersonalTab("weights")}
+                style={{
+                  ...styles.clientDetailTab,
+                  ...styles.personalTabButton,
+                  ...(personalTab === "weights" ? styles.clientDetailTabActive : null),
+                }}
+              >
+                {tr("Статистика упражнений", "Exercise stats")}
+              </button>
+            ) : null}
+            {showSubscriptionTab ? (
+              <button
+                type="button"
+                onClick={() => setPersonalTab("subscription")}
+                style={{
+                  ...styles.clientDetailTab,
+                  ...styles.personalTabButton,
+                  ...(personalTab === "subscription" ? styles.clientDetailTabActive : null),
+                }}
+              >
+                {resolvedSubscriptionTabLabel}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -16031,6 +16036,18 @@ const styles: Record<string, any> = {
     WebkitOverflowScrolling: "touch",
     paddingBottom: 4,
     scrollSnapType: "x proximity",
+  },
+  personalTabsWrap: {
+    display: "flex",
+    gap: 6,
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid var(--client-detail-tabs-border)",
+    background: "var(--client-detail-tabs-bg)",
+    boxShadow: "var(--client-detail-tabs-shadow)",
+    minWidth: "max-content",
+    width: "max-content",
+    boxSizing: "border-box",
   },
   scheduleViewTabs: {
     display: "flex",
