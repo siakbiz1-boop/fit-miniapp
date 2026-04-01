@@ -1,13 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  Home08Icon,
-  Calendar04Icon,
-  UserMultiple02Icon,
-  Settings01Icon,
-  PlusSignSquareIcon,
-} from "@hugeicons/core-free-icons";
+import { Home08Icon, Calendar04Icon, UserMultiple02Icon, Settings01Icon, UserAdd02Icon } from "@hugeicons/core-free-icons";
 
 const SUBSCRIPTION_CLIENT_LIMIT = 9999;
 let currentLanguage: "ru" | "en" = "ru";
@@ -4303,9 +4297,7 @@ function ClientSchedule(props: {
                         }
                       }}
                     >
-                      <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
-                        ➕
-                      </span>
+                      <HugeiconsIcon icon={UserAdd02Icon} size={20} strokeWidth={2.2} />
                     </button>
                   </div>
                 </div>
@@ -7598,9 +7590,7 @@ function TrainerSchedule(props: {
                       title={tr("Записать клиента", "Assign client")}
                       disabled={!canBookSlot(w.dateKey, w.start)}
                     >
-                      <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
-                        ➕
-                      </span>
+                      <HugeiconsIcon icon={UserAdd02Icon} size={20} strokeWidth={2.2} />
                     </button>
                     <button
                       type="button"
@@ -7613,9 +7603,7 @@ function TrainerSchedule(props: {
                       aria-label="delete free window"
                       title={tr("Удалить", "Delete")}
                     >
-                      <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>
-                        ➖
-                      </span>
+                      <IconTrash size={20} strokeWidth={2} />
                     </button>
                   </div>
                 </div>
@@ -7993,7 +7981,7 @@ function TrainerClients(props: {
             style={styles.clientsAddBtn}
             aria-label="add client"
           >
-            <HugeiconsIcon icon={PlusSignSquareIcon} size={20} strokeWidth={2.2} />
+            <IconPlus />
           </button>
         ) : (
           <div style={{ width: 44, height: 44 }} />
@@ -13499,25 +13487,29 @@ const styles: Record<string, any> = {
     top: 0,
     bottom: 0,
     display: "flex",
-    alignItems: "stretch",
-    gap: 0,
-    overflow: "hidden",
-    borderRadius: 999,
+    alignItems: "center",
+    gap: 6,
+    padding: "0 6px",
   },
   notesSwipeBtn: {
-    width: 64,
-    border: "none",
+    width: 56,
+    height: 48,
+    borderRadius: 999,
+    border: "1px solid rgba(255, 255, 255, 0.45)",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     color: "#fff",
+    boxShadow: "0 10px 20px rgba(15, 23, 42, 0.12)",
   },
   notesSwipeEdit: {
-    background: "#54c0c6",
+    background: "var(--accent-grad)",
+    boxShadow: "var(--accent-shadow)",
   },
   notesSwipeDelete: {
-    background: "#e45656",
+    background: "linear-gradient(135deg, rgba(244, 97, 97, 0.95), rgba(220, 80, 80, 0.95))",
+    boxShadow: "0 12px 22px rgba(220, 80, 80, 0.35)",
   },
   notesSwipeRow: {
     position: "relative",
@@ -15342,8 +15334,8 @@ const styles: Record<string, any> = {
     border: "1px solid var(--client-detail-tabs-border)",
     background: "var(--client-detail-tabs-bg)",
     boxShadow: "var(--client-detail-tabs-shadow)",
-    minWidth: 0,
-    width: "100%",
+    minWidth: "max-content",
+    width: "max-content",
     boxSizing: "border-box",
   },
   clientTabsDivider: {
@@ -15378,8 +15370,8 @@ const styles: Record<string, any> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 0,
-    flex: 1,
+    minWidth: "max-content",
+    flex: "0 0 auto",
     padding: "0 12px",
     whiteSpace: "nowrap",
   },
