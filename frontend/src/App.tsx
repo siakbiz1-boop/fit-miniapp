@@ -4297,7 +4297,14 @@ function ClientSchedule(props: {
                         }
                       }}
                     >
-                      <HugeiconsIcon icon={UserAdd02Icon} size={20} strokeWidth={2.2} />
+                      <span style={styles.iconOnAccent}>
+                        <HugeiconsIcon
+                          icon={UserAdd02Icon}
+                          size={20}
+                          strokeWidth={2.2}
+                          style={{ color: "#ffffff", stroke: "currentColor" }}
+                        />
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -7590,7 +7597,14 @@ function TrainerSchedule(props: {
                       title={tr("Записать клиента", "Assign client")}
                       disabled={!canBookSlot(w.dateKey, w.start)}
                     >
-                      <HugeiconsIcon icon={UserAdd02Icon} size={20} strokeWidth={2.2} />
+                      <span style={styles.iconOnAccent}>
+                        <HugeiconsIcon
+                          icon={UserAdd02Icon}
+                          size={20}
+                          strokeWidth={2.2}
+                          style={{ color: "#ffffff", stroke: "currentColor" }}
+                        />
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -7603,7 +7617,9 @@ function TrainerSchedule(props: {
                       aria-label="delete free window"
                       title={tr("Удалить", "Delete")}
                     >
-                      <IconTrash size={20} strokeWidth={2} />
+                      <span style={styles.iconOnGlass}>
+                        <IconTrash size={20} strokeWidth={2} />
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -7981,7 +7997,9 @@ function TrainerClients(props: {
             style={styles.clientsAddBtn}
             aria-label="add client"
           >
-            <IconPlus />
+            <span style={styles.iconOnAccent}>
+              <IconPlus />
+            </span>
           </button>
         ) : (
           <div style={{ width: 44, height: 44 }} />
@@ -15951,6 +15969,22 @@ const styles: Record<string, any> = {
     cursor: "pointer",
     boxShadow: "var(--accent-shadow)",
     fontSize: 18,
+  },
+  iconOnAccent: {
+    color: "#ffffff",
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconOnGlass: {
+    color: "var(--text-primary)",
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   clientsTab: {
     flex: 1,
