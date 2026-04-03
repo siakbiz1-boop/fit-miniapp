@@ -329,8 +329,8 @@ export default function App() {
 
   const scrollAreaStyle = {
     ...styles.scrollArea,
-    paddingBottom: (keyboardOpen ? 16 : 72) + keyboardInset + 8,
-    scrollPaddingBottom: keyboardInset + 32,
+    paddingBottom: isKeyboardVisible ? 16 : 80,
+    scrollPaddingBottom: isKeyboardVisible ? 16 : 32,
   };
 
   // ----- Clients state (локально, без бэка)
@@ -1056,20 +1056,17 @@ export default function App() {
         }
       };
       requestAnimationFrame(ensureVisible);
-      window.setTimeout(ensureVisible, 250);
     };
     const onFocusOut = () => {
-      window.setTimeout(() => {
-        const el = document.activeElement as HTMLElement | null;
-        if (!el) {
-          setKeyboardOpen(false);
-          return;
-        }
-        const tag = el.tagName;
-        if (tag !== "INPUT" && tag !== "TEXTAREA") {
-          setKeyboardOpen(false);
-        }
-      }, 80);
+      const el = document.activeElement as HTMLElement | null;
+      if (!el) {
+        setKeyboardOpen(false);
+        return;
+      }
+      const tag = el.tagName;
+      if (tag !== "INPUT" && tag !== "TEXTAREA") {
+        setKeyboardOpen(false);
+      }
     };
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
@@ -1085,6 +1082,7 @@ export default function App() {
     const onResize = () => {
       const inset = Math.max(0, window.innerHeight - vv.height);
       setKeyboardInset(inset);
+      setKeyboardOpen(inset > 0);
       try {
         document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
       } catch {
@@ -15290,11 +15288,10 @@ const styles: Record<string, any> = {
     opacity: 0.7,
   },
   prepayPage: {
-    background: "#ffffff",
-    minHeight: "100%",
-    height: "100%",
-    overflow: "hidden",
+    background: "var(--bg)",
+    minHeight: "auto",
     paddingTop: 8,
+    paddingBottom: "calc(env(safe-area-inset-bottom) + 16px + var(--keyboard-inset))",
   },
   prepayTitle: {
     fontSize: 20,
