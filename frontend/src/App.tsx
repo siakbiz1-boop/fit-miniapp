@@ -3058,62 +3058,63 @@ function TrainerHome({
     return (
       <div style={{ ...styles.pageContainer, ...styles.prepayPage }}>
         <div style={styles.prepayTitle}>{tr("Оплата подписки", "Subscription payment")}</div>
-        <div style={styles.prepayRow}>
-          <div>
-            <div style={styles.prepayLabel}>{tr("Стоимость подписки", "Subscription price")}</div>
-            <div style={styles.prepaySubLabel}>{prepayPlan.name}</div>
+        <div style={styles.prepayCard}>
+          <div style={styles.prepayRow}>
+            <div>
+              <div style={styles.prepayLabel}>{tr("Стоимость подписки", "Subscription price")}</div>
+              <div style={styles.prepaySubLabel}>{prepayPlan.name}</div>
+            </div>
+            <div style={styles.prepayValue}>{formatMoney(prepayPlan.total)}</div>
           </div>
-          <div style={styles.prepayValue}>{formatMoney(prepayPlan.total)}</div>
-        </div>
-        <div style={styles.prepayRow}>
-          <div>
-            <div style={styles.prepayLabel}>{tr("Срок подписки", "Subscription term")}</div>
-            <div style={styles.prepaySubLabel}>
-              {tr("Начало", "Start")} {formatDateShort(new Date())}
+          <div style={styles.prepayRow}>
+            <div>
+              <div style={styles.prepayLabel}>{tr("Срок подписки", "Subscription term")}</div>
+              <div style={styles.prepaySubLabel}>
+                {tr("Начало", "Start")} {formatDateShort(new Date())}
+              </div>
+            </div>
+            <div style={styles.prepayValue}>
+              {prepayPlan.months} {tr("месяц", "month")}
+              {prepayPlan.months > 1 ? tr("а", "s") : ""}
             </div>
           </div>
-          <div style={styles.prepayValue}>
-            {prepayPlan.months} {tr("месяц", "month")}
-            {prepayPlan.months > 1 ? tr("а", "s") : ""}
+          <div style={styles.prepayRow}>
+            <div style={styles.prepayLabel}>{tr("Промокод", "Promo code")}</div>
           </div>
-        </div>
-        <div style={styles.prepayRow}>
-          <div style={styles.prepayLabel}>{tr("Промокод", "Promo code")}</div>
-        </div>
-        <div style={styles.promoRow}>
-          <input
-            value={promoCode}
-            onChange={(e) => {
-              setPromoCode(e.target.value);
-              setPromoStatus("idle");
-            }}
-            placeholder={tr("Введите промокод", "Enter promo code")}
-            style={styles.promoInput}
-          />
-          <button
-            type="button"
-            style={styles.promoApplyBtn}
-            onClick={() => {
-              const code = promoCode.trim().toUpperCase();
-              if (!code) {
-                setPromoStatus("error");
-                return;
-              }
-              setPromoStatus(code === "FITMINI" ? "success" : "error");
-            }}
-          >
-            {tr("Применить", "Apply")}
-          </button>
-        </div>
-        {promoStatus === "error" ? (
-          <div style={styles.promoError}>{tr("Промокод не существует", "Promo code not found")}</div>
-        ) : promoStatus === "success" ? (
-          <div style={styles.promoSuccess}>{tr("Промокод успешно применён", "Promo code applied")}</div>
-        ) : null}
-        <div style={styles.prepayDivider} />
-        <div style={styles.prepayRow}>
-          <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
-          <div style={styles.prepayTotal}>{formatMoney(prepayPlan.total)}</div>
+          <div style={styles.promoRow}>
+            <input
+              value={promoCode}
+              onChange={(e) => {
+                setPromoCode(e.target.value);
+                setPromoStatus("idle");
+              }}
+              placeholder={tr("Введите промокод", "Enter promo code")}
+              style={styles.promoInput}
+            />
+            <button
+              type="button"
+              style={styles.promoApplyBtn}
+              onClick={() => {
+                const code = promoCode.trim().toUpperCase();
+                if (!code) {
+                  setPromoStatus("error");
+                  return;
+                }
+                setPromoStatus(code === "FITMINI" ? "success" : "error");
+              }}
+            >
+              {tr("Применить", "Apply")}
+            </button>
+          </div>
+          {promoStatus === "error" ? (
+            <div style={styles.promoError}>{tr("Промокод не существует", "Promo code not found")}</div>
+          ) : promoStatus === "success" ? (
+            <div style={styles.promoSuccess}>{tr("Промокод успешно применён", "Promo code applied")}</div>
+          ) : null}
+          <div style={styles.prepayRow}>
+            <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
+            <div style={styles.prepayTotal}>{formatMoney(prepayPlan.total)}</div>
+          </div>
         </div>
         <button type="button" style={styles.prepayPayBtn}>
           {tr("Оплатить", "Pay")}
@@ -15334,25 +15335,33 @@ const styles: Record<string, any> = {
   prepayPage: {
     background: "var(--bg)",
     minHeight: "auto",
-    paddingTop: 8,
+    paddingTop: 12,
     paddingBottom: "calc(env(safe-area-inset-bottom) + 16px + var(--keyboard-inset))",
   },
   prepayTitle: {
-    fontSize: 20,
-    fontWeight: 700,
-    color: "var(--text)",
-    marginBottom: 6,
+    fontSize: 22,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    marginBottom: 12,
+    letterSpacing: -0.2,
+  },
+  prepayCard: {
+    borderRadius: 24,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "12px 16px",
   },
   prepayRow: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "12px 0",
+    padding: "10px 0",
   },
   prepayLabel: {
     fontSize: 14,
-    fontWeight: 700,
-    color: "var(--text)",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   prepaySubLabel: {
     marginTop: 4,
@@ -15361,30 +15370,26 @@ const styles: Record<string, any> = {
   },
   prepayValue: {
     fontSize: 16,
-    fontWeight: 700,
-    color: "var(--text)",
-  },
-  prepayDivider: {
-    height: 1,
-    background: "var(--border-2)",
-    margin: "6px 0",
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
   },
   prepayTotal: {
     fontSize: 18,
     fontWeight: 800,
-    color: "var(--text)",
+    color: "var(--text-primary)",
   },
   prepayPayBtn: {
     marginTop: 18,
     width: "100%",
     height: 54,
-    borderRadius: 16,
-    border: "none",
-    background: "#1D9BF0",
+    borderRadius: 999,
+    border: "1px solid rgba(130, 165, 215, 0.7)",
+    background: "var(--accent-grad)",
     color: "#fff",
-    fontSize: 16,
-    fontWeight: 700,
+    fontSize: 17,
+    fontWeight: 800,
     cursor: "pointer",
+    boxShadow: "var(--accent-shadow)",
   },
   prepayNote: {
     marginTop: 10,
@@ -15395,25 +15400,29 @@ const styles: Record<string, any> = {
   promoRow: {
     display: "flex",
     gap: 8,
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: 6,
+    marginBottom: 6,
   },
   promoInput: {
     flex: 1,
-    borderRadius: 12,
-    border: "1px solid var(--border)",
-    padding: "10px 12px",
+    borderRadius: 999,
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
+    boxShadow: "var(--glass-pill-shadow)",
+    padding: "11px 14px",
     fontSize: 14,
     outline: "none",
+    color: "var(--text-primary)",
   },
   promoApplyBtn: {
-    padding: "10px 12px",
-    borderRadius: 12,
-    border: "none",
-    background: "var(--accent)",
+    padding: "11px 16px",
+    borderRadius: 999,
+    border: "1px solid rgba(130, 165, 215, 0.7)",
+    background: "var(--accent-grad)",
     color: "#fff",
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
+    boxShadow: "var(--accent-shadow)",
   },
   promoError: {
     color: "#DC2626",
