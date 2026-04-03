@@ -4669,10 +4669,6 @@ function TrainerSchedule(props: {
   const weekScheduleDragStartRef = useRef<number>(0);
   const weekScheduleDragYRef = useRef<number>(0);
   const [gridDraft, setGridDraft] = useState<{ dateKey: string; startMin: number; endMin: number } | null>(null);
-  const weekScheduleDays = useMemo(() => buildCalendarStrip(today, 14, 30), [today]);
-  const weekScheduleScrollerRef = useRef<HTMLDivElement | null>(null);
-  const weekScheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
-  const weekScheduleTodayRef = useRef<HTMLButtonElement | null>(null);
   const bookingMode = trainerProfile?.bookingMode === "both" ? "both" : "trainer";
 
   useEffect(() => {
@@ -5075,6 +5071,14 @@ function TrainerSchedule(props: {
     [language]
   );
   const monthLabel = useMemo(() => formatMonthShort(monthAnchor), [formatMonthShort, monthAnchor]);
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, idx) => ({
+        value: idx,
+        label: formatMonthShort(new Date(2024, idx, 1)),
+      })),
+    [formatMonthShort]
+  );
   const moveMonth = useCallback(
     (delta: number) => {
       const next = startOfMonth(addMonths(monthAnchor, delta));
@@ -5283,11 +5287,6 @@ function TrainerSchedule(props: {
       const first = activeClients[0];
       if (first?.id) setWeekScheduleClientId(first.id);
     }
-    const scroller = weekScheduleScrollerRef.current;
-    const target = weekScheduleSelectedRef.current || weekScheduleTodayRef.current;
-    if (!scroller || !target) return;
-    const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
-    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
   }, [
     showWeekSchedule,
     weekScheduleDate,
@@ -6525,107 +6524,76 @@ function TrainerSchedule(props: {
                   </button>
                 </div>
 
-                <div style={styles.scheduleQuickSectionLabel}>{tr("Дата", "Date")}</div>
-                <div ref={weekScheduleScrollerRef} style={styles.scheduleQuickCalendarStrip}>
-                  {weekScheduleDays.map((d) => {
-                    const isToday = isSameDay(d.date, today);
-                    const dateKey = formatDateKey(d.date);
-                    const isSelected = weekScheduleMulti
-                      ? weekScheduleDates.includes(dateKey)
-                      : isSameDay(d.date, weekScheduleDate);
-                    const isPast = d.date.getTime() < today.getTime();
-                    return (
-                      <button
-                        key={d.key}
-                        ref={isSelected ? weekScheduleSelectedRef : isToday ? weekScheduleTodayRef : null}
-                        onClick={() => {
-                          if (isPast) return;
-                          setWeekScheduleDate(d.date);
-                          if (weekScheduleMode === "client" && weekScheduleMulti) {
-                            setWeekScheduleDates((prev) =>
-                              prev.includes(dateKey) ? prev.filter((k) => k !== dateKey) : [...prev, dateKey]
-                            );
-                          }
-                          if (weekScheduleError) setWeekScheduleError("");
-                        }}
-                        style={{
-                          ...styles.scheduleQuickDay,
-                          ...(isToday && !weekScheduleMulti ? styles.scheduleQuickDayActive : {}),
-                          ...(isSelected && !isToday ? styles.scheduleQuickDaySelected : {}),
-                          ...(isSelected && weekScheduleMulti ? styles.scheduleQuickDaySelected : {}),
-                          ...(isPast ? styles.scheduleQuickDayPast : {}),
-                        }}
-                        aria-current={isToday ? "date" : undefined}
-                        type="button"
-                      >
-                        <div style={styles.scheduleQuickDayDate}>{d.dateText}</div>
-                        <div style={styles.scheduleQuickDayWeek}>{d.weekdayText}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {weekScheduleMode === "client" ? (
-                  <div style={{ marginTop: 8 }}>
-                    <div style={styles.scheduleQuickSegment}>
-                      <button
-                        type="button"
-                        onClick={() => setWeekScheduleMulti(false)}
-                        style={{
-                          ...styles.scheduleQuickSegmentBtn,
-                          ...(weekScheduleMulti ? null : styles.scheduleQuickSegmentBtnActive),
-                        }}
-                      >
-                        {tr("Одна дата", "Single date")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWeekScheduleMulti(true)}
-                        style={{
-                          ...styles.scheduleQuickSegmentBtn,
-                          ...(weekScheduleMulti ? styles.scheduleQuickSegmentBtnActive : null),
-                        }}
-                      >
-                        {tr("Несколько", "Multiple")}
-                      </button>
-                    </div>
+                <div style={styles.scheduleQuickFieldsGrid}>
+                  <div style={styles.scheduleQuickField}>
+                    <div style={styles.scheduleQuickLabel}>{tr("Месяц", "Month")}</div>
+                    <select
+                      value={weekScheduleDate.getMonth()}
+                      onChange={(e) => {
+                        const nextMonth = Number(e.target.value);
+                        const year = weekScheduleDate.getFullYear();
+                        const day = Math.min(
+                          weekScheduleDate.getDate(),
+                          new Date(year, nextMonth + 1, 0).getDate()
+                        );
+                        setWeekScheduleDate(new Date(year, nextMonth, day));
+                        if (weekScheduleError) setWeekScheduleError("");
+                      }}
+                      style={styles.scheduleQuickInput}
+                    >
+                      {monthOptions.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ) : null}
-
-                <div style={styles.scheduleQuickFields}>
-                  <div style={styles.scheduleQuickTimeRow}>
-                    <div style={styles.scheduleQuickField}>
-                      <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
-                      <input
-                        type="time"
-                        value={weekScheduleStart}
-                        onChange={(e) => {
-                          const nextStart = e.target.value;
-                          setWeekScheduleStart(nextStart);
-                          const nextEnd = addHourToTime(nextStart);
-                          if (nextEnd) setWeekScheduleEnd(nextEnd);
+                  <div style={styles.scheduleQuickField}>
+                    <div style={styles.scheduleQuickLabel}>{tr("Дата", "Date")}</div>
+                    <input
+                      type="date"
+                      value={formatDateInputValue(formatDateKey(weekScheduleDate))}
+                      onChange={(e) => {
+                        const next = parseDateKey(e.target.value);
+                        if (next) {
+                          setWeekScheduleDate(next);
                           if (weekScheduleError) setWeekScheduleError("");
-                        }}
-                        step={300}
-                        style={styles.scheduleQuickInput}
-                      />
-                    </div>
-                    <div style={styles.scheduleQuickField}>
-                      <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
-                      <input
-                        type="time"
-                        value={weekScheduleEnd}
-                        onChange={(e) => {
-                          setWeekScheduleEnd(e.target.value);
-                          if (weekScheduleError) setWeekScheduleError("");
-                        }}
-                        step={300}
-                        style={styles.scheduleQuickInput}
-                      />
-                    </div>
+                        }
+                      }}
+                      style={styles.scheduleQuickInput}
+                    />
+                  </div>
+                  <div style={styles.scheduleQuickField}>
+                    <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
+                    <input
+                      type="time"
+                      value={weekScheduleStart}
+                      onChange={(e) => {
+                        const nextStart = e.target.value;
+                        setWeekScheduleStart(nextStart);
+                        const nextEnd = addHourToTime(nextStart);
+                        if (nextEnd) setWeekScheduleEnd(nextEnd);
+                        if (weekScheduleError) setWeekScheduleError("");
+                      }}
+                      step={300}
+                      style={styles.scheduleQuickInput}
+                    />
+                  </div>
+                  <div style={styles.scheduleQuickField}>
+                    <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
+                    <input
+                      type="time"
+                      value={weekScheduleEnd}
+                      onChange={(e) => {
+                        setWeekScheduleEnd(e.target.value);
+                        if (weekScheduleError) setWeekScheduleError("");
+                      }}
+                      step={300}
+                      style={styles.scheduleQuickInput}
+                    />
                   </div>
                   {weekScheduleMode === "client" ? (
-                    <div style={styles.scheduleQuickField}>
+                    <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                       <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                       <select
                         value={weekScheduleClientId}
@@ -6647,7 +6615,7 @@ function TrainerSchedule(props: {
                       </select>
                     </div>
                   ) : weekScheduleMode === "one_time" ? (
-                    <div style={styles.scheduleQuickField}>
+                    <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                       <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                       <input
                         value={weekScheduleClientName}
@@ -6660,7 +6628,7 @@ function TrainerSchedule(props: {
                       />
                     </div>
                   ) : (
-                    <div style={styles.scheduleQuickField}>
+                    <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                       <div style={styles.scheduleQuickLabel}>{tr("Клиенты", "Clients")}</div>
                       <div style={styles.scheduleQuickGroupList}>
                         {activeClients.length === 0 ? (
@@ -6688,10 +6656,12 @@ function TrainerSchedule(props: {
                       </div>
                     </div>
                   )}
-                  {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
+                  {weekScheduleError ? (
+                    <div style={{ ...styles.errorText, ...styles.scheduleQuickFieldFull }}>{weekScheduleError}</div>
+                  ) : null}
                   <button
                     type="button"
-                    style={styles.scheduleQuickSaveBtn}
+                    style={{ ...styles.scheduleQuickSaveBtn, ...styles.scheduleQuickFieldFull }}
                     onClick={async () => {
                       const start = normalizeTimeInput(weekScheduleStart);
                       const end = normalizeTimeInput(weekScheduleEnd);
@@ -7168,104 +7138,73 @@ function TrainerSchedule(props: {
                       </button>
                     </div>
 
-                    <div style={styles.scheduleQuickSectionLabel}>{tr("Дата", "Date")}</div>
-                    <div ref={weekScheduleScrollerRef} style={styles.scheduleQuickCalendarStrip}>
-                      {weekScheduleDays.map((d) => {
-                        const isToday = isSameDay(d.date, today);
-                        const dateKey = formatDateKey(d.date);
-                        const isSelected = weekScheduleMulti
-                          ? weekScheduleDates.includes(dateKey)
-                          : isSameDay(d.date, weekScheduleDate);
-                        const isPast = d.date.getTime() < today.getTime();
-                        return (
-                          <button
-                            key={d.key}
-                            ref={isSelected ? weekScheduleSelectedRef : isToday ? weekScheduleTodayRef : null}
-                            onClick={() => {
-                              if (isPast) return;
-                              setWeekScheduleDate(d.date);
-                              if (weekScheduleMode === "client" && weekScheduleMulti) {
-                                setWeekScheduleDates((prev) =>
-                                  prev.includes(dateKey) ? prev.filter((k) => k !== dateKey) : [...prev, dateKey]
-                                );
-                              }
-                              if (weekScheduleError) setWeekScheduleError("");
-                            }}
-                            style={{
-                              ...styles.scheduleQuickDay,
-                              ...(isToday && !weekScheduleMulti ? styles.scheduleQuickDayActive : {}),
-                              ...(isSelected && !isToday ? styles.scheduleQuickDaySelected : {}),
-                              ...(isSelected && weekScheduleMulti ? styles.scheduleQuickDaySelected : {}),
-                              ...(isPast ? styles.scheduleQuickDayPast : {}),
-                            }}
-                            aria-current={isToday ? "date" : undefined}
-                            type="button"
-                          >
-                            <div style={styles.scheduleQuickDayDate}>{d.dateText}</div>
-                            <div style={styles.scheduleQuickDayWeek}>{d.weekdayText}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                  {weekScheduleMode === "client" ? (
-                    <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-start" }}>
-                      <div style={styles.scheduleQuickSegment}>
-                        <button
-                          type="button"
-                          onClick={() => setWeekScheduleMulti(false)}
-                          style={{
-                            ...styles.scheduleQuickSegmentBtn,
-                            ...(weekScheduleMulti ? null : styles.scheduleQuickSegmentBtnActive),
+                    <div style={styles.scheduleQuickFieldsGrid}>
+                      <div style={styles.scheduleQuickField}>
+                        <div style={styles.scheduleQuickLabel}>{tr("Месяц", "Month")}</div>
+                        <select
+                          value={weekScheduleDate.getMonth()}
+                          onChange={(e) => {
+                            const nextMonth = Number(e.target.value);
+                            const year = weekScheduleDate.getFullYear();
+                            const day = Math.min(
+                              weekScheduleDate.getDate(),
+                              new Date(year, nextMonth + 1, 0).getDate()
+                            );
+                            setWeekScheduleDate(new Date(year, nextMonth, day));
+                            if (weekScheduleError) setWeekScheduleError("");
                           }}
+                          style={styles.scheduleQuickInput}
                         >
-                          {tr("Одна дата", "Single date")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setWeekScheduleMulti(true)}
-                          style={{
-                            ...styles.scheduleQuickSegmentBtn,
-                            ...(weekScheduleMulti ? styles.scheduleQuickSegmentBtnActive : null),
-                          }}
-                        >
-                          {tr("Несколько", "Multiple")}
-                        </button>
+                          {monthOptions.map((m) => (
+                            <option key={m.value} value={m.value}>
+                              {m.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    </div>
-                  ) : null}
-
-                    <div style={styles.scheduleQuickFields}>
-                      <div style={styles.scheduleQuickTimeRow}>
-                        <div style={styles.scheduleQuickField}>
-                          <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
-                          <input
-                            type="time"
-                            value={weekScheduleStart}
-                            onChange={(e) => {
-                              setWeekScheduleStart(e.target.value);
+                      <div style={styles.scheduleQuickField}>
+                        <div style={styles.scheduleQuickLabel}>{tr("Дата", "Date")}</div>
+                        <input
+                          type="date"
+                          value={formatDateInputValue(formatDateKey(weekScheduleDate))}
+                          onChange={(e) => {
+                            const next = parseDateKey(e.target.value);
+                            if (next) {
+                              setWeekScheduleDate(next);
                               if (weekScheduleError) setWeekScheduleError("");
-                            }}
-                            step={300}
-                            style={styles.scheduleQuickInput}
-                          />
-                        </div>
-                        <div style={styles.scheduleQuickField}>
-                          <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
-                          <input
-                            type="time"
-                            value={weekScheduleEnd}
-                            onChange={(e) => {
-                              setWeekScheduleEnd(e.target.value);
-                              if (weekScheduleError) setWeekScheduleError("");
-                            }}
-                            step={300}
-                            style={styles.scheduleQuickInput}
-                          />
-                        </div>
+                            }
+                          }}
+                          style={styles.scheduleQuickInput}
+                        />
+                      </div>
+                      <div style={styles.scheduleQuickField}>
+                        <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
+                        <input
+                          type="time"
+                          value={weekScheduleStart}
+                          onChange={(e) => {
+                            setWeekScheduleStart(e.target.value);
+                            if (weekScheduleError) setWeekScheduleError("");
+                          }}
+                          step={300}
+                          style={styles.scheduleQuickInput}
+                        />
+                      </div>
+                      <div style={styles.scheduleQuickField}>
+                        <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
+                        <input
+                          type="time"
+                          value={weekScheduleEnd}
+                          onChange={(e) => {
+                            setWeekScheduleEnd(e.target.value);
+                            if (weekScheduleError) setWeekScheduleError("");
+                          }}
+                          step={300}
+                          style={styles.scheduleQuickInput}
+                        />
                       </div>
                   {weekScheduleMode === "client" ? (
-                    <div style={styles.scheduleQuickField}>
+                    <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                       <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                       <select
                         value={weekScheduleClientId}
@@ -7287,7 +7226,7 @@ function TrainerSchedule(props: {
                           </select>
                         </div>
                       ) : weekScheduleMode === "one_time" ? (
-                        <div style={styles.scheduleQuickField}>
+                        <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                           <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
                           <input
                             value={weekScheduleClientName}
@@ -7300,7 +7239,7 @@ function TrainerSchedule(props: {
                           />
                         </div>
                       ) : (
-                        <div style={styles.scheduleQuickField}>
+                        <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                           <div style={styles.scheduleQuickLabel}>{tr("Клиенты", "Clients")}</div>
                           <div style={styles.scheduleQuickGroupList}>
                             {activeClients.length === 0 ? (
@@ -7328,10 +7267,14 @@ function TrainerSchedule(props: {
                           </div>
                         </div>
                       )}
-                      {weekScheduleError ? <div style={styles.errorText}>{weekScheduleError}</div> : null}
+                      {weekScheduleError ? (
+                        <div style={{ ...styles.errorText, ...styles.scheduleQuickFieldFull }}>
+                          {weekScheduleError}
+                        </div>
+                      ) : null}
                       <button
                         type="button"
-                        style={styles.scheduleQuickSaveBtn}
+                        style={{ ...styles.scheduleQuickSaveBtn, ...styles.scheduleQuickFieldFull }}
                         onClick={async () => {
                           const start = normalizeTimeInput(weekScheduleStart);
                           const end = normalizeTimeInput(weekScheduleEnd);
@@ -7707,35 +7650,38 @@ function TrainerSchedule(props: {
               </button>
             </div>
 
-            <div style={styles.scheduleQuickSectionLabel}>{tr("Дата", "Date")}</div>
-            <div ref={scrollerRef} style={styles.scheduleQuickCalendarStrip}>
-              {days.map((d) => {
-                const isToday = isSameDay(d.date, today);
-                const isSelected = isSameDay(d.date, selected);
-                const isPast = d.date.getTime() < today.getTime();
-
-                return (
-                  <button
-                    key={d.key}
-                    ref={isSelected ? selectedRef : isToday ? todayRef : null}
-                    onClick={() => setSelected(d.date)}
-                    style={{
-                      ...styles.scheduleQuickDay,
-                      ...(isToday ? styles.scheduleQuickDayActive : {}),
-                      ...(isSelected && !isToday ? styles.scheduleQuickDaySelected : {}),
-                      ...(isPast ? styles.scheduleQuickDayPast : {}),
-                    }}
-                    aria-current={isToday ? "date" : undefined}
-                    type="button"
-                  >
-                    <div style={styles.scheduleQuickDayDate}>{d.dateText}</div>
-                    <div style={styles.scheduleQuickDayWeek}>{d.weekdayText}</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={styles.scheduleQuickFields}>
+            <div style={styles.scheduleQuickFieldsGrid}>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Месяц", "Month")}</div>
+                <select
+                  value={selected.getMonth()}
+                  onChange={(e) => {
+                    const nextMonth = Number(e.target.value);
+                    const year = selected.getFullYear();
+                    const day = Math.min(selected.getDate(), new Date(year, nextMonth + 1, 0).getDate());
+                    setSelected(new Date(year, nextMonth, day));
+                  }}
+                  style={styles.scheduleQuickInput}
+                >
+                  {monthOptions.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Дата", "Date")}</div>
+                <input
+                  type="date"
+                  value={formatDateInputValue(formatDateKey(selected))}
+                  onChange={(e) => {
+                    const next = parseDateKey(e.target.value);
+                    if (next) setSelected(next);
+                  }}
+                  style={styles.scheduleQuickInput}
+                />
+              </div>
               <div style={styles.scheduleQuickField}>
                 <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
                 <input
@@ -7761,10 +7707,13 @@ function TrainerSchedule(props: {
                   style={styles.scheduleQuickInput}
                 />
               </div>
-              {freeError ? <div style={styles.errorText}>{freeError}</div> : null}
+              {freeError ? (
+                <div style={{ ...styles.errorText, ...styles.scheduleQuickFieldFull }}>{freeError}</div>
+              ) : null}
               <button
                 type="button"
                 disabled={isCreatingSlot}
+                style={{ ...styles.scheduleQuickSaveBtn, ...styles.scheduleQuickFieldFull }}
                 onClick={async () => {
                   if (isCreatingSlot) return;
                   setIsCreatingSlot(true);
@@ -7828,7 +7777,6 @@ function TrainerSchedule(props: {
                   setFreeEnd("");
                   setIsCreatingSlot(false);
                 }}
-                style={styles.scheduleQuickSaveBtn}
               >
                 {tr("Добавить", "Add")}
               </button>
@@ -15052,6 +15000,14 @@ const styles: Record<string, any> = {
     paddingLeft: 2,
     paddingRight: 2,
   },
+  scheduleQuickFieldsGrid: {
+    marginTop: 8,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+    paddingLeft: 2,
+    paddingRight: 2,
+  },
   scheduleQuickTimeRow: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -15060,6 +15016,9 @@ const styles: Record<string, any> = {
   scheduleQuickField: {
     display: "flex",
     flexDirection: "column",
+  },
+  scheduleQuickFieldFull: {
+    gridColumn: "1 / -1",
   },
   scheduleQuickLabel: {
     fontSize: 12,
