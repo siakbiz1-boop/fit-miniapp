@@ -2979,6 +2979,58 @@ function TrainerHome({
     );
   }
 
+  if (prepayOpen && prepayPlan) {
+    return (
+      <div style={{ ...styles.pageContainer, ...styles.prepayPage }}>
+        <div style={styles.prepayTopBar}>
+          <button type="button" style={styles.prepayBackBtn} onClick={() => setPrepayOpen(false)}>
+            ←
+          </button>
+          <div style={styles.prepayTopSpacer} />
+          <div style={styles.prepayTopSpacer} />
+        </div>
+        <div style={styles.prepayTitle}>{tr("Продление подписки", "Subscription renewal")}</div>
+        <div style={styles.prepayRow}>
+          <div>
+            <div style={styles.prepayLabel}>{tr("Стоимость подписки", "Subscription price")}</div>
+            <div style={styles.prepaySubLabel}>{prepayPlan.name}</div>
+          </div>
+          <div style={styles.prepayValue}>{formatMoney(prepayPlan.total)}</div>
+        </div>
+        <div style={styles.prepayRow}>
+          <div>
+            <div style={styles.prepayLabel}>{tr("Срок подписки", "Subscription term")}</div>
+            <div style={styles.prepaySubLabel}>
+              {tr("Начало", "Start")} {formatDateShort(new Date())}
+            </div>
+          </div>
+          <div style={styles.prepayValue}>
+            {prepayPlan.months} {tr("месяц", "month")}
+            {prepayPlan.months > 1 ? tr("а", "s") : ""}
+          </div>
+        </div>
+        <div style={styles.prepayRow}>
+          <div style={styles.prepayLabel}>{tr("Способы оплаты", "Payment methods")}</div>
+          <div style={styles.prepayValue}>{tr("СБП", "SBP")}</div>
+        </div>
+        <div style={styles.prepayDivider} />
+        <div style={styles.prepayRow}>
+          <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
+          <div style={styles.prepayTotal}>{formatMoney(prepayPlan.total)}</div>
+        </div>
+        <button type="button" style={styles.prepayPayBtn}>
+          {tr("Оплатить", "Pay")}
+        </button>
+        <div style={styles.prepayNote}>
+          {tr(
+            "Нажимая кнопку «Оплатить», я подтверждаю согласие на условия оплаты.",
+            "By clicking Pay, I confirm acceptance of the payment terms."
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ ...styles.pageContainer, ...styles.homeWorkPage }}>
       <div style={{ ...styles.homeIntro, ...styles.homeIntroWork }}>
@@ -3587,55 +3639,6 @@ function TrainerHome({
                 );
               })}
             </div>
-            {prepayOpen && prepayPlan ? (
-              <div style={styles.prepayOverlay} onClick={() => setPrepayOpen(false)}>
-                <div style={styles.prepaySheet} onClick={(event) => event.stopPropagation()}>
-                  <div style={styles.prepayHeader}>
-                    <div style={styles.prepayTitle}>{tr("Продление подписки", "Subscription renewal")}</div>
-                    <button type="button" style={styles.prepayClose} onClick={() => setPrepayOpen(false)}>
-                      {tr("Закрыть", "Close")}
-                    </button>
-                  </div>
-                  <div style={styles.prepayRow}>
-                    <div>
-                      <div style={styles.prepayLabel}>{tr("Стоимость подписки", "Subscription price")}</div>
-                      <div style={styles.prepaySubLabel}>{prepayPlan.name}</div>
-                    </div>
-                    <div style={styles.prepayValue}>{formatMoney(prepayPlan.total)}</div>
-                  </div>
-                  <div style={styles.prepayRow}>
-                    <div>
-                      <div style={styles.prepayLabel}>{tr("Срок подписки", "Subscription term")}</div>
-                      <div style={styles.prepaySubLabel}>
-                        {tr("Начало", "Start")} {formatDateShort(new Date())}
-                      </div>
-                    </div>
-                    <div style={styles.prepayValue}>
-                      {prepayPlan.months} {tr("месяц", "month")}
-                      {prepayPlan.months > 1 ? tr("а", "s") : ""}
-                    </div>
-                  </div>
-                  <div style={styles.prepayRow}>
-                    <div style={styles.prepayLabel}>{tr("Способы оплаты", "Payment methods")}</div>
-                    <div style={styles.prepayValue}>{tr("СБП", "SBP")}</div>
-                  </div>
-                  <div style={styles.prepayDivider} />
-                  <div style={styles.prepayRow}>
-                    <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
-                    <div style={styles.prepayTotal}>{formatMoney(prepayPlan.total)}</div>
-                  </div>
-                  <button type="button" style={styles.prepayPayBtn}>
-                    {tr("Оплатить", "Pay")}
-                  </button>
-                  <div style={styles.prepayNote}>
-                    {tr(
-                      "Нажимая кнопку «Оплатить», я подтверждаю согласие на условия оплаты.",
-                      "By clicking Pay, I confirm acceptance of the payment terms."
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </>
         ) : null}
       </div>
@@ -15230,41 +15233,37 @@ const styles: Record<string, any> = {
     lineHeight: 1,
     opacity: 0.7,
   },
-  prepayOverlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(15, 23, 42, 0.25)",
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "center",
-    zIndex: 60,
-    padding: "0 12px 12px",
-  },
-  prepaySheet: {
-    width: "100%",
-    maxWidth: 520,
+  prepayPage: {
     background: "#ffffff",
-    borderRadius: 24,
-    padding: "18px 18px 22px",
-    boxShadow: "0 20px 50px rgba(15, 23, 42, 0.2)",
+    minHeight: "100vh",
+    paddingTop: 8,
   },
-  prepayHeader: {
+  prepayTopBar: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 6,
+  },
+  prepayBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    border: "1px solid var(--border)",
+    background: "var(--surface)",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "var(--text)",
+  },
+  prepayTopSpacer: {
+    width: 36,
+    height: 36,
   },
   prepayTitle: {
     fontSize: 24,
     fontWeight: 800,
     color: "var(--text)",
-  },
-  prepayClose: {
-    border: "none",
-    background: "transparent",
-    color: "var(--muted)",
-    fontWeight: 600,
-    cursor: "pointer",
   },
   prepayRow: {
     display: "flex",
