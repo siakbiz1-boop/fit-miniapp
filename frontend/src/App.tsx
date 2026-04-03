@@ -15020,6 +15020,30 @@ const styles: Record<string, any> = {
   scheduleQuickFieldFull: {
     gridColumn: "1 / -1",
   },
+  scheduleQuickDateList: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  scheduleQuickDatePill: {
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
+    color: "var(--text)",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: 600,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    cursor: "pointer",
+    boxShadow: "var(--glass-pill-shadow)",
+  },
+  scheduleQuickDateRemove: {
+    fontSize: 14,
+    lineHeight: 1,
+    opacity: 0.7,
+  },
   scheduleQuickLabel: {
     fontSize: 12,
     fontWeight: 700,
