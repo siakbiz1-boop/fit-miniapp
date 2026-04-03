@@ -324,8 +324,10 @@ export default function App() {
 
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const pendingFocusRef = useRef<HTMLElement | null>(null);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const isKeyboardVisible = keyboardInset > 0 || keyboardOpen;
+  const hideBottomNav = keyboardOpen;
 
   const scrollAreaStyle = {
     ...styles.scrollArea,
@@ -1025,39 +1027,51 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const ensureInputVisible = (target: HTMLElement) => {
+      if (document.activeElement !== target) return;
+      const vvHeight = window.visualViewport?.height ?? window.innerHeight;
+      const rect = target.getBoundingClientRect();
+      const bottomLimit = vvHeight - 12;
+      const topLimit = 12;
+      const scrollParent = target.closest("[data-scroll-area]") as HTMLElement | null;
+      if (rect.bottom > bottomLimit) {
+        const delta = rect.bottom - bottomLimit;
+        if (scrollParent) {
+          scrollParent.scrollBy({ top: delta, behavior: "auto" });
+        } else {
+          target.scrollIntoView({ block: "center", behavior: "auto" });
+        }
+        return;
+      }
+      if (rect.top < topLimit) {
+        const delta = rect.top - topLimit;
+        if (scrollParent) {
+          scrollParent.scrollBy({ top: delta, behavior: "auto" });
+        } else {
+          target.scrollIntoView({ block: "center", behavior: "auto" });
+        }
+      }
+    };
+
     const onFocusIn = (event: FocusEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target) return;
       const tag = target.tagName;
       if (tag !== "INPUT" && tag !== "TEXTAREA") return;
       setKeyboardOpen(true);
-      const ensureVisible = () => {
-        const vvHeight = window.visualViewport?.height ?? window.innerHeight;
-        const rect = target.getBoundingClientRect();
-        const bottomLimit = vvHeight - 12;
-        const topLimit = 12;
-        const scrollParent = target.closest("[data-scroll-area]") as HTMLElement | null;
-        if (rect.bottom > bottomLimit) {
-          const delta = rect.bottom - bottomLimit;
-          if (scrollParent) {
-            scrollParent.scrollBy({ top: delta, behavior: "auto" });
-          } else {
-            target.scrollIntoView({ block: "center", behavior: "auto" });
-          }
-          return;
-        }
-        if (rect.top < topLimit) {
-          const delta = rect.top - topLimit;
-          if (scrollParent) {
-            scrollParent.scrollBy({ top: delta, behavior: "auto" });
-          } else {
-            target.scrollIntoView({ block: "center", behavior: "auto" });
-          }
-        }
-      };
-      requestAnimationFrame(ensureVisible);
+      pendingFocusRef.current = target;
+      if (!window.visualViewport) {
+        requestAnimationFrame(() => ensureInputVisible(target));
+      } else {
+        window.setTimeout(() => {
+          if (pendingFocusRef.current !== target) return;
+          ensureInputVisible(target);
+          pendingFocusRef.current = null;
+        }, 140);
+      }
     };
     const onFocusOut = () => {
+      pendingFocusRef.current = null;
       const el = document.activeElement as HTMLElement | null;
       if (!el) {
         setKeyboardOpen(false);
@@ -1087,6 +1101,36 @@ export default function App() {
         document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
       } catch {
         // ignore
+      }
+      if (inset > 0 && pendingFocusRef.current) {
+        const target = pendingFocusRef.current;
+        pendingFocusRef.current = null;
+        requestAnimationFrame(() => {
+          if (document.activeElement === target) {
+            const vvHeight = window.visualViewport?.height ?? window.innerHeight;
+            const rect = target.getBoundingClientRect();
+            const bottomLimit = vvHeight - 12;
+            const topLimit = 12;
+            const scrollParent = target.closest("[data-scroll-area]") as HTMLElement | null;
+            if (rect.bottom > bottomLimit) {
+              const delta = rect.bottom - bottomLimit;
+              if (scrollParent) {
+                scrollParent.scrollBy({ top: delta, behavior: "auto" });
+              } else {
+                target.scrollIntoView({ block: "center", behavior: "auto" });
+              }
+              return;
+            }
+            if (rect.top < topLimit) {
+              const delta = rect.top - topLimit;
+              if (scrollParent) {
+                scrollParent.scrollBy({ top: delta, behavior: "auto" });
+              } else {
+                target.scrollIntoView({ block: "center", behavior: "auto" });
+              }
+            }
+          }
+        });
       }
     };
     onResize();
@@ -1558,7 +1602,7 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ ...styles.bottomNav, display: isKeyboardVisible ? "none" : "flex" }}>
+            <div style={{ ...styles.bottomNav, display: hideBottomNav ? "none" : "flex" }}>
               <button
                 onClick={() => setActiveTab("home")}
                 style={styles.navBtn}
@@ -1824,7 +1868,7 @@ export default function App() {
         <BottomNav
           active={clientTab}
           onChange={(t) => setClientTab(t as ClientTab)}
-          hidden={isKeyboardVisible}
+          hidden={hideBottomNav}
           items={[
             { id: "home", label: t.navHome, icon: <IconHome /> },
             { id: "schedule", label: t.navSchedule, icon: <IconCalendar /> },
