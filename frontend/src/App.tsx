@@ -6557,6 +6557,10 @@ function TrainerSchedule(props: {
                         const next = parseDateKey(e.target.value);
                         if (next) {
                           setWeekScheduleDate(next);
+                          if (weekScheduleMode === "client" && weekScheduleMulti) {
+                            const key = formatDateKey(next);
+                            setWeekScheduleDates((prev) => (prev.includes(key) ? prev : [...prev, key]));
+                          }
                           if (weekScheduleError) setWeekScheduleError("");
                         }
                       }}
@@ -6592,6 +6596,55 @@ function TrainerSchedule(props: {
                       style={styles.scheduleQuickInput}
                     />
                   </div>
+                  {weekScheduleMode === "client" ? (
+                    <div style={{ ...styles.scheduleQuickSegment, ...styles.scheduleQuickFieldFull }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeekScheduleMulti(false);
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        style={{
+                          ...styles.scheduleQuickSegmentBtn,
+                          ...(weekScheduleMulti ? null : styles.scheduleQuickSegmentBtnActive),
+                        }}
+                      >
+                        {tr("Одна дата", "Single date")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWeekScheduleMulti(true);
+                          if (weekScheduleDates.length === 0) {
+                            setWeekScheduleDates([formatDateKey(weekScheduleDate)]);
+                          }
+                          if (weekScheduleError) setWeekScheduleError("");
+                        }}
+                        style={{
+                          ...styles.scheduleQuickSegmentBtn,
+                          ...(weekScheduleMulti ? styles.scheduleQuickSegmentBtnActive : null),
+                        }}
+                      >
+                        {tr("Несколько", "Multiple")}
+                      </button>
+                    </div>
+                  ) : null}
+                  {weekScheduleMode === "client" && weekScheduleMulti ? (
+                    <div style={{ ...styles.scheduleQuickDateList, ...styles.scheduleQuickFieldFull }}>
+                      {weekScheduleDates.map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setWeekScheduleDates((prev) => prev.filter((k) => k !== key))}
+                          style={styles.scheduleQuickDatePill}
+                          aria-label={tr("Удалить дату", "Remove date")}
+                        >
+                          {formatDateShort(parseDateKey(key))}
+                          <span style={styles.scheduleQuickDateRemove}>×</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {weekScheduleMode === "client" ? (
                     <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                       <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
@@ -7171,6 +7224,10 @@ function TrainerSchedule(props: {
                             const next = parseDateKey(e.target.value);
                             if (next) {
                               setWeekScheduleDate(next);
+                              if (weekScheduleMode === "client" && weekScheduleMulti) {
+                                const key = formatDateKey(next);
+                                setWeekScheduleDates((prev) => (prev.includes(key) ? prev : [...prev, key]));
+                              }
                               if (weekScheduleError) setWeekScheduleError("");
                             }
                           }}
@@ -7203,6 +7260,55 @@ function TrainerSchedule(props: {
                           style={styles.scheduleQuickInput}
                         />
                       </div>
+                      {weekScheduleMode === "client" ? (
+                        <div style={{ ...styles.scheduleQuickSegment, ...styles.scheduleQuickFieldFull }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWeekScheduleMulti(false);
+                              if (weekScheduleError) setWeekScheduleError("");
+                            }}
+                            style={{
+                              ...styles.scheduleQuickSegmentBtn,
+                              ...(weekScheduleMulti ? null : styles.scheduleQuickSegmentBtnActive),
+                            }}
+                          >
+                            {tr("Одна дата", "Single date")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWeekScheduleMulti(true);
+                              if (weekScheduleDates.length === 0) {
+                                setWeekScheduleDates([formatDateKey(weekScheduleDate)]);
+                              }
+                              if (weekScheduleError) setWeekScheduleError("");
+                            }}
+                            style={{
+                              ...styles.scheduleQuickSegmentBtn,
+                              ...(weekScheduleMulti ? styles.scheduleQuickSegmentBtnActive : null),
+                            }}
+                          >
+                            {tr("Несколько", "Multiple")}
+                          </button>
+                        </div>
+                      ) : null}
+                      {weekScheduleMode === "client" && weekScheduleMulti ? (
+                        <div style={{ ...styles.scheduleQuickDateList, ...styles.scheduleQuickFieldFull }}>
+                          {weekScheduleDates.map((key) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => setWeekScheduleDates((prev) => prev.filter((k) => k !== key))}
+                              style={styles.scheduleQuickDatePill}
+                              aria-label={tr("Удалить дату", "Remove date")}
+                            >
+                              {formatDateShort(parseDateKey(key))}
+                              <span style={styles.scheduleQuickDateRemove}>×</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
                   {weekScheduleMode === "client" ? (
                     <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
                       <div style={styles.scheduleQuickLabel}>{tr("Клиент", "Client")}</div>
