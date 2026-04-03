@@ -9012,6 +9012,7 @@ function ClientDetailScreen(props: {
   const { client, onBack, onUpdateClient, onToggleArchive, onDeleteClient, history, onSaveExercises } = props;
   const { sessionsByDate, setSessionsByDate, token, apiBase } = props;
   const tr = useTr();
+  const language = React.useContext(LanguageContext);
   const [tab, setTab] = useState<"info" | "subscription" | "weights" | "history">("info");
   const showOnlyInfo = client?.status === "pending";
   const visibleTab = showOnlyInfo ? "info" : tab;
@@ -9030,16 +9031,11 @@ function ClientDetailScreen(props: {
   const [draftContactInstagram, setDraftContactInstagram] = useState("");
   const [draftContactOtherSocial, setDraftContactOtherSocial] = useState("");
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [scheduleToday, setScheduleToday] = useState<Date>(() => startOfDay(new Date()));
   const [scheduleSelected, setScheduleSelected] = useState<Date>(() => startOfDay(new Date()));
   const [scheduleStart, setScheduleStart] = useState("12:30");
   const [scheduleEnd, setScheduleEnd] = useState("13:30");
   const [scheduleError, setScheduleError] = useState("");
   const [scheduleSaving, setScheduleSaving] = useState(false);
-  const scheduleScrollerRef = useRef<HTMLDivElement | null>(null);
-  const scheduleSelectedRef = useRef<HTMLButtonElement | null>(null);
-  const scheduleTodayRef = useRef<HTMLButtonElement | null>(null);
-  const scheduleDays = useMemo(() => buildCalendarStrip(scheduleToday, 14, 30), [scheduleToday]);
   const [scheduleDragY, setScheduleDragY] = useState(0);
   const [scheduleDragging, setScheduleDragging] = useState(false);
   const scheduleDragStartRef = useRef<number>(0);
@@ -9055,6 +9051,26 @@ function ClientDetailScreen(props: {
     const minutes = nextMinutes % 60;
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
   }, []);
+  const formatMonthShort = useCallback(
+    (d: Date) => {
+      if (language === "en") {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return months[d.getMonth()];
+      }
+      const months = ["янв", "фев", "март", "апр", "май", "июнь", "июль", "авг", "сент", "окт", "ноя", "дек"];
+      const raw = months[d.getMonth()];
+      return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
+    },
+    [language]
+  );
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, idx) => ({
+        value: idx,
+        label: formatMonthShort(new Date(2024, idx, 1)),
+      })),
+    [formatMonthShort]
+  );
 
   useEffect(() => {
     setDraftFullName(client?.fullName ?? "");
@@ -9109,21 +9125,6 @@ function ClientDetailScreen(props: {
     setScheduleError("");
     setScheduleSaving(false);
   }, [scheduleOpen]);
-
-  useEffect(() => {
-    const tick = () => setScheduleToday(startOfDay(new Date()));
-    const id = window.setInterval(tick, 60 * 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    if (!scheduleOpen) return;
-    const scroller = scheduleScrollerRef.current;
-    const target = scheduleSelectedRef.current || scheduleTodayRef.current;
-    if (!scroller || !target) return;
-    const left = target.offsetLeft - scroller.clientWidth / 2 + target.clientWidth / 2;
-    scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-  }, [scheduleOpen, scheduleSelected, scheduleDays]);
 
   useEffect(() => {
     if (!scheduleDragging) return;
@@ -9284,74 +9285,83 @@ function ClientDetailScreen(props: {
               </button>
             </div>
 
-            <div ref={scheduleScrollerRef} style={styles.calendarStrip}>
-              {scheduleDays.map((d) => {
-                const isToday = isSameDay(d.date, scheduleToday);
-                const isSelected = isSameDay(d.date, scheduleSelected);
-                const isPast = d.date.getTime() < scheduleToday.getTime();
-
-                return (
-                  <button
-                    key={d.key}
-                    ref={isSelected ? scheduleSelectedRef : isToday ? scheduleTodayRef : null}
-                    onClick={() => {
-                      if (isPast) return;
-                      setScheduleSelected(d.date);
+            <div style={styles.scheduleQuickFieldsGrid}>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Месяц", "Month")}</div>
+                <select
+                  value={scheduleSelected.getMonth()}
+                  onChange={(e) => {
+                    const nextMonth = Number(e.target.value);
+                    const year = scheduleSelected.getFullYear();
+                    const day = Math.min(
+                      scheduleSelected.getDate(),
+                      new Date(year, nextMonth + 1, 0).getDate()
+                    );
+                    setScheduleSelected(new Date(year, nextMonth, day));
+                    if (scheduleError) setScheduleError("");
+                  }}
+                  style={styles.scheduleQuickInput}
+                >
+                  {monthOptions.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Дата", "Date")}</div>
+                <input
+                  type="date"
+                  value={formatDateInputValue(formatDateKey(scheduleSelected))}
+                  onChange={(e) => {
+                    const next = parseDateKey(e.target.value);
+                    if (next) {
+                      setScheduleSelected(next);
                       if (scheduleError) setScheduleError("");
-                    }}
-                    style={{
-                      ...styles.calendarDay,
-                      ...(isToday ? styles.calendarDayActive : {}),
-                      ...(isSelected && !isToday ? styles.calendarDaySelected : {}),
-                      ...(isPast ? styles.calendarDayPast : {}),
-                    }}
-                    aria-current={isToday ? "date" : undefined}
-                    type="button"
-                  >
-                    <div style={styles.calendarDayDate}>{d.dateText}</div>
-                    <div style={styles.calendarDayWeek}>{d.weekdayText}</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={styles.clientScheduleFields}>
-              <div style={styles.freeField}>
-              <div style={styles.fieldLabel}>{tr("Начало", "Start")}</div>
-              <input
-                type="time"
-                value={scheduleStart}
-                onChange={(e) => {
-                  const nextStart = e.target.value;
-                  setScheduleStart(nextStart);
+                    }
+                  }}
+                  style={styles.scheduleQuickInput}
+                />
+              </div>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Начало", "Start")}</div>
+                <input
+                  type="time"
+                  value={scheduleStart}
+                  onChange={(e) => {
+                    const nextStart = e.target.value;
+                    setScheduleStart(nextStart);
                     const nextEnd = addHourToTime(nextStart);
                     if (nextEnd) setScheduleEnd(nextEnd);
                     if (scheduleError) setScheduleError("");
-                }}
-                step={300}
-                style={styles.clientScheduleInput}
-              />
-            </div>
-            <div style={styles.freeField}>
-              <div style={styles.fieldLabel}>{tr("Конец", "End")}</div>
-              <input
-                type="time"
-                value={scheduleEnd}
-                onChange={(e) => {
-                  setScheduleEnd(e.target.value);
-                  if (scheduleError) setScheduleError("");
-                }}
-                step={300}
-                style={styles.clientScheduleInput}
-              />
-            </div>
-            {scheduleError ? <div style={styles.errorText}>{scheduleError}</div> : null}
-            <button
-              type="button"
-              style={styles.clientScheduleSaveBtn}
-              disabled={scheduleSaving}
-              onClick={async () => {
-                if (scheduleSaving) return;
+                  }}
+                  step={300}
+                  style={styles.scheduleQuickInput}
+                />
+              </div>
+              <div style={styles.scheduleQuickField}>
+                <div style={styles.scheduleQuickLabel}>{tr("Конец", "End")}</div>
+                <input
+                  type="time"
+                  value={scheduleEnd}
+                  onChange={(e) => {
+                    setScheduleEnd(e.target.value);
+                    if (scheduleError) setScheduleError("");
+                  }}
+                  step={300}
+                  style={styles.scheduleQuickInput}
+                />
+              </div>
+              {scheduleError ? (
+                <div style={{ ...styles.errorText, ...styles.scheduleQuickFieldFull }}>{scheduleError}</div>
+              ) : null}
+              <button
+                type="button"
+                style={{ ...styles.clientScheduleSaveBtn, ...styles.scheduleQuickFieldFull }}
+                disabled={scheduleSaving}
+                onClick={async () => {
+                  if (scheduleSaving) return;
                   if (!client) return;
                   setScheduleSaving(true);
                   const dateKey = formatDateKey(scheduleSelected);
