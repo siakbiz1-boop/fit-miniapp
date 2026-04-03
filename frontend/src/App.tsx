@@ -325,9 +325,12 @@ export default function App() {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const pendingFocusRef = useRef<HTMLElement | null>(null);
+  const keyboardTransitionRef = useRef<number | null>(null);
+  const stableViewportHeightRef = useRef<number | null>(null);
+  const [keyboardTransitioning, setKeyboardTransitioning] = useState(false);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const isKeyboardVisible = keyboardInset > 0 || keyboardOpen;
-  const hideBottomNav = keyboardOpen;
+  const hideBottomNav = keyboardOpen || keyboardTransitioning;
 
   const scrollAreaStyle = {
     ...styles.scrollArea,
@@ -1059,6 +1062,14 @@ export default function App() {
       const tag = target.tagName;
       if (tag !== "INPUT" && tag !== "TEXTAREA") return;
       setKeyboardOpen(true);
+      setKeyboardTransitioning(true);
+      if (keyboardTransitionRef.current) {
+        window.clearTimeout(keyboardTransitionRef.current);
+      }
+      keyboardTransitionRef.current = window.setTimeout(() => {
+        setKeyboardTransitioning(false);
+        keyboardTransitionRef.current = null;
+      }, 220);
       pendingFocusRef.current = target;
       if (!window.visualViewport) {
         requestAnimationFrame(() => ensureInputVisible(target));
@@ -1087,6 +1098,10 @@ export default function App() {
     return () => {
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
+      if (keyboardTransitionRef.current) {
+        window.clearTimeout(keyboardTransitionRef.current);
+        keyboardTransitionRef.current = null;
+      }
     };
   }, []);
 
@@ -1094,6 +1109,26 @@ export default function App() {
     const vv = window.visualViewport;
     if (!vv) return;
     const onResize = () => {
+      if (stableViewportHeightRef.current === null) {
+        stableViewportHeightRef.current = window.innerHeight;
+      }
+      try {
+        document.documentElement.style.setProperty("--tg-viewport-height", `${vv.height}px`);
+        document.documentElement.style.setProperty(
+          "--tg-viewport-stable-height",
+          `${stableViewportHeightRef.current}px`
+        );
+      } catch {
+        // ignore
+      }
+      setKeyboardTransitioning(true);
+      if (keyboardTransitionRef.current) {
+        window.clearTimeout(keyboardTransitionRef.current);
+      }
+      keyboardTransitionRef.current = window.setTimeout(() => {
+        setKeyboardTransitioning(false);
+        keyboardTransitionRef.current = null;
+      }, 220);
       const inset = Math.max(0, window.innerHeight - vv.height);
       setKeyboardInset(inset);
       setKeyboardOpen(inset > 0);
@@ -12478,8 +12513,8 @@ function GlobalStyles() {
         transform: scale(0.99);
         box-shadow: inset 0 0 0 1px rgba(77, 163, 255, 0.2);
       }
-      html, body, #root { width: 100vw; height: var(--tg-viewport-stable-height, 100%); margin: 0; background: var(--bg); color: var(--text); overflow: hidden; }
-      body { position: fixed; width: 100vw; height: var(--tg-viewport-stable-height, 100%); overscroll-behavior: none; }
+      html, body, #root { width: 100vw; height: var(--tg-viewport-height, var(--tg-viewport-stable-height, 100%)); margin: 0; background: var(--bg); color: var(--text); overflow: hidden; }
+      body { position: fixed; top: 0; left: 0; right: 0; width: 100vw; height: var(--tg-viewport-height, var(--tg-viewport-stable-height, 100%)); overscroll-behavior: none; }
       body.keyboard-open { position: fixed; width: 100vw; height: 100%; overflow: hidden; }
       [data-scroll-area] { scrollbar-gutter: stable; }
       * { scrollbar-width: none; -ms-overflow-style: none; }
@@ -12695,7 +12730,7 @@ const styles: Record<string, any> = {
     width: "100vw",
     maxWidth: 520,
     margin: "0 auto",
-    height: "var(--tg-viewport-stable-height, 100vh)",
+    height: "var(--tg-viewport-height, var(--tg-viewport-stable-height, 100vh))",
     display: "flex",
     flexDirection: "column",
     background: "var(--bg)",
