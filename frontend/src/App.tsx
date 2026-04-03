@@ -1963,6 +1963,14 @@ function TrainerHome({
   const notesInputRef = useRef<HTMLInputElement | null>(null);
   const notesEditInputRef = useRef<HTMLInputElement | null>(null);
   const notesItemInputRef = useRef<HTMLInputElement | null>(null);
+  const [prepayOpen, setPrepayOpen] = useState(false);
+  const [prepayPlan, setPrepayPlan] = useState<{
+    id: string;
+    name: string;
+    total: number;
+    months: number;
+    periodLabel: string;
+  } | null>(null);
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
@@ -2180,6 +2188,18 @@ function TrainerHome({
     strikeMonthly: number;
     strikeByPeriod?: Partial<Record<TariffPeriod, number>>;
   }) => plan.strikeByPeriod?.[tariffPeriod] ?? plan.strikeMonthly * activeTariffPeriodMeta.months;
+  const openPrepay = (plan: { id: string; name: string; priceMonthly: number; priceByPeriod?: Partial<Record<TariffPeriod, number>> }) => {
+    if (plan.id === "free") return;
+    const total = getTariffTotal(plan);
+    setPrepayPlan({
+      id: plan.id,
+      name: plan.name,
+      total,
+      months: activeTariffPeriodMeta.months,
+      periodLabel: activeTariffPeriodMeta.label,
+    });
+    setPrepayOpen(true);
+  };
 
   const todayStart = startOfDay(now);
   const statsAnchorStart = startOfDay(statsDate);
@@ -3559,6 +3579,7 @@ function TrainerHome({
                         borderColor: isSelected ? "var(--primary)" : "var(--border)",
                         color: isSelected ? "var(--primary)" : "var(--text)",
                       }}
+                      onClick={() => openPrepay(plan)}
                     >
                       {isSelected ? tr("Выбран", "Selected") : tr("Выбрать", "Choose")}
                     </button>
@@ -3566,6 +3587,55 @@ function TrainerHome({
                 );
               })}
             </div>
+            {prepayOpen && prepayPlan ? (
+              <div style={styles.prepayOverlay} onClick={() => setPrepayOpen(false)}>
+                <div style={styles.prepaySheet} onClick={(event) => event.stopPropagation()}>
+                  <div style={styles.prepayHeader}>
+                    <div style={styles.prepayTitle}>{tr("Продление подписки", "Subscription renewal")}</div>
+                    <button type="button" style={styles.prepayClose} onClick={() => setPrepayOpen(false)}>
+                      {tr("Закрыть", "Close")}
+                    </button>
+                  </div>
+                  <div style={styles.prepayRow}>
+                    <div>
+                      <div style={styles.prepayLabel}>{tr("Стоимость подписки", "Subscription price")}</div>
+                      <div style={styles.prepaySubLabel}>{prepayPlan.name}</div>
+                    </div>
+                    <div style={styles.prepayValue}>{formatMoney(prepayPlan.total)}</div>
+                  </div>
+                  <div style={styles.prepayRow}>
+                    <div>
+                      <div style={styles.prepayLabel}>{tr("Срок подписки", "Subscription term")}</div>
+                      <div style={styles.prepaySubLabel}>
+                        {tr("Начало", "Start")} {formatDateShort(new Date())}
+                      </div>
+                    </div>
+                    <div style={styles.prepayValue}>
+                      {prepayPlan.months} {tr("месяц", "month")}
+                      {prepayPlan.months > 1 ? tr("а", "s") : ""}
+                    </div>
+                  </div>
+                  <div style={styles.prepayRow}>
+                    <div style={styles.prepayLabel}>{tr("Способы оплаты", "Payment methods")}</div>
+                    <div style={styles.prepayValue}>{tr("СБП", "SBP")}</div>
+                  </div>
+                  <div style={styles.prepayDivider} />
+                  <div style={styles.prepayRow}>
+                    <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
+                    <div style={styles.prepayTotal}>{formatMoney(prepayPlan.total)}</div>
+                  </div>
+                  <button type="button" style={styles.prepayPayBtn}>
+                    {tr("Оплатить", "Pay")}
+                  </button>
+                  <div style={styles.prepayNote}>
+                    {tr(
+                      "Нажимая кнопку «Оплатить», я подтверждаю согласие на условия оплаты.",
+                      "By clicking Pay, I confirm acceptance of the payment terms."
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -15159,6 +15229,91 @@ const styles: Record<string, any> = {
     fontSize: 14,
     lineHeight: 1,
     opacity: 0.7,
+  },
+  prepayOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15, 23, 42, 0.25)",
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    zIndex: 60,
+    padding: "0 12px 12px",
+  },
+  prepaySheet: {
+    width: "100%",
+    maxWidth: 520,
+    background: "#ffffff",
+    borderRadius: 24,
+    padding: "18px 18px 22px",
+    boxShadow: "0 20px 50px rgba(15, 23, 42, 0.2)",
+  },
+  prepayHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  prepayTitle: {
+    fontSize: 24,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  prepayClose: {
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  prepayRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "12px 0",
+  },
+  prepayLabel: {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  prepaySubLabel: {
+    marginTop: 4,
+    fontSize: 14,
+    color: "var(--muted)",
+  },
+  prepayValue: {
+    fontSize: 18,
+    fontWeight: 700,
+    color: "var(--text)",
+  },
+  prepayDivider: {
+    height: 1,
+    background: "var(--border-2)",
+    margin: "6px 0",
+  },
+  prepayTotal: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: "var(--text)",
+  },
+  prepayPayBtn: {
+    marginTop: 18,
+    width: "100%",
+    height: 54,
+    borderRadius: 16,
+    border: "none",
+    background: "#1D9BF0",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  prepayNote: {
+    marginTop: 10,
+    fontSize: 12,
+    color: "var(--muted)",
+    lineHeight: 1.35,
   },
   scheduleQuickLabel: {
     fontSize: 12,
