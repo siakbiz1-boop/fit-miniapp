@@ -64,11 +64,14 @@ type UiText = {
   myTrainersTab: string;
   addTrainerTab: string;
   settingsSystem: string;
+  settingsPayments: string;
   settingsUseful: string;
   settingsBooking: string;
   settingsReminders: string;
   settingsLanguage: string;
   settingsTheme: string;
+  settingsPaymentMethods: string;
+  settingsPaymentHistory: string;
   settingsHelp: string;
   settingsSupport: string;
   settingsPrivacy: string;
@@ -611,11 +614,14 @@ export default function App() {
       myTrainersTab: language === "en" ? "My coaches" : "Мои тренеры",
       addTrainerTab: language === "en" ? "Add coach" : "Добавить тренера",
       settingsSystem: language === "en" ? "System" : "Системные",
+      settingsPayments: language === "en" ? "Payment info" : "Платежная информация",
       settingsUseful: language === "en" ? "Useful" : "Полезное",
       settingsBooking: language === "en" ? "Booking" : "Запись на тренировки",
       settingsReminders: language === "en" ? "Session reminders" : "Напоминание о занятиях",
       settingsLanguage: language === "en" ? "Language" : "Язык интерфейса",
       settingsTheme: language === "en" ? "Color scheme" : "Цветовая схема",
+      settingsPaymentMethods: language === "en" ? "Payment methods" : "Способы оплаты",
+      settingsPaymentHistory: language === "en" ? "Payment history" : "История оплат",
       settingsHelp: language === "en" ? "How to use?" : "Как пользоваться?",
       settingsSupport: language === "en" ? "Support" : "Служба поддержки",
       settingsPrivacy: language === "en" ? "Privacy policy" : "Политика конфиденциальности",
@@ -10361,6 +10367,23 @@ function TrainerSettings(props: {
 
       <div style={{ height: 18 }} />
 
+      <div style={styles.settingsSectionLabel}>{t.settingsPayments}</div>
+      <div style={styles.settingsGroup}>
+        <SettingsRowGlass
+          icon={<IconCard />}
+          title={t.settingsPaymentMethods}
+          onClick={() => alert(tr("Скоро добавим способы оплаты", "Payment methods will be added later."))}
+        />
+        <SettingsRowGlass
+          icon={<IconHistory />}
+          title={t.settingsPaymentHistory}
+          onClick={() => alert(tr("Скоро добавим историю оплат", "Payment history will be added later."))}
+          isLast
+        />
+      </div>
+
+      <div style={{ height: 18 }} />
+
       <div style={styles.settingsSectionLabel}>{t.settingsUseful}</div>
       <div style={styles.settingsGroup}>
         <SettingsRowGlass
@@ -12707,6 +12730,26 @@ function IconCheck({ size = 18, strokeWidth = 2.2 }: IconProps) {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function IconCard({ size = 22, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M7.5 15h4" />
+    </SvgIcon>
+  );
+}
+
+function IconHistory({ size = 22, strokeWidth = 1.9 }: IconProps) {
+  return (
+    <SvgIcon size={size} strokeWidth={strokeWidth}>
+      <path d="M12 7v5l3 2" />
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.2-5.7" />
+      <path d="M3 5.5h4v4" />
+    </SvgIcon>
   );
 }
 
