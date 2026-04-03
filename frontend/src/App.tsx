@@ -325,11 +325,7 @@ export default function App() {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
-  const bottomNavStyle = {
-    ...styles.bottomNav,
-    transform: keyboardOpen ? `translateY(${keyboardInset}px)` : "translateY(0px)",
-    transition: "transform 160ms ease",
-  };
+  const isKeyboardVisible = keyboardInset > 0 || keyboardOpen;
 
   const scrollAreaStyle = {
     ...styles.scrollArea,
@@ -1564,7 +1560,7 @@ export default function App() {
               </div>
             )}
 
-            <div style={bottomNavStyle}>
+            <div style={{ ...styles.bottomNav, display: isKeyboardVisible ? "none" : "flex" }}>
               <button
                 onClick={() => setActiveTab("home")}
                 style={styles.navBtn}
@@ -1830,7 +1826,7 @@ export default function App() {
         <BottomNav
           active={clientTab}
           onChange={(t) => setClientTab(t as ClientTab)}
-          style={bottomNavStyle}
+          hidden={isKeyboardVisible}
           items={[
             { id: "home", label: t.navHome, icon: <IconHome /> },
             { id: "schedule", label: t.navSchedule, icon: <IconCalendar /> },
