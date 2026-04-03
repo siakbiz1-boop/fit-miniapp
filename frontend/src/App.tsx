@@ -5063,7 +5063,12 @@ function TrainerSchedule(props: {
     [clients]
   );
   const monthLabel = useMemo(() => {
-    const raw = formatMonthYear(monthAnchor);
+    if (language === "en") {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return months[monthAnchor.getMonth()];
+    }
+    const months = ["янв", "фев", "март", "апр", "май", "июнь", "июль", "авг", "сент", "окт", "ноя", "дек"];
+    const raw = months[monthAnchor.getMonth()];
     return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
   }, [monthAnchor, language]);
   const moveMonth = useCallback(
@@ -16466,31 +16471,31 @@ const styles: Record<string, any> = {
   scheduleMonthPill: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 12,
-    padding: "10px 14px",
+    gap: 8,
+    padding: "8px 12px",
     borderRadius: 999,
     border: "1px solid var(--schedule-month-pill-border)",
     background: "var(--schedule-month-pill-bg)",
     boxShadow: "var(--schedule-month-pill-shadow)",
   },
   scheduleMonthLabel: {
-    fontSize: 18,
-    fontWeight: 500,
+    fontSize: 16,
+    fontWeight: 600,
     color: "var(--schedule-month-text)",
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
   scheduleMonthNav: {
     display: "flex",
     gap: 6,
   },
   scheduleMonthBtn: {
-    width: 30,
-    height: 30,
+    width: 26,
+    height: 26,
     borderRadius: 999,
     border: "1px solid var(--schedule-month-btn-border)",
     background: "var(--schedule-month-btn-bg)",
     cursor: "pointer",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 700,
     color: "var(--schedule-month-text)",
     lineHeight: 1,
