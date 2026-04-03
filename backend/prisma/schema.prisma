@@ -206,3 +206,18 @@ model TrainingSlot {
   @@index([trainerTgUserId, dateKey])
   @@unique([trainerTgUserId, dateKey, start, end])
 }
+
+model PromoCode {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  planId         String
+  planName       String
+  months         Int
+  grantsFree     Boolean  @default(true)
+  usedByTgUserId BigInt?
+  usedAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([planId, months])
+  @@index([usedAt])
+}

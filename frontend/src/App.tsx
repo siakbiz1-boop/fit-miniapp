@@ -2017,6 +2017,7 @@ function TrainerHome({
   } | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoStatus, setPromoStatus] = useState<"idle" | "success" | "error">("idle");
+  const [promoAppliedTotal, setPromoAppliedTotal] = useState<number | null>(null);
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
@@ -2255,6 +2256,7 @@ function TrainerHome({
     });
     setPromoCode("");
     setPromoStatus("idle");
+    setPromoAppliedTotal(null);
     setPrepayOpen(true);
   };
 
@@ -3055,6 +3057,7 @@ function TrainerHome({
   }
 
   if (prepayOpen && prepayPlan) {
+    const prepayTotal = promoAppliedTotal ?? prepayPlan.total;
     return (
       <div style={{ ...styles.pageContainer, ...styles.prepayPage }}>
         <div style={styles.prepayTitle}>{tr("Оплата подписки", "Subscription payment")}</div>
@@ -3087,6 +3090,7 @@ function TrainerHome({
               onChange={(e) => {
                 setPromoCode(e.target.value);
                 setPromoStatus("idle");
+                setPromoAppliedTotal(null);
               }}
               placeholder={tr("Введите промокод", "Enter promo code")}
               style={styles.promoInput}
@@ -3094,13 +3098,41 @@ function TrainerHome({
             <button
               type="button"
               style={styles.promoApplyBtn}
-              onClick={() => {
+              onClick={async () => {
                 const code = promoCode.trim().toUpperCase();
-                if (!code) {
+                if (!code || !token) {
                   setPromoStatus("error");
+                  setPromoAppliedTotal(null);
                   return;
                 }
-                setPromoStatus(code === "FITMINI" ? "success" : "error");
+                try {
+                  const res = await fetch(`${apiBase}/promo/apply`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                      code,
+                      planId: prepayPlan.id,
+                      planName: prepayPlan.name,
+                      months: prepayPlan.months,
+                    }),
+                  });
+                  if (!res.ok) {
+                    setPromoStatus("error");
+                    setPromoAppliedTotal(null);
+                    return;
+                  }
+                  const data = (await res.json()) as { ok?: boolean; total?: number };
+                  if (data?.ok) {
+                    setPromoStatus("success");
+                    setPromoAppliedTotal(typeof data.total === "number" ? data.total : 0);
+                  } else {
+                    setPromoStatus("error");
+                    setPromoAppliedTotal(null);
+                  }
+                } catch {
+                  setPromoStatus("error");
+                  setPromoAppliedTotal(null);
+                }
               }}
             >
               {tr("Применить", "Apply")}
@@ -3113,7 +3145,7 @@ function TrainerHome({
           ) : null}
           <div style={styles.prepayRow}>
             <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
-            <div style={styles.prepayTotal}>{formatMoney(prepayPlan.total)}</div>
+            <div style={styles.prepayTotal}>{formatMoney(prepayTotal)}</div>
           </div>
         </div>
         <button type="button" style={styles.prepayPayBtn}>

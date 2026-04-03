@@ -160,6 +160,13 @@ function normalizeUsername(raw: string) {
   return cleaned.replace(/\s+/g, "");
 }
 
+function normalizePromoCode(raw: string) {
+  return String(raw || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
+}
+
 function generateInviteCode(len = 8) {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
@@ -1583,6 +1590,39 @@ app.get("/admin/stats", async (req, reply) => {
       localClientsTotal,
     },
   };
+});
+
+// Apply promo code (one-time, free plan)
+app.post("/promo/apply", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const code = normalizePromoCode(body?.code || "");
+  const planId = String(body?.planId || "").trim();
+  const planName = String(body?.planName || "").trim();
+  const months = Number(body?.months);
+
+  if (!code) return reply.code(400).send({ message: "code required" });
+  if (!planId || !planName || !Number.isFinite(months)) {
+    return reply.code(400).send({ message: "planId/planName/months required" });
+  }
+
+  const promo = await prismaAny.promoCode.findUnique({ where: { code } });
+  if (!promo) return reply.code(404).send({ message: "promo not found" });
+  if (promo.usedAt) return reply.code(409).send({ message: "promo already used" });
+  if (promo.planId !== planId || promo.planName !== planName || promo.months !== months) {
+    return reply.code(400).send({ message: "promo does not match plan" });
+  }
+
+  const now = new Date();
+  const result = await prismaAny.promoCode.updateMany({
+    where: { code, usedAt: null, planId, planName, months },
+    data: { usedAt: now, usedByTgUserId: dbUser.tgUserId },
+  });
+  if (!result.count) return reply.code(409).send({ message: "promo already used" });
+
+  return { ok: true, total: 0 };
 });
 
 app.post("/clients/activate", async (req, reply) => {
