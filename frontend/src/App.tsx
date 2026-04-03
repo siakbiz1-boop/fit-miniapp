@@ -1971,6 +1971,8 @@ function TrainerHome({
     months: number;
     periodLabel: string;
   } | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoStatus, setPromoStatus] = useState<"idle" | "success" | "error">("idle");
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
@@ -2207,6 +2209,8 @@ function TrainerHome({
       months: activeTariffPeriodMeta.months,
       periodLabel: activeTariffPeriodMeta.label,
     });
+    setPromoCode("");
+    setPromoStatus("idle");
     setPrepayOpen(true);
   };
 
@@ -3030,9 +3034,38 @@ function TrainerHome({
           </div>
         </div>
         <div style={styles.prepayRow}>
-          <div style={styles.prepayLabel}>{tr("Способы оплаты", "Payment methods")}</div>
-          <div style={styles.prepayValue}>{tr("СБП", "SBP")}</div>
+          <div style={styles.prepayLabel}>{tr("Промокод", "Promo code")}</div>
         </div>
+        <div style={styles.promoRow}>
+          <input
+            value={promoCode}
+            onChange={(e) => {
+              setPromoCode(e.target.value);
+              setPromoStatus("idle");
+            }}
+            placeholder={tr("Введите промокод", "Enter promo code")}
+            style={styles.promoInput}
+          />
+          <button
+            type="button"
+            style={styles.promoApplyBtn}
+            onClick={() => {
+              const code = promoCode.trim().toUpperCase();
+              if (!code) {
+                setPromoStatus("error");
+                return;
+              }
+              setPromoStatus(code === "FITMINI" ? "success" : "error");
+            }}
+          >
+            {tr("Применить", "Apply")}
+          </button>
+        </div>
+        {promoStatus === "error" ? (
+          <div style={styles.promoError}>{tr("Промокод не существует", "Promo code not found")}</div>
+        ) : promoStatus === "success" ? (
+          <div style={styles.promoSuccess}>{tr("Промокод успешно применён", "Promo code applied")}</div>
+        ) : null}
         <div style={styles.prepayDivider} />
         <div style={styles.prepayRow}>
           <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
@@ -15255,7 +15288,9 @@ const styles: Record<string, any> = {
   },
   prepayPage: {
     background: "#ffffff",
-    minHeight: "100vh",
+    minHeight: "100%",
+    height: "100%",
+    overflow: "hidden",
     paddingTop: 8,
   },
   prepayTitle: {
@@ -15312,6 +15347,39 @@ const styles: Record<string, any> = {
     fontSize: 11,
     color: "var(--muted)",
     lineHeight: 1.35,
+  },
+  promoRow: {
+    display: "flex",
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  promoInput: {
+    flex: 1,
+    borderRadius: 12,
+    border: "1px solid var(--border)",
+    padding: "10px 12px",
+    fontSize: 14,
+    outline: "none",
+  },
+  promoApplyBtn: {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "none",
+    background: "var(--accent)",
+    color: "#fff",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
+  promoError: {
+    color: "#DC2626",
+    fontSize: 12,
+    marginBottom: 6,
+  },
+  promoSuccess: {
+    color: "#16A34A",
+    fontSize: 12,
+    marginBottom: 6,
   },
   scheduleQuickLabel: {
     fontSize: 12,
