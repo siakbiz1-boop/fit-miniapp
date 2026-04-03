@@ -7983,30 +7983,8 @@ function TrainerClients(props: {
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
-      <div style={styles.topBarClients}>
-        <div style={styles.pageTitle}>{tr("Клиенты", "Clients")}</div>
-        {clientsTab === "pending" ? (
-          <button
-            onClick={() => {
-              if (limitReached) {
-                showLimitWarning();
-                return;
-              }
-              setScreen("add");
-            }}
-            style={styles.clientsAddBtn}
-            aria-label="add client"
-          >
-            <span style={styles.iconOnAccent}>
-              <IconPlus />
-            </span>
-          </button>
-        ) : (
-          <div style={{ width: 44, height: 44 }} />
-        )}
-      </div>
-
-      <div style={styles.clientsTabs}>
+      <div style={styles.clientsTabsRow}>
+        <div style={styles.clientsTabs}>
         <button
           type="button"
           onClick={() => setClientsTab("my")}
@@ -8037,6 +8015,24 @@ function TrainerClients(props: {
         >
           {tr("Архив клиентов", "Client archive")}
         </button>
+        </div>
+        {clientsTab === "pending" ? (
+          <button
+            onClick={() => {
+              if (limitReached) {
+                showLimitWarning();
+                return;
+              }
+              setScreen("add");
+            }}
+            style={styles.clientsAddBtn}
+            aria-label="add client"
+          >
+            <span style={styles.iconOnAccent}>
+              <IconPlus />
+            </span>
+          </button>
+        ) : null}
       </div>
 
       {(() => {
@@ -15950,11 +15946,17 @@ const styles: Record<string, any> = {
     background: "var(--schedule-switch-bg)",
     boxShadow: "var(--schedule-switch-shadow)",
   },
-  clientsTabs: {
-    marginTop: 16,
+  clientsTabsRow: {
+    marginTop: 4,
     display: "flex",
+    alignItems: "center",
     gap: 12,
     width: "100%",
+  },
+  clientsTabs: {
+    flex: 1,
+    display: "flex",
+    gap: 12,
   },
   clientsAddBtn: {
     width: 44,
