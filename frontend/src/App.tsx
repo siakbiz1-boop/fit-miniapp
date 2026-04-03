@@ -5062,15 +5062,19 @@ function TrainerSchedule(props: {
     () => clients.filter((c) => !c.archived && c.status === "active"),
     [clients]
   );
-  const monthLabel = useMemo(() => {
-    if (language === "en") {
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      return months[monthAnchor.getMonth()];
-    }
-    const months = ["янв", "фев", "март", "апр", "май", "июнь", "июль", "авг", "сент", "окт", "ноя", "дек"];
-    const raw = months[monthAnchor.getMonth()];
-    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
-  }, [monthAnchor, language]);
+  const formatMonthShort = useCallback(
+    (d: Date) => {
+      if (language === "en") {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return months[d.getMonth()];
+      }
+      const months = ["янв", "фев", "март", "апр", "май", "июнь", "июль", "авг", "сент", "окт", "ноя", "дек"];
+      const raw = months[d.getMonth()];
+      return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
+    },
+    [language]
+  );
+  const monthLabel = useMemo(() => formatMonthShort(monthAnchor), [formatMonthShort, monthAnchor]);
   const moveMonth = useCallback(
     (delta: number) => {
       const next = startOfMonth(addMonths(monthAnchor, delta));
@@ -6332,14 +6336,7 @@ function TrainerSchedule(props: {
         <div style={styles.scheduleTitleRow}>
           {scheduleView === "grid" ? (
             <div style={styles.scheduleMonthPill}>
-              <div style={styles.scheduleMonthLabel}>
-                {(() => {
-                  const raw = new Intl.DateTimeFormat(language === "en" ? "en-US" : "ru-RU", {
-                    month: "long",
-                  }).format(today);
-                  return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
-                })()}
-              </div>
+              <div style={styles.scheduleMonthLabel}>{formatMonthShort(weekAnchor)}</div>
               <div style={styles.scheduleMonthNav}>
                 <button
                   type="button"
