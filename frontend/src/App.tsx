@@ -4625,6 +4625,7 @@ function TrainerSchedule(props: {
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const [today, setToday] = useState<Date>(() => startOfDay(new Date()));
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
+  const [monthAnchor, setMonthAnchor] = useState<Date>(() => startOfMonth(new Date()));
   const [scheduleScreen, setScheduleScreen] = useState<"list" | "session" | "groupClient">("list");
   const [activeSession, setActiveSession] = useState<SessionItem | null>(null);
   const [sessionTab, setSessionTab] = useState<"info" | "weights" | "history">("info");
@@ -5018,13 +5019,34 @@ function TrainerSchedule(props: {
   }, []);
 
   useEffect(() => {
+    const next = startOfMonth(selected);
+    if (next.getTime() !== monthAnchor.getTime()) {
+      setMonthAnchor(next);
+    }
+  }, [selected, monthAnchor]);
+
+  useEffect(() => {
     const el = sessionCommentRef.current;
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }, [draftSessionComment, sessionTab, scheduleScreen]);
 
-  const days = useMemo(() => buildCalendarStrip(today, 30, 30), [today]);
+  const days = useMemo(() => {
+    const start = startOfMonth(monthAnchor);
+    const end = endOfMonthExclusive(start);
+    const out: { key: string; date: Date; dateText: string; weekdayText: string }[] = [];
+    for (let cursor = new Date(start); cursor < end; cursor = addDays(cursor, 1)) {
+      const date = new Date(cursor);
+      out.push({
+        key: formatDateKey(date),
+        date,
+        dateText: formatDateShort(date),
+        weekdayText: formatWeekdayShort(date, currentLanguage),
+      });
+    }
+    return out;
+  }, [monthAnchor, language]);
   const weekAnchor = useMemo(() => addDays(today, weekOffset * 7), [today, weekOffset]);
   const weekStart = useMemo(() => startOfWeekMonday(weekAnchor), [weekAnchor]);
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, idx) => addDays(weekStart, idx)), [weekStart]);
@@ -5039,6 +5061,20 @@ function TrainerSchedule(props: {
   const activeClients = useMemo(
     () => clients.filter((c) => !c.archived && c.status === "active"),
     [clients]
+  );
+  const monthLabel = useMemo(() => {
+    const raw = formatMonthYear(monthAnchor);
+    return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
+  }, [monthAnchor, language]);
+  const moveMonth = useCallback(
+    (delta: number) => {
+      const next = startOfMonth(addMonths(monthAnchor, delta));
+      const maxDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      const day = Math.min(selected.getDate(), maxDay);
+      setMonthAnchor(next);
+      setSelected(new Date(next.getFullYear(), next.getMonth(), day));
+    },
+    [monthAnchor, selected]
   );
   const [gridDrag, setGridDrag] = useState<{
     session: SessionItem;
@@ -6319,7 +6355,27 @@ function TrainerSchedule(props: {
               </div>
             </div>
           ) : (
-            <div style={styles.pageTitle}>{tr("Расписание", "Schedule")}</div>
+            <div style={styles.scheduleMonthPill}>
+              <div style={styles.scheduleMonthLabel}>{monthLabel}</div>
+              <div style={styles.scheduleMonthNav}>
+                <button
+                  type="button"
+                  style={styles.scheduleMonthBtn}
+                  onClick={() => moveMonth(-1)}
+                  aria-label={tr("Предыдущий месяц", "Previous month")}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  style={styles.scheduleMonthBtn}
+                  onClick={() => moveMonth(1)}
+                  aria-label={tr("Следующий месяц", "Next month")}
+                >
+                  ›
+                </button>
+              </div>
+            </div>
           )}
         </div>
         {section === "sessions" ? (
