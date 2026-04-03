@@ -2201,6 +2201,24 @@ function TrainerHome({
     setPrepayOpen(true);
   };
 
+  useEffect(() => {
+    if (!hasTgBack) return;
+    if (!prepayOpen) {
+      WebApp.BackButton.hide();
+      return;
+    }
+    const handler = () => setPrepayOpen(false);
+    WebApp.BackButton.show();
+    WebApp.BackButton.onClick(handler);
+    return () => {
+      try {
+        WebApp.BackButton.offClick(handler);
+      } catch {
+        // ignore
+      }
+    };
+  }, [hasTgBack, prepayOpen]);
+
   const todayStart = startOfDay(now);
   const statsAnchorStart = startOfDay(statsDate);
   const statsSelectedStart = startOfDay(statsSelectedDate);
@@ -2982,14 +3000,7 @@ function TrainerHome({
   if (prepayOpen && prepayPlan) {
     return (
       <div style={{ ...styles.pageContainer, ...styles.prepayPage }}>
-        <div style={styles.prepayTopBar}>
-          <button type="button" style={styles.prepayBackBtn} onClick={() => setPrepayOpen(false)}>
-            ←
-          </button>
-          <div style={styles.prepayTopSpacer} />
-          <div style={styles.prepayTopSpacer} />
-        </div>
-        <div style={styles.prepayTitle}>{tr("Продление подписки", "Subscription renewal")}</div>
+        <div style={styles.prepayTitle}>{tr("Оплата подписки", "Subscription payment")}</div>
         <div style={styles.prepayRow}>
           <div>
             <div style={styles.prepayLabel}>{tr("Стоимость подписки", "Subscription price")}</div>
@@ -15238,32 +15249,11 @@ const styles: Record<string, any> = {
     minHeight: "100vh",
     paddingTop: 8,
   },
-  prepayTopBar: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  prepayBackBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    border: "1px solid var(--border)",
-    background: "var(--surface)",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "var(--text)",
-  },
-  prepayTopSpacer: {
-    width: 36,
-    height: 36,
-  },
   prepayTitle: {
-    fontSize: 24,
-    fontWeight: 800,
+    fontSize: 20,
+    fontWeight: 700,
     color: "var(--text)",
+    marginBottom: 6,
   },
   prepayRow: {
     display: "flex",
@@ -15272,17 +15262,17 @@ const styles: Record<string, any> = {
     padding: "12px 0",
   },
   prepayLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 700,
     color: "var(--text)",
   },
   prepaySubLabel: {
     marginTop: 4,
-    fontSize: 14,
+    fontSize: 12,
     color: "var(--muted)",
   },
   prepayValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 700,
     color: "var(--text)",
   },
@@ -15292,7 +15282,7 @@ const styles: Record<string, any> = {
     margin: "6px 0",
   },
   prepayTotal: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 800,
     color: "var(--text)",
   },
@@ -15304,13 +15294,13 @@ const styles: Record<string, any> = {
     border: "none",
     background: "#1D9BF0",
     color: "#fff",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 700,
     cursor: "pointer",
   },
   prepayNote: {
     marginTop: 10,
-    fontSize: 12,
+    fontSize: 11,
     color: "var(--muted)",
     lineHeight: 1.35,
   },
