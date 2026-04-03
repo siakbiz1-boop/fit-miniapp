@@ -325,6 +325,11 @@ export default function App() {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
+  const bottomNavStyle = {
+    ...styles.bottomNav,
+    transform: keyboardOpen ? `translateY(${keyboardInset}px)` : "translateY(0px)",
+    transition: "transform 160ms ease",
+  };
 
   const scrollAreaStyle = {
     ...styles.scrollArea,
@@ -1559,7 +1564,7 @@ export default function App() {
               </div>
             )}
 
-            <div style={styles.bottomNav}>
+            <div style={bottomNavStyle}>
               <button
                 onClick={() => setActiveTab("home")}
                 style={styles.navBtn}
@@ -1825,6 +1830,7 @@ export default function App() {
         <BottomNav
           active={clientTab}
           onChange={(t) => setClientTab(t as ClientTab)}
+          style={bottomNavStyle}
           items={[
             { id: "home", label: t.navHome, icon: <IconHome /> },
             { id: "schedule", label: t.navSchedule, icon: <IconCalendar /> },
@@ -11540,11 +11546,12 @@ function BottomNav<T extends string>(props: {
   onChange: (t: T) => void;
   items: { id: T; label: string; icon: React.ReactNode }[];
   hidden?: boolean;
+  style?: React.CSSProperties;
 }) {
-  const { active, onChange, items, hidden } = props;
+  const { active, onChange, items, hidden, style } = props;
 
   return (
-    <div style={{ ...styles.bottomNav, display: hidden ? "none" : "flex" }}>
+    <div style={{ ...styles.bottomNav, ...(style || {}), display: hidden ? "none" : "flex" }}>
       {items.map((it) => {
         const isActive = it.id === active;
         const iconColor = isActive ? "var(--accent)" : "var(--muted)";
