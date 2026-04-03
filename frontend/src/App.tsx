@@ -2076,6 +2076,15 @@ function TrainerHome({
       }
     };
   }, [hasTgBack, notesOpen, notesActiveList]);
+  useEffect(() => {
+    if (!prepayOpen) return;
+    const scroller = document.querySelector("[data-scroll-area]") as HTMLElement | null;
+    if (scroller) {
+      scroller.scrollTo({ top: 0, behavior: "auto" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, [prepayOpen]);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const doneSessions = allSessions.filter((s) => sessionEndTime(s).getTime() <= now.getTime());
