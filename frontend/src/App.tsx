@@ -4320,9 +4320,8 @@ function ClientSchedule(props: {
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.schedulePage }}>
-      <div style={styles.scheduleHeaderRow}>
-        <div style={styles.pageTitle}>{t.scheduleTitle}</div>
-        {section === "book" ? (
+      {section === "book" ? (
+        <div style={styles.scheduleHeaderRow}>
           <div style={styles.trainerSelectWrap}>
             <div style={styles.trainerSelectLabel}>{tr("Тренер", "Coach")}</div>
             <select
@@ -4343,8 +4342,8 @@ function ClientSchedule(props: {
               )}
             </select>
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div ref={scrollerRef} style={styles.calendarStrip}>
         {days.map((d) => {
@@ -4373,7 +4372,7 @@ function ClientSchedule(props: {
         })}
       </div>
 
-      <div style={styles.scheduleTabs}>
+      <div style={{ ...styles.scheduleTabs, marginTop: 6 }}>
         <button
           type="button"
           onClick={() => setSection("today")}
@@ -4639,8 +4638,7 @@ function ClientBook(props: {
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
-      <div style={styles.pageTitle}>{t.myTrainerTitle}</div>
-      <div style={styles.scheduleTabs}>
+      <div style={{ ...styles.scheduleTabs, marginTop: 6 }}>
         <button
           type="button"
           onClick={() => {
