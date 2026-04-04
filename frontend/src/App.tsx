@@ -4775,6 +4775,7 @@ function ClientSettings(props: {
       personalShowClientBasics
       personalShowClientWeights
       showBookingRow={false}
+      showPaymentsSection={false}
       aboutCardText={tr(
         "Здесь находится информация о вас, которая будет видна вашим тренерам!",
         "This is your info that will be visible to your coaches."
@@ -10191,6 +10192,7 @@ function TrainerSettings(props: {
   personalShowClientBasics?: boolean;
   personalShowClientWeights?: boolean;
   showBookingRow?: boolean;
+  showPaymentsSection?: boolean;
   systemExtraRows?: React.ReactNode;
   aboutCardText?: string;
   subscriptionTabLabel?: string;
@@ -10226,6 +10228,7 @@ function TrainerSettings(props: {
     personalShowClientBasics = false,
     personalShowClientWeights = false,
     showBookingRow = true,
+    showPaymentsSection = true,
     systemExtraRows,
     subscriptionTabLabel,
     subscriptionItems,
@@ -10367,22 +10370,26 @@ function TrainerSettings(props: {
 
       <div style={{ height: 18 }} />
 
-      <div style={styles.settingsSectionLabel}>{t.settingsPayments}</div>
-      <div style={styles.settingsGroup}>
-        <SettingsRowGlass
-          icon={<IconCard />}
-          title={t.settingsPaymentMethods}
-          onClick={() => alert(tr("Скоро добавим способы оплаты", "Payment methods will be added later."))}
-        />
-        <SettingsRowGlass
-          icon={<IconHistory />}
-          title={t.settingsPaymentHistory}
-          onClick={() => alert(tr("Скоро добавим историю оплат", "Payment history will be added later."))}
-          isLast
-        />
-      </div>
+      {showPaymentsSection ? (
+        <>
+          <div style={styles.settingsSectionLabel}>{t.settingsPayments}</div>
+          <div style={styles.settingsGroup}>
+            <SettingsRowGlass
+              icon={<IconCard />}
+              title={t.settingsPaymentMethods}
+              onClick={() => alert(tr("Скоро добавим способы оплаты", "Payment methods will be added later."))}
+            />
+            <SettingsRowGlass
+              icon={<IconHistory />}
+              title={t.settingsPaymentHistory}
+              onClick={() => alert(tr("Скоро добавим историю оплат", "Payment history will be added later."))}
+              isLast
+            />
+          </div>
 
-      <div style={{ height: 18 }} />
+          <div style={{ height: 18 }} />
+        </>
+      ) : null}
 
       <div style={styles.settingsSectionLabel}>{t.settingsUseful}</div>
       <div style={styles.settingsGroup}>
