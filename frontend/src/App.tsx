@@ -13071,7 +13071,7 @@ const styles: Record<string, any> = {
   },
   rolePage: {
     minHeight: "100vh",
-    background: "linear-gradient(180deg, rgba(111, 131, 246, 0.18), rgba(124, 207, 230, 0.12) 45%, rgba(255, 255, 255, 0.92) 100%)",
+    background: "var(--accent-grad)",
   },
   roleInviteInput: {
     width: "100%",
@@ -13089,12 +13089,12 @@ const styles: Record<string, any> = {
     width: "100%",
     height: 52,
     borderRadius: 999,
-    borderColor: "rgba(255, 255, 255, 0.4)",
-    background: "rgba(255, 255, 255, 0.2)",
-    color: "#ffffff",
+    borderColor: "rgba(110, 135, 220, 0.5)",
+    background: "#ffffff",
+    color: "#2b3442",
     fontWeight: 800,
     fontSize: 16,
-    boxShadow: "0 16px 28px rgba(90, 140, 220, 0.35)",
+    boxShadow: "0 16px 28px rgba(90, 140, 220, 0.25)",
   },
   roleWrap: {
     minHeight: "70vh",
