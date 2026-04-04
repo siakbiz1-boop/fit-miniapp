@@ -1730,67 +1730,74 @@ export default function App() {
         <div style={styles.appShell}>
           <GlobalStyles />
           <div style={{ ...styles.pageContainer, ...styles.rolePage }}>
-            <div style={styles.roleInviteTitle}>{tr("Кабинет спортсмена", "Athlete workspace")}</div>
-            <div style={styles.roleInviteIntro}>
-              {tr(
-                "Введите инвайт-код, чтобы подключиться к тренеру.",
-                "Enter an invite code to connect to a coach."
-              )}
-            </div>
-            <div style={{ marginTop: 14 }}>
-              <input
-                value={clientInviteCode}
-                onChange={(e) => {
-                  setClientInviteCode(e.target.value);
-                  if (clientInviteMessage) setClientInviteMessage("");
-                }}
-                placeholder={tr("Инвайт-код", "Invite code")}
-                style={styles.roleInviteInput}
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const code = (clientInviteCode || "").trim();
-                  if (!code) {
-                    setClientInviteMessage(tr("Введите инвайт-код.", "Enter an invite code."));
-                    return;
-                  }
-                  (async () => {
-                    try {
-                      const res = await fetch(`${apiBase}/clients/activate`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                        body: JSON.stringify({ code }),
-                      });
-                      if (!res.ok) {
-                        setClientInviteMessage(
-                          tr("Код не найден. Проверь правильность.", "Code not found. Check it and try again.")
-                        );
+            <div style={styles.roleWrap}>
+              <div style={styles.roleCard}>
+                <div style={styles.roleInviteTitle}>{tr("Кабинет спортсмена", "Athlete workspace")}</div>
+                <div style={styles.roleInviteIntro}>
+                  {tr(
+                    "Введите инвайт-код, чтобы подключиться к тренеру.",
+                    "Enter an invite code to connect to a coach."
+                  )}
+                </div>
+                <div style={{ marginTop: 14 }}>
+                  <input
+                    className="role-invite-input"
+                    value={clientInviteCode}
+                    onChange={(e) => {
+                      setClientInviteCode(e.target.value);
+                      if (clientInviteMessage) setClientInviteMessage("");
+                    }}
+                    placeholder={tr("Инвайт-код", "Invite code")}
+                    style={styles.roleInviteInput}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = (clientInviteCode || "").trim();
+                      if (!code) {
+                        setClientInviteMessage(tr("Введите инвайт-код.", "Enter an invite code."));
                         return;
                       }
-                      setClientInviteMessage("");
-                      setClientInviteCode("");
-                      setClientConnected(true);
-                      setClientTab("home");
-                      fetchClientTrainers();
-                      fetchClientSessions();
-                      try {
-                        localStorage.setItem("clientConnected", "true");
-                      } catch {
-                        // ignore
-                      }
-                    } catch {
-                      setClientInviteMessage(tr("Не удалось подключиться.", "Failed to connect."));
-                    }
-                  })();
-                }}
-                style={{ ...styles.primaryBtn, ...styles.roleInviteBtn }}
-              >
-                {tr("Подключиться", "Connect")}
-              </button>
-              {clientInviteMessage ? (
-                <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>{clientInviteMessage}</div>
-              ) : null}
+                      (async () => {
+                        try {
+                          const res = await fetch(`${apiBase}/clients/activate`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                            body: JSON.stringify({ code }),
+                          });
+                          if (!res.ok) {
+                            setClientInviteMessage(
+                              tr("Код не найден. Проверь правильность.", "Code not found. Check it and try again.")
+                            );
+                            return;
+                          }
+                          setClientInviteMessage("");
+                          setClientInviteCode("");
+                          setClientConnected(true);
+                          setClientTab("home");
+                          fetchClientTrainers();
+                          fetchClientSessions();
+                          try {
+                            localStorage.setItem("clientConnected", "true");
+                          } catch {
+                            // ignore
+                          }
+                        } catch {
+                          setClientInviteMessage(tr("Не удалось подключиться.", "Failed to connect."));
+                        }
+                      })();
+                    }}
+                    style={{ ...styles.primaryBtn, ...styles.roleInviteBtn }}
+                  >
+                    {tr("Подключиться", "Connect")}
+                  </button>
+                  {clientInviteMessage ? (
+                    <div style={{ marginTop: 8, fontSize: 13, opacity: 0.8 }}>
+                      {clientInviteMessage}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -12545,6 +12552,7 @@ function GlobalStyles() {
       body { position: fixed; width: 100vw; height: var(--tg-viewport-stable-height, 100%); overscroll-behavior: none; }
       body.keyboard-open { position: fixed; width: 100vw; height: 100%; overflow: hidden; }
       [data-scroll-area] { scrollbar-gutter: stable; }
+      .role-invite-input::placeholder { color: rgba(255, 255, 255, 0.85); }
       * { scrollbar-width: none; -ms-overflow-style: none; }
       *::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
       button { -webkit-tap-highlight-color: transparent; }
