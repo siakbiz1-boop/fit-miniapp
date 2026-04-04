@@ -1730,8 +1730,8 @@ export default function App() {
         <div style={styles.appShell}>
           <GlobalStyles />
           <div style={{ ...styles.pageContainer, ...styles.rolePage }}>
-            <div style={styles.pageTitle}>{tr("Кабинет спортсмена", "Athlete workspace")}</div>
-            <div style={{ opacity: 0.72, fontSize: 14, marginTop: 10 }}>
+            <div style={styles.roleInviteTitle}>{tr("Кабинет спортсмена", "Athlete workspace")}</div>
+            <div style={styles.roleInviteIntro}>
               {tr(
                 "Введите инвайт-код, чтобы подключиться к тренеру.",
                 "Enter an invite code to connect to a coach."
@@ -13077,24 +13077,38 @@ const styles: Record<string, any> = {
     width: "100%",
     boxSizing: "border-box",
     borderRadius: 999,
-    border: "1px solid rgba(110, 135, 220, 0.35)",
-    background: "rgba(255, 255, 255, 0.85)",
+    border: "1px solid rgba(255, 255, 255, 0.65)",
+    background: "rgba(255, 255, 255, 0.2)",
     padding: "12px 16px",
     fontSize: 16,
     outline: "none",
-    boxShadow: "0 12px 22px rgba(120, 150, 190, 0.18)",
+    color: "#ffffff",
+    boxShadow: "0 12px 22px rgba(30, 60, 140, 0.18)",
   },
   roleInviteBtn: {
     marginTop: 10,
     width: "100%",
     height: 52,
     borderRadius: 999,
-    borderColor: "rgba(110, 135, 220, 0.5)",
-    background: "#ffffff",
-    color: "#2b3442",
+    borderColor: "rgba(255, 255, 255, 0.6)",
+    background: "rgba(255, 255, 255, 0.3)",
+    color: "#ffffff",
     fontWeight: 800,
     fontSize: 16,
-    boxShadow: "0 16px 28px rgba(90, 140, 220, 0.25)",
+    boxShadow: "0 16px 28px rgba(30, 60, 140, 0.25)",
+  },
+  roleInviteTitle: {
+    fontSize: 22,
+    fontWeight: "var(--font-strong)",
+    color: "#ffffff",
+    marginBottom: 10,
+    letterSpacing: -0.2,
+  },
+  roleInviteIntro: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.88)",
+    marginTop: 0,
+    lineHeight: 1.4,
   },
   roleWrap: {
     minHeight: "70vh",
