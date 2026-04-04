@@ -595,8 +595,8 @@ export default function App() {
       login: language === "en" ? "Login" : "Войти",
       loginHint: status,
       chooseRoleTitle: language === "en" ? "Choose your role" : "Выбери роль",
-      roleTrainer: language === "en" ? "I'm a trainer" : "Я тренер",
-      roleClient: language === "en" ? "I'm a client" : "Я клиент",
+      roleTrainer: language === "en" ? "Trainer" : "Тренер",
+      roleClient: language === "en" ? "Athlete" : "Спортсмен",
       roleContinue: language === "en" ? "Choose a role to continue." : "Выбери роль, чтобы продолжить работу в приложении.",
       roleChangeLater:
         language === "en" ? "You can change the role later in settings." : "Роль можно изменить позже в настройках профиля.",
@@ -1427,7 +1427,7 @@ export default function App() {
       <LanguageContext.Provider value={language}>
         <div style={styles.appShell}>
           <GlobalStyles />
-          <div style={styles.pageContainer}>
+          <div style={{ ...styles.pageContainer, ...styles.rolePage }}>
             <div style={styles.roleWrap}>
               <div style={styles.roleCard}>
                 <div style={styles.roleHeaderRow}>
@@ -1729,8 +1729,8 @@ export default function App() {
       <LanguageContext.Provider value={language}>
         <div style={styles.appShell}>
           <GlobalStyles />
-          <div style={styles.pageContainer}>
-            <div style={styles.pageTitle}>{tr("Кабинет клиента", "Client workspace")}</div>
+          <div style={{ ...styles.pageContainer, ...styles.rolePage }}>
+            <div style={styles.pageTitle}>{tr("Кабинет спортсмена", "Athlete workspace")}</div>
             <div style={{ opacity: 0.72, fontSize: 14, marginTop: 10 }}>
               {tr(
                 "Введите инвайт-код, чтобы подключиться к тренеру.",
@@ -1745,7 +1745,7 @@ export default function App() {
                   if (clientInviteMessage) setClientInviteMessage("");
                 }}
                 placeholder={tr("Инвайт-код", "Invite code")}
-                style={styles.input}
+                style={styles.roleInviteInput}
               />
               <button
                 type="button"
@@ -1784,7 +1784,7 @@ export default function App() {
                     }
                   })();
                 }}
-                style={{ ...styles.primaryBtn, marginTop: 10 }}
+                style={{ ...styles.primaryBtn, ...styles.roleInviteBtn }}
               >
                 {tr("Подключиться", "Connect")}
               </button>
@@ -13068,6 +13068,33 @@ const styles: Record<string, any> = {
     background: "var(--accent-grad)",
     boxShadow: "var(--accent-shadow)",
     color: "#fff",
+  },
+  rolePage: {
+    minHeight: "100vh",
+    background: "linear-gradient(180deg, rgba(111, 131, 246, 0.18), rgba(124, 207, 230, 0.12) 45%, rgba(255, 255, 255, 0.92) 100%)",
+  },
+  roleInviteInput: {
+    width: "100%",
+    boxSizing: "border-box",
+    borderRadius: 999,
+    border: "1px solid rgba(110, 135, 220, 0.35)",
+    background: "rgba(255, 255, 255, 0.85)",
+    padding: "12px 16px",
+    fontSize: 16,
+    outline: "none",
+    boxShadow: "0 12px 22px rgba(120, 150, 190, 0.18)",
+  },
+  roleInviteBtn: {
+    marginTop: 10,
+    width: "100%",
+    height: 52,
+    borderRadius: 999,
+    borderColor: "rgba(255, 255, 255, 0.4)",
+    background: "rgba(255, 255, 255, 0.2)",
+    color: "#ffffff",
+    fontWeight: 800,
+    fontSize: 16,
+    boxShadow: "0 16px 28px rgba(90, 140, 220, 0.35)",
   },
   roleWrap: {
     minHeight: "70vh",
