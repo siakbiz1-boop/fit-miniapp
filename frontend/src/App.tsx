@@ -4692,7 +4692,7 @@ function ClientBook(props: {
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.clientsPage }}>
-      <div style={{ ...styles.scheduleTabs, marginTop: 6 }}>
+      <div style={styles.trainerSelectTabs}>
         <button
           type="button"
           onClick={() => {
@@ -4700,8 +4700,8 @@ function ClientBook(props: {
             setView("tabs");
           }}
           style={{
-            ...styles.scheduleTab,
-            ...(section === "list" ? styles.scheduleTabActive : null),
+            ...styles.trainerSelectTab,
+            ...(section === "list" ? styles.trainerSelectTabActive : null),
           }}
         >
           {t.myTrainersTab}
@@ -4713,8 +4713,8 @@ function ClientBook(props: {
             setView("tabs");
           }}
           style={{
-            ...styles.scheduleTab,
-            ...(section === "add" ? styles.scheduleTabActive : null),
+            ...styles.trainerSelectTab,
+            ...(section === "add" ? styles.trainerSelectTabActive : null),
           }}
         >
           {t.addTrainerTab}
@@ -12551,6 +12551,13 @@ function GlobalStyles() {
         --client-detail-copy-bg: linear-gradient(135deg, rgba(230, 242, 255, 0.9), rgba(240, 247, 255, 0.95));
         --client-detail-copy-border: rgba(180, 210, 235, 0.7);
         --client-detail-copy-shadow: 0 10px 20px rgba(120, 150, 190, 0.18);
+        --clients-card-bg: linear-gradient(135deg, rgba(214, 232, 248, 0.6), rgba(242, 248, 255, 0.9));
+        --clients-card-border: rgba(170, 205, 235, 0.6);
+        --clients-card-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
+        --clients-tab-bg: linear-gradient(180deg, rgba(240, 245, 250, 0.9), rgba(233, 240, 247, 0.95));
+        --clients-tab-border: rgba(170, 190, 210, 0.5);
+        --clients-tab-shadow: 0 10px 18px rgba(120, 150, 190, 0.14);
+        --clients-tab-active-shadow: 0 14px 24px rgba(79, 124, 230, 0.3);
         --bottom-nav-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 244, 246, 0.98));
         --bottom-nav-border: rgba(200, 210, 220, 0.6);
         --bottom-nav-shadow: 0 -18px 36px rgba(15, 23, 42, 0.12);
@@ -12730,6 +12737,13 @@ function GlobalStyles() {
         --client-detail-copy-bg: linear-gradient(135deg, rgba(36, 48, 70, 0.9), rgba(28, 38, 56, 0.9));
         --client-detail-copy-border: rgba(120, 150, 200, 0.35);
         --client-detail-copy-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        --clients-card-bg: linear-gradient(135deg, rgba(56, 72, 98, 0.9), rgba(42, 56, 78, 0.94));
+        --clients-card-border: rgba(152, 186, 225, 0.45);
+        --clients-card-shadow: 0 16px 28px rgba(0, 0, 0, 0.42);
+        --clients-tab-bg: linear-gradient(180deg, rgba(28, 38, 54, 0.96), rgba(24, 32, 46, 0.96));
+        --clients-tab-border: rgba(92, 116, 150, 0.55);
+        --clients-tab-shadow: 0 10px 18px rgba(0, 0, 0, 0.3);
+        --clients-tab-active-shadow: 0 14px 24px rgba(22, 52, 104, 0.4);
         --bottom-nav-bg: linear-gradient(180deg, rgba(28, 34, 44, 0.98), rgba(18, 22, 30, 0.98));
         --bottom-nav-border: rgba(70, 85, 110, 0.6);
         --bottom-nav-shadow: 0 -18px 36px rgba(0, 0, 0, 0.45);
@@ -13491,9 +13505,9 @@ const styles: Record<string, any> = {
   },
   clientsCard: {
     borderRadius: 24,
-    border: "1px solid rgba(170, 205, 235, 0.6)",
-    background: "linear-gradient(135deg, rgba(214, 232, 248, 0.6), rgba(242, 248, 255, 0.9))",
-    boxShadow: "var(--glass-card-shadow)",
+    border: "1px solid var(--clients-card-border)",
+    background: "var(--clients-card-bg)",
+    boxShadow: "var(--clients-card-shadow)",
     padding: "8px 10px",
     display: "flex",
     alignItems: "center",
@@ -16891,9 +16905,9 @@ const styles: Record<string, any> = {
     flex: 1,
     minHeight: 52,
     borderRadius: 22,
-    border: "1px solid var(--glass-card-border)",
-    background: "var(--glass-card-bg)",
-    boxShadow: "var(--glass-card-shadow)",
+    border: "1px solid var(--clients-tab-border)",
+    background: "var(--clients-tab-bg)",
+    boxShadow: "var(--clients-tab-shadow)",
     cursor: "pointer",
     fontWeight: 700,
     fontSize: 13,
@@ -16909,7 +16923,38 @@ const styles: Record<string, any> = {
     background: "var(--accent-grad)",
     color: "#ffffff",
     borderColor: "rgba(111, 131, 246, 0.7)",
-    boxShadow: "var(--accent-shadow)",
+    boxShadow: "var(--clients-tab-active-shadow)",
+  },
+  trainerSelectTabs: {
+    marginTop: 6,
+    display: "flex",
+    gap: 6,
+    width: "100%",
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid var(--clients-tab-border)",
+    background: "var(--clients-tab-bg)",
+    boxShadow: "var(--clients-tab-shadow)",
+  },
+  trainerSelectTab: {
+    flex: 1,
+    height: 40,
+    borderRadius: 999,
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    fontWeight: "var(--font-medium)",
+    fontSize: 13,
+    color: "var(--text-secondary)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 0,
+  },
+  trainerSelectTabActive: {
+    background: "var(--accent-grad)",
+    color: "#ffffff",
+    boxShadow: "var(--clients-tab-active-shadow)",
   },
   addClientTabs: {
     marginTop: 16,
