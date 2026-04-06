@@ -2397,6 +2397,10 @@ app.post("/sessions", async (req, reply) => {
     if (groupClients.length !== groupClientIds.length) {
       return reply.code(404).send({ message: "client not found" });
     }
+    const unavailableClient = groupClients.find((client: any) => !isSubscriptionAvailable(client));
+    if (unavailableClient) {
+      return reply.code(403).send({ message: "subscription limit reached" });
+    }
   } else if (!oneTime) {
     if (clientId) {
       relation = await prismaAny.trainerClient.findUnique({ where: { id: clientId } });
@@ -2411,6 +2415,9 @@ app.post("/sessions", async (req, reply) => {
     if (!relation) return reply.code(404).send({ message: "client not found" });
     if (relation.status !== "active" || relation.archived) {
       return reply.code(403).send({ message: "client inactive" });
+    }
+    if (!isSubscriptionAvailable(relation)) {
+      return reply.code(403).send({ message: "subscription limit reached" });
     }
   }
 

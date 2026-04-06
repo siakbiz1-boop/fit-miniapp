@@ -9938,6 +9938,15 @@ function ClientDetailScreen(props: {
                 onClick={async () => {
                   if (scheduleSaving) return;
                   if (!client) return;
+                  if (!canScheduleClientOnDate([client], client.username)) {
+                    setScheduleError(
+                      tr(
+                        "Нельзя создать тренировку: необходимо обновить данные абонемента.",
+                        "Can't schedule session: subscription data must be renewed."
+                      )
+                    );
+                    return;
+                  }
                   setScheduleSaving(true);
                   const dateKey = formatDateKey(scheduleSelected);
                   const start = normalizeTimeInput(scheduleStart);
