@@ -23,6 +23,18 @@ function formatReminderLabel(hours: number, language: "ru" | "en", t: UiText) {
   return `За ${hours} ${suffix}`;
 }
 
+function formatCancellationLabel(hours: number, language: "ru" | "en", t: UiText) {
+  if (!hours || hours <= 0) return t.remindersOff;
+  if (language === "en") {
+    if (hours === 24) return "1 day";
+    if (hours < 1) return `${Math.round(hours * 60)} min`;
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  if (hours === 24) return "1 день";
+  if (hours < 1) return `За ${Math.round(hours * 60)} минут`;
+  return formatReminderLabel(hours, language, t);
+}
+
 type ProfileResponse = {
   ok: true;
   user: {
@@ -39,7 +51,7 @@ type ProfileResponse = {
 
 type Tab = "home" | "schedule" | "clients" | "settings";
 type ClientTab = "home" | "schedule" | "book" | "settings";
-type SettingsScreen = "main" | "personal" | "theme" | "booking" | "reminders" | "language";
+type SettingsScreen = "main" | "personal" | "theme" | "booking" | "cancellation" | "reminders" | "language";
 type ClientsScreen = "list" | "add" | "detail";
 type TariffPeriod = "month" | "quarter" | "year";
 type UiText = {
@@ -67,6 +79,7 @@ type UiText = {
   settingsPayments: string;
   settingsUseful: string;
   settingsBooking: string;
+  settingsCancellationPolicy: string;
   settingsReminders: string;
   settingsLanguage: string;
   settingsTheme: string;
@@ -165,6 +178,7 @@ type TrainerProfile = {
   instagram?: string;
   otherSocial?: string;
   bookingMode?: "trainer" | "both";
+  cancelWindowHours?: number;
 };
 
 type ClientProfile = {
@@ -300,6 +314,16 @@ export default function App() {
       return 1;
     }
   });
+  const [cancelWindowHours, setCancelWindowHours] = useState<number>(() => {
+    try {
+      const storedRole = localStorage.getItem("role");
+      const raw = localStorage.getItem(getRoleStorageKey("cancelWindowHours", storedRole as Role | null));
+      const parsed = raw ? Number(raw) : NaN;
+      return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   const [name, setName] = useState<string>(() => {
     try {
@@ -323,6 +347,11 @@ export default function App() {
     }
   });
   const [trainerProfile, setTrainerProfile] = useState<TrainerProfile | null>(null);
+  useEffect(() => {
+    if (typeof trainerProfile?.cancelWindowHours === "number" && Number.isFinite(trainerProfile.cancelWindowHours)) {
+      setCancelWindowHours(trainerProfile.cancelWindowHours);
+    }
+  }, [trainerProfile?.cancelWindowHours]);
   const prefsSyncRef = useRef<number | null>(null);
 
   const [activeTab, setActiveTab] = useState<Tab>("home");
@@ -632,6 +661,7 @@ export default function App() {
       settingsPayments: language === "en" ? "Payment info" : "Платежная информация",
       settingsUseful: language === "en" ? "Useful" : "Полезное",
       settingsBooking: language === "en" ? "Booking" : "Запись на тренировки",
+      settingsCancellationPolicy: language === "en" ? "Cancellation rule" : "Условие отмены тренировок",
       settingsReminders: language === "en" ? "Session reminders" : "Напоминание о занятиях",
       settingsLanguage: language === "en" ? "Language" : "Язык интерфейса",
       settingsTheme: language === "en" ? "Color scheme" : "Цветовая схема",
@@ -1301,6 +1331,15 @@ export default function App() {
   useEffect(() => {
     if (!role) return;
     try {
+      localStorage.setItem(getRoleStorageKey("cancelWindowHours", role), String(cancelWindowHours));
+    } catch {
+      // ignore
+    }
+  }, [cancelWindowHours, role]);
+
+  useEffect(() => {
+    if (!role) return;
+    try {
       const storedLang = localStorage.getItem(getRoleStorageKey("appLanguage", role));
       if (storedLang === "en" || storedLang === "ru") {
         setLanguage(storedLang);
@@ -1312,6 +1351,9 @@ export default function App() {
       const storedReminders = localStorage.getItem(getRoleStorageKey("reminderHours", role));
       const parsed = storedReminders ? Number(storedReminders) : NaN;
       if (Number.isFinite(parsed)) setReminderHours(parsed);
+      const storedCancelWindow = localStorage.getItem(getRoleStorageKey("cancelWindowHours", role));
+      const parsedCancelWindow = storedCancelWindow ? Number(storedCancelWindow) : NaN;
+      if (Number.isFinite(parsedCancelWindow)) setCancelWindowHours(parsedCancelWindow);
     } catch {
       // ignore
     }
@@ -1568,6 +1610,8 @@ export default function App() {
                 setLanguage={setLanguage}
                 reminderHours={reminderHours}
                 setReminderHours={setReminderHours}
+                cancelWindowHours={cancelWindowHours}
+                setCancelWindowHours={setCancelWindowHours}
                 t={t}
                 trainerProfile={trainerProfile}
                 onSaveTrainerProfile={saveTrainerProfile}
@@ -1880,6 +1924,8 @@ export default function App() {
               setLanguage={setLanguage}
               reminderHours={reminderHours}
               setReminderHours={setReminderHours}
+              cancelWindowHours={cancelWindowHours}
+              setCancelWindowHours={setCancelWindowHours}
               t={t}
               trainerProfile={trainerProfile}
               onSaveTrainerProfile={saveTrainerProfile}
@@ -4781,6 +4827,8 @@ function ClientSettings(props: {
   setLanguage: (v: "ru" | "en") => void;
   reminderHours: number;
   setReminderHours: (v: number) => void;
+  cancelWindowHours: number;
+  setCancelWindowHours: (v: number) => void;
   t: UiText;
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
@@ -4835,6 +4883,7 @@ function ClientSettings(props: {
       personalShowClientBasics
       personalShowClientWeights
       showBookingRow={false}
+      showCancellationRow={false}
       showPaymentsSection={false}
       aboutCardText={tr(
         "Здесь находится информация о вас, которая будет видна вашим тренерам!",
@@ -8591,7 +8640,8 @@ function TrainerClients(props: {
                       ? tr("Клиент", "Client")
                       : `@${inv.username}`;
                 const hasSubData = Boolean(
-                  (inv.subscriptionStart && inv.subscriptionStart.trim()) ||
+                  inv.subscriptionEnabled ||
+                    (inv.subscriptionStart && inv.subscriptionStart.trim()) ||
                     (inv.subscriptionEnd && inv.subscriptionEnd.trim()) ||
                     (inv.subscriptionPrice && inv.subscriptionPrice.trim()) ||
                     (inv.subscriptionTotal && inv.subscriptionTotal.trim()) ||
@@ -8600,7 +8650,16 @@ function TrainerClients(props: {
                 const left = parseInt(inv.subscriptionLeft || "", 10);
                 const endDate = inv.subscriptionEnd ? parseDateDMY(inv.subscriptionEnd) : null;
                 const isExpiredByDate = endDate ? endDateEnd(endDate).getTime() <= Date.now() : false;
-                const shouldWarn = hasSubData && ((Number.isNaN(left) ? false : left <= 0) || isExpiredByDate);
+                const missingSubscriptionData =
+                  Boolean(inv.subscriptionEnabled) &&
+                  (!inv.subscriptionStart?.trim() ||
+                    !inv.subscriptionEnd?.trim() ||
+                    !inv.subscriptionPrice?.trim() ||
+                    !inv.subscriptionTotal?.trim() ||
+                    Number.isNaN(left));
+                const shouldWarn =
+                  hasSubData &&
+                  (missingSubscriptionData || (Number.isNaN(left) ? false : left <= 0) || isExpiredByDate);
                 return (
                   <div
                     key={inv.id}
@@ -10374,7 +10433,7 @@ function ClientDetailScreen(props: {
               </div>
 
               <div style={{ ...styles.metricsRow, marginTop: 16 }}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.clientDetailFieldLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
                   <input
                     inputMode="numeric"
@@ -10388,14 +10447,16 @@ function ClientDetailScreen(props: {
                     style={styles.clientDetailInput}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.clientDetailFieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
                   <div style={styles.clientDetailValueBox}>{draftSubLeft || client?.subscriptionLeft || "—"}</div>
                 </div>
               </div>
-              <button type="button" style={styles.clientDetailActionBtn} onClick={handleCreateSubscription}>
-                {tr("Создать абонемент", "Create subscription")}
-              </button>
+              <div style={styles.subscriptionCreateActionRow}>
+                <button type="button" style={styles.subscriptionCreateBtn} onClick={handleCreateSubscription}>
+                  {tr("Создать абонемент", "Create subscription")}
+                </button>
+              </div>
               {subscriptionCreateError ? <div style={styles.errorText}>{subscriptionCreateError}</div> : null}
             </>
           ) : null}
@@ -10488,6 +10549,8 @@ function TrainerSettings(props: {
   setLanguage: (v: "ru" | "en") => void;
   reminderHours: number;
   setReminderHours: (v: number) => void;
+  cancelWindowHours: number;
+  setCancelWindowHours: (v: number) => void;
   t: UiText;
   trainerProfile?: TrainerProfile | null;
   onSaveTrainerProfile?: (patch: Partial<TrainerProfile>) => void;
@@ -10505,6 +10568,7 @@ function TrainerSettings(props: {
   personalShowClientBasics?: boolean;
   personalShowClientWeights?: boolean;
   showBookingRow?: boolean;
+  showCancellationRow?: boolean;
   showPaymentsSection?: boolean;
   systemExtraRows?: React.ReactNode;
   aboutCardText?: string;
@@ -10528,6 +10592,8 @@ function TrainerSettings(props: {
     t,
     reminderHours,
     setReminderHours,
+    cancelWindowHours,
+    setCancelWindowHours,
     trainerProfile,
     onSaveTrainerProfile,
     clientProfile,
@@ -10541,6 +10607,7 @@ function TrainerSettings(props: {
     personalShowClientBasics = false,
     personalShowClientWeights = false,
     showBookingRow = true,
+    showCancellationRow = true,
     showPaymentsSection = true,
     systemExtraRows,
     subscriptionTabLabel,
@@ -10562,12 +10629,22 @@ function TrainerSettings(props: {
     setBookingMode(mode);
     onSaveTrainerProfile?.({ bookingMode: mode });
   };
+  const handleCancelWindowChange = (hours: number) => {
+    setCancelWindowHours(hours);
+    onSaveTrainerProfile?.({ cancelWindowHours: hours });
+  };
 
   useEffect(() => {
     if (!showBookingRow && screen === "booking") {
       setScreen("main");
     }
   }, [showBookingRow, screen, setScreen]);
+
+  useEffect(() => {
+    if (!showCancellationRow && screen === "cancellation") {
+      setScreen("main");
+    }
+  }, [showCancellationRow, screen, setScreen]);
 
   if (screen === "personal") {
     return (
@@ -10605,6 +10682,17 @@ function TrainerSettings(props: {
         onBack={() => setScreen("main")}
         bookingMode={bookingMode}
         setBookingMode={handleBookingModeChange}
+        t={t}
+      />
+    );
+  }
+  if (screen === "cancellation") {
+    return (
+      <CancellationWindowScreen
+        onBack={() => setScreen("main")}
+        value={cancelWindowHours}
+        onChange={handleCancelWindowChange}
+        language={language}
         t={t}
       />
     );
@@ -10657,6 +10745,14 @@ function TrainerSettings(props: {
             title={t.settingsBooking}
             right={bookingMode === "both" ? t.bookingBoth : t.bookingTrainerOnly}
             onClick={() => setScreen("booking")}
+          />
+        ) : null}
+        {showCancellationRow ? (
+          <SettingsRowGlass
+            icon={<IconClock />}
+            title={t.settingsCancellationPolicy}
+            right={formatCancellationLabel(cancelWindowHours, language, t)}
+            onClick={() => setScreen("cancellation")}
           />
         ) : null}
         <SettingsRowGlass
@@ -10895,6 +10991,56 @@ function RemindersScreen(props: {
                 }}
               >
                 {formatReminderLabel(hours, language, t)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CancellationWindowScreen(props: {
+  onBack: () => void;
+  value: number;
+  onChange: (v: number) => void;
+  language: "ru" | "en";
+  t: UiText;
+}) {
+  const { onBack, value, onChange, language, t } = props;
+  const options = [0, 0.5, 1, 2, 3, 4, 5, 6, 12, 24];
+  return (
+    <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
+      <div style={styles.bookingHeader}>
+        {typeof WebApp?.BackButton?.show === "function" ? null : (
+          <button onClick={onBack} style={styles.backBtnInline} aria-label="back">
+            <IconArrowLeft />
+          </button>
+        )}
+        <div style={styles.bookingTitle}>{t.settingsCancellationPolicy}</div>
+      </div>
+
+      <div style={styles.remindersList}>
+        {options.map((hours) => {
+          const isActive = value === hours;
+          return (
+            <button
+              key={hours}
+              type="button"
+              onClick={() => onChange(hours)}
+              style={{
+                ...styles.remindersPill,
+                ...(isActive ? styles.remindersPillActive : null),
+              }}
+            >
+              {isActive ? <span style={styles.remindersCheck}>✓</span> : null}
+              <span
+                style={{
+                  ...styles.remindersLabel,
+                  ...(isActive ? styles.remindersLabelActive : null),
+                }}
+              >
+                {formatCancellationLabel(hours, language, t)}
               </span>
             </button>
           );
@@ -12403,6 +12549,17 @@ function canScheduleClientOnDate(
   const c = clients.find((x) => x.username === username);
   if (!c || c.archived) return false;
   if (c.status !== "active") return false;
+  if (c.subscriptionEnabled) {
+    const start = (c.subscriptionStart || "").trim();
+    const end = (c.subscriptionEnd || "").trim();
+    const price = (c.subscriptionPrice || "").trim();
+    const total = (c.subscriptionTotal || "").trim();
+    const left = parseInt(c.subscriptionLeft || "", 10);
+    if (!start || !end || !price || !total || Number.isNaN(left) || left <= 0) return false;
+    const endDate = parseDateDMY(end);
+    if (!endDate || endDateEnd(endDate).getTime() < Date.now()) return false;
+    return true;
+  }
   const left = parseInt(c.subscriptionLeft || "", 10);
   if (!Number.isNaN(left) && left <= 0) return false;
   return true;
@@ -13027,6 +13184,15 @@ function IconBell() {
     <SvgIcon>
       <path d="M6 9a6 6 0 1 1 12 0c0 4 1.2 5.3 2 6H4c.8-.7 2-2 2-6Z" />
       <path d="M9.5 19a2.5 2.5 0 0 0 5 0" />
+    </SvgIcon>
+  );
+}
+
+function IconClock() {
+  return (
+    <SvgIcon>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8v4l2.8 2" />
     </SvgIcon>
   );
 }
@@ -16352,12 +16518,16 @@ const styles: Record<string, any> = {
   },
   clientDetailValueBox: {
     padding: "12px 16px",
+    minHeight: 46,
+    boxSizing: "border-box",
     borderRadius: 18,
     border: "1px solid var(--client-detail-field-border)",
     background: "var(--client-detail-field-bg)",
     boxShadow: "var(--client-detail-field-shadow)",
     color: "var(--text)",
     fontSize: 14,
+    display: "flex",
+    alignItems: "center",
   },
   clientDetailInput: {
     width: "100%",
@@ -16754,6 +16924,26 @@ const styles: Record<string, any> = {
   subscriptionHistoryDivider: {
     marginTop: 18,
     borderBottom: "1px solid var(--client-detail-tabs-border)",
+  },
+  subscriptionCreateActionRow: {
+    marginTop: 14,
+    display: "flex",
+    justifyContent: "flex-start",
+  },
+  subscriptionCreateBtn: {
+    minWidth: 220,
+    maxWidth: "100%",
+    height: 46,
+    padding: "0 24px",
+    borderRadius: 999,
+    border: "1px solid var(--client-detail-action-border)",
+    background: "var(--client-detail-action-bg)",
+    color: "#ffffff",
+    fontWeight: "var(--font-strong)",
+    fontSize: 15,
+    boxShadow: "var(--client-detail-action-shadow)",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
   },
   subscriptionHistoryTitle: {
     marginTop: 16,

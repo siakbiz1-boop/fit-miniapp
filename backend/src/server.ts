@@ -263,6 +263,49 @@ async function adjustSubscriptionLeft(
   });
 }
 
+function parseDateDMY(value: string | null | undefined) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  if (!day || !month || !year) return null;
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return date;
+}
+
+function isSubscriptionAvailable(client: any, now = new Date()) {
+  if (!client?.subscriptionEnabled) return true;
+  const start = String(client.subscriptionStart || "").trim();
+  const end = String(client.subscriptionEnd || "").trim();
+  const price = String(client.subscriptionPrice || "").trim();
+  const total = String(client.subscriptionTotal || "").trim();
+  const left = parseInt(String(client.subscriptionLeft || ""), 10);
+  if (!start || !end || !price || !total || Number.isNaN(left)) return false;
+  if (left <= 0) return false;
+  const endDate = parseDateDMY(end);
+  if (!endDate) return false;
+  endDate.setHours(23, 59, 59, 999);
+  return now.getTime() <= endDate.getTime();
+}
+
+function shouldRefundSubscriptionOnCancel(startAt: Date | string, cancelWindowHours: number | null | undefined) {
+  const sessionStart = startAt instanceof Date ? startAt : new Date(startAt);
+  if (!Number.isFinite(sessionStart.getTime())) return false;
+  if (sessionStart.getTime() <= Date.now()) return false;
+  const hours = typeof cancelWindowHours === "number" ? cancelWindowHours : 0;
+  if (!hours || hours <= 0) return true;
+  return Date.now() <= sessionStart.getTime() - hours * 60 * 60 * 1000;
+}
+
 function buildProfilePayload(profile: any) {
   if (!profile) return null;
   return {
@@ -1224,6 +1267,10 @@ app.patch("/profile/trainer", async (req, reply) => {
     instagram: body?.instagram,
     otherSocial: body?.otherSocial,
     bookingMode: body?.bookingMode === "both" || body?.bookingMode === "trainer" ? body.bookingMode : undefined,
+    cancelWindowHours:
+      typeof body?.cancelWindowHours === "number" && Number.isFinite(body.cancelWindowHours)
+        ? Math.max(0, body.cancelWindowHours)
+        : undefined,
   };
 
   const profile = await prismaAny.trainerProfile.upsert({
@@ -1816,7 +1863,7 @@ app.delete("/client/sessions/:id", async (req, reply) => {
   }
 
   await prismaAny.trainingSession.delete({ where: { id } });
-  if (new Date(session.startAt).getTime() > Date.now()) {
+  if (shouldRefundSubscriptionOnCancel(session.startAt, profile?.cancelWindowHours)) {
     await adjustSubscriptionLeft(session.trainerTgUserId, session.clientUsername, 1);
   }
   return { ok: true };
@@ -1972,8 +2019,7 @@ app.post("/slots/:id/assign", async (req, reply) => {
   });
   if (!client) return reply.code(404).send({ message: "client not found" });
 
-  const relationLeft = parseInt(String(client.subscriptionLeft || ""), 10);
-  if (!Number.isNaN(relationLeft) && relationLeft <= 0) {
+  if (!isSubscriptionAvailable(client)) {
     return reply.code(403).send({ message: "subscription limit reached" });
   }
 
@@ -2121,8 +2167,7 @@ app.post("/book", async (req, reply) => {
     },
   });
   if (!relation) return reply.code(403).send({ message: "client not connected to trainer" });
-  const relationLeft = parseInt(String(relation.subscriptionLeft || ""), 10);
-  if (!Number.isNaN(relationLeft) && relationLeft <= 0) {
+  if (!isSubscriptionAvailable(relation)) {
     return reply.code(403).send({ message: "subscription limit reached" });
   }
 
@@ -2466,10 +2511,14 @@ app.delete("/sessions/:id", async (req, reply) => {
     return session;
   };
 
+  const trainerProfile = await prismaAny.trainerProfile.findUnique({
+    where: { userId: dbUser.id },
+  });
+
   const prefix = `${dbUser.tgUserId.toString()}_`;
   const deleted = await tryDelete(id);
   if (deleted) {
-    if (new Date(deleted.startAt).getTime() > Date.now()) {
+    if (shouldRefundSubscriptionOnCancel(deleted.startAt, trainerProfile?.cancelWindowHours)) {
       if (deleted.type === "group" && Array.isArray(deleted.participants)) {
         for (const p of deleted.participants) {
           await adjustSubscriptionLeft(deleted.trainerTgUserId, p.clientUsername, 1);
@@ -2487,7 +2536,7 @@ app.delete("/sessions/:id", async (req, reply) => {
       if (normalized !== id) {
         const deletedNormalized = await tryDelete(normalized);
         if (deletedNormalized) {
-          if (new Date(deletedNormalized.startAt).getTime() > Date.now()) {
+          if (shouldRefundSubscriptionOnCancel(deletedNormalized.startAt, trainerProfile?.cancelWindowHours)) {
             if (deletedNormalized.type === "group" && Array.isArray(deletedNormalized.participants)) {
               for (const p of deletedNormalized.participants) {
                 await adjustSubscriptionLeft(deletedNormalized.trainerTgUserId, p.clientUsername, 1);
@@ -2546,6 +2595,10 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
 
   const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
   const linkedSlot = await getLinkedSlotBySessionId(session.id);
+  const trainer = await prisma.user.findUnique({ where: { tgUserId: session.trainerTgUserId } });
+  const profile = trainer
+    ? await prismaAny.trainerProfile.findUnique({ where: { userId: trainer.id } })
+    : null;
 
   await prismaAny.$transaction(async (tx: any) => {
     await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
@@ -2592,7 +2645,7 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
     }
   });
 
-  if (new Date(session.startAt).getTime() > Date.now()) {
+  if (shouldRefundSubscriptionOnCancel(session.startAt, profile?.cancelWindowHours)) {
     await adjustSubscriptionLeft(session.trainerTgUserId, participant.clientUsername, 1);
   }
 
@@ -2833,6 +2886,9 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
     Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.max(0, total - perClient) : total;
   const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
   const linkedSlot = await getLinkedSlotBySessionId(session.id);
+  const trainerProfile = await prismaAny.trainerProfile.findUnique({
+    where: { userId: dbUser.id },
+  });
 
   const updated = await prismaAny.$transaction(async (tx: any) => {
     await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
@@ -2880,6 +2936,10 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
       include: { participants: true },
     });
   });
+
+  if (shouldRefundSubscriptionOnCancel(session.startAt, trainerProfile?.cancelWindowHours)) {
+    await adjustSubscriptionLeft(session.trainerTgUserId, participant.clientUsername, 1);
+  }
 
   return { ok: true, session: updated ? serializeSession(updated) : null };
 });

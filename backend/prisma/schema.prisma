@@ -99,6 +99,7 @@ model TrainerProfile {
   instagram      String?
   otherSocial    String?
   bookingMode    BookingMode @default(trainer)
+  cancelWindowHours Float     @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
