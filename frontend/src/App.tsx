@@ -9681,12 +9681,13 @@ function ClientDetailScreen(props: {
       ) : null}
 
       <div style={styles.clientDetailTabsScroll}>
-        <div style={styles.clientDetailTabsWrap}>
+        <div style={styles.trainerClientTabsWrap}>
           <button
             type="button"
             onClick={() => setTab("info")}
             style={{
               ...styles.clientDetailTab,
+              ...styles.trainerClientTabButton,
               ...(visibleTab === "info" ? styles.clientDetailTabActive : null),
             }}
           >
@@ -9699,6 +9700,7 @@ function ClientDetailScreen(props: {
                 onClick={() => setTab("subscription")}
                 style={{
                   ...styles.clientDetailTab,
+                  ...styles.trainerClientTabButton,
                   ...(visibleTab === "subscription" ? styles.clientDetailTabActive : null),
                 }}
               >
@@ -9709,6 +9711,7 @@ function ClientDetailScreen(props: {
                 onClick={() => setTab("weights")}
                 style={{
                   ...styles.clientDetailTab,
+                  ...styles.trainerClientTabButton,
                   ...(visibleTab === "weights" ? styles.clientDetailTabActive : null),
                 }}
               >
@@ -9719,6 +9722,7 @@ function ClientDetailScreen(props: {
                 onClick={() => setTab("history")}
                 style={{
                   ...styles.clientDetailTab,
+                  ...styles.trainerClientTabButton,
                   ...(visibleTab === "history" ? styles.clientDetailTabActive : null),
                 }}
               >
@@ -16642,6 +16646,18 @@ const styles: Record<string, any> = {
     width: "max-content",
     boxSizing: "border-box",
   },
+  trainerClientTabsWrap: {
+    display: "flex",
+    gap: 6,
+    padding: 6,
+    borderRadius: 999,
+    border: "1px solid var(--client-detail-tabs-border)",
+    background: "var(--client-detail-tabs-bg)",
+    boxShadow: "var(--client-detail-tabs-shadow)",
+    minWidth: "max-content",
+    width: "max-content",
+    boxSizing: "border-box",
+  },
   scheduleViewTabs: {
     display: "flex",
     gap: 10,
@@ -16712,6 +16728,12 @@ const styles: Record<string, any> = {
     minWidth: "max-content",
     whiteSpace: "nowrap",
     scrollSnapAlign: "start",
+  },
+  trainerClientTabButton: {
+    flex: "0 0 auto",
+    padding: "0 14px",
+    minWidth: "max-content",
+    whiteSpace: "nowrap",
   },
   scheduleTabActive: {
     background: "var(--glass-tab-active-bg)",
