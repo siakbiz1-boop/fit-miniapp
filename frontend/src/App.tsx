@@ -117,6 +117,7 @@ type TrainerClientInvite = {
   subscriptionPrice?: string;
   subscriptionTotal?: string;
   subscriptionLeft?: string;
+  subscriptionHistory?: SubscriptionHistoryItem[];
   archived?: boolean;
   clientProfile?: {
     fitnessClub?: string;
@@ -140,6 +141,15 @@ type TrainerClientInvite = {
     instagram?: string;
     otherSocial?: string;
   };
+};
+
+type SubscriptionHistoryItem = {
+  id: string;
+  purchasedAt: string;
+  price?: string;
+  total?: string;
+  start?: string;
+  end?: string;
 };
 
 type TrainerProfile = {
@@ -9600,7 +9610,13 @@ function ClientDetailScreen(props: {
   };
 
   const saveSubscriptionField = (
-    field: "subscriptionStart" | "subscriptionEnd" | "subscriptionPrice" | "subscriptionTotal" | "subscriptionLeft",
+    field:
+      | "subscriptionStart"
+      | "subscriptionEnd"
+      | "subscriptionPrice"
+      | "subscriptionTotal"
+      | "subscriptionLeft"
+      | "subscriptionHistory",
     value: string
   ) => {
     if (!client) return;
@@ -9608,6 +9624,8 @@ function ClientDetailScreen(props: {
     if (String(current || "").trim() === String(value || "").trim()) return;
     onUpdateClient(client.id, { [field]: value } as Partial<TrainerClientInvite>);
   };
+
+  const subscriptionHistory = client?.subscriptionHistory || [];
 
   return (
     <div style={styles.pageContainer}>
@@ -10283,10 +10301,31 @@ function ClientDetailScreen(props: {
                 onChange={(e) => setDraftSubTotal(e.target.value.replace(/[^\d]/g, ""))}
                 onBlur={() => {
                   const value = (draftSubTotal || "").trim();
+                  const normalizedPrice = normalizePriceRUB(draftSubPrice);
+                  const shouldAppendHistory =
+                    Boolean(value) &&
+                    (value !== (client?.subscriptionTotal || "").trim() ||
+                      normalizedPrice !== (client?.subscriptionPrice || "").trim() ||
+                      draftSubStart.trim() !== (client?.subscriptionStart || "").trim() ||
+                      draftSubEnd.trim() !== (client?.subscriptionEnd || "").trim());
                   setDraftSubTotal(value);
                   setDraftSubLeft(value);
                   saveSubscriptionField("subscriptionTotal", value);
                   saveSubscriptionField("subscriptionLeft", value);
+                  if (shouldAppendHistory && client) {
+                    const nextHistory: SubscriptionHistoryItem[] = [
+                      {
+                        id: cryptoId(),
+                        purchasedAt: formatDateShort(new Date()),
+                        price: normalizedPrice,
+                        total: value,
+                        start: draftSubStart.trim(),
+                        end: draftSubEnd.trim(),
+                      },
+                      ...(client.subscriptionHistory || []),
+                    ];
+                    onUpdateClient(client.id, { subscriptionHistory: nextHistory });
+                  }
                 }}
                 placeholder={tr("Занятий", "Sessions")}
                 style={styles.clientDetailInput}
@@ -10297,6 +10336,34 @@ function ClientDetailScreen(props: {
               <div style={styles.clientDetailValueBox}>{draftSubLeft || draftSubTotal || "—"}</div>
             </div>
           </div>
+
+          <div style={styles.subscriptionHistoryDivider} />
+          <div style={styles.subscriptionHistoryTitle}>{tr("История абонементов", "Subscription history")}</div>
+          {subscriptionHistory.length ? (
+            <div style={styles.subscriptionHistoryList}>
+              {subscriptionHistory.map((item, idx) => {
+                const meta = [
+                  item.purchasedAt ? `${tr("Дата приобретения", "Purchase date")}: ${item.purchasedAt}` : "",
+                  item.price ? `${tr("Стоимость тренировки", "Session price")}: ${item.price}` : "",
+                  item.total ? `${tr("Количество занятий", "Sessions")}: ${item.total}` : "",
+                  item.start ? `${tr("Дата начала", "Start date")}: ${item.start}` : "",
+                  item.end ? `${tr("Дата завершения", "End date")}: ${item.end}` : "",
+                ].filter(Boolean);
+                return (
+                  <div key={item.id || `${idx}`} style={styles.subscriptionHistoryCard}>
+                    <div style={styles.subscriptionHistoryCardTitle}>
+                      {tr("Абонемент", "Subscription")} #{subscriptionHistory.length - idx}
+                    </div>
+                    <div style={styles.subscriptionHistoryCardMeta}>{meta.join(", ")}</div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={styles.subscriptionHistoryEmpty}>
+              {tr("Пока нет оформленных абонементов.", "No subscriptions yet.")}
+            </div>
+          )}
         </div>
       ) : visibleTab === "history" ? (
         <div style={styles.clientPanelPlain}>
@@ -12121,6 +12188,26 @@ function buildSlotsSignature(list: TrainingSlot[]) {
   return stableStringify(normalized);
 }
 
+function parseSubscriptionHistory(raw: any): SubscriptionHistoryItem[] {
+  if (!raw) return [];
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => ({
+        id: String(item?.id || ""),
+        purchasedAt: String(item?.purchasedAt || ""),
+        price: item?.price ? String(item.price) : "",
+        total: item?.total ? String(item.total) : "",
+        start: item?.start ? String(item.start) : "",
+        end: item?.end ? String(item.end) : "",
+      }))
+      .filter((item) => item.id && item.purchasedAt && item.total);
+  } catch {
+    return [];
+  }
+}
+
 function mapClientFromApi(c: any): TrainerClientInvite {
   const username = String(c.clientUsername || "");
   const isLocal = Boolean(c.isLocal) || username.startsWith("local_");
@@ -12162,6 +12249,7 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     subscriptionPrice: c.subscriptionPrice ?? "",
     subscriptionTotal: c.subscriptionTotal ?? "",
     subscriptionLeft: c.subscriptionLeft ?? "",
+    subscriptionHistory: parseSubscriptionHistory(c.subscriptionHistory),
     archived: Boolean(c.archived),
   };
 }
@@ -16581,6 +16669,46 @@ const styles: Record<string, any> = {
     fontSize: 13,
     color: "var(--text)",
     fontWeight: 700,
+  },
+  subscriptionHistoryDivider: {
+    marginTop: 18,
+    borderBottom: "1px solid var(--client-detail-tabs-border)",
+  },
+  subscriptionHistoryTitle: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    textAlign: "left",
+  },
+  subscriptionHistoryList: {
+    marginTop: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+  subscriptionHistoryCard: {
+    borderRadius: 20,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "14px 16px",
+  },
+  subscriptionHistoryCardTitle: {
+    fontSize: 16,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    marginBottom: 6,
+  },
+  subscriptionHistoryCardMeta: {
+    fontSize: 13,
+    lineHeight: 1.45,
+    color: "var(--text-secondary)",
+  },
+  subscriptionHistoryEmpty: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "var(--text-secondary)",
   },
   inputRow: {
     display: "flex",

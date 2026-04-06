@@ -157,6 +157,7 @@ model TrainerClient {
   subscriptionPrice  String?
   subscriptionTotal  String?
   subscriptionLeft   String?
+  subscriptionHistory String?
 
   exercises          ClientExercise[]
   exerciseHistory    ClientExerciseHistory[]
