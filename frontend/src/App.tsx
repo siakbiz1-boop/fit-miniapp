@@ -5741,7 +5741,7 @@ function TrainerSchedule(props: {
           ) : (
             <div>
               {(historyByClient[client?.username ?? ""] || []).some((s) => isSessionEnded(s, new Date())) ? (
-                <div style={styles.listBlock}>
+                <div style={styles.sessionHistoryList}>
                   {(historyByClient[client?.username ?? ""] || [])
                     .filter((s) => isSessionEnded(s, new Date()))
                     .slice()
@@ -5750,20 +5750,12 @@ function TrainerSchedule(props: {
                       const bEnd = sessionEndTime(b).getTime();
                       return bEnd - aEnd;
                     })
-                    .map((s, idx, arr) => {
-                      const isLast = idx === arr.length - 1;
+                    .map((s, idx) => {
                       return (
-                        <div
-                          key={`${s.id}-${idx}`}
-                          style={{
-                            ...styles.rowWrap,
-                            borderBottom: isLast ? "none" : "1px solid var(--border-2)",
-                            padding: "12px 0",
-                          }}
-                        >
+                        <div key={`${s.id}-${idx}`} style={styles.sessionHistoryCard}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={styles.rowTitle}>{sessionTitle(s, tr)}</div>
-                            <div style={styles.rowSubtitle}>
+                            <div style={styles.sessionHistoryTitle}>{sessionTitle(s, tr)}</div>
+                            <div style={styles.sessionHistorySubtitle}>
                               {formatDateShort(parseDateKey(s.dateKey))} • {s.start} — {s.end}
                             </div>
                           </div>
@@ -5806,6 +5798,16 @@ function TrainerSchedule(props: {
     const availableGroupClients = clients.filter(
       (c) => !c.archived && c.status === "active" && !participantClients.some((p) => p.client?.id === c.id)
     );
+    const linkedGroupSlot = isGroupSession
+      ? Object.values(slotsByDate)
+          .flat()
+          .find((slot) => slot.sessionId === activeSession.id)
+      : null;
+    const groupHasFreePlaces = isGroupSession
+      ? linkedGroupSlot
+        ? Number(linkedGroupSlot.bookedCount || 0) < (linkedGroupSlot.capacity ?? 2)
+        : false
+      : false;
     return (
       <div style={styles.pageContainer}>
       <div style={styles.topBar}>
@@ -5996,7 +5998,7 @@ function TrainerSchedule(props: {
                           </div>
                         );
                       })}
-                      {canDeleteByTime ? (
+                      {canDeleteByTime && groupHasFreePlaces ? (
                         <button
                           type="button"
                           style={styles.groupClientChipAdd}
@@ -6064,7 +6066,7 @@ function TrainerSchedule(props: {
                   )}
                 </div>
               </div>
-              {isGroupSession && groupAddOpen && canDeleteByTime ? (
+              {isGroupSession && groupAddOpen && canDeleteByTime && groupHasFreePlaces ? (
                 <div style={styles.sessionCard}>
                   <div style={styles.sessionCardLabel}>{tr("Добавить клиента", "Add client")}</div>
                   <div style={styles.sessionCardRow}>
@@ -7860,8 +7862,27 @@ function TrainerSchedule(props: {
               {(slotsByDate[formatDateKey(selected)] || [])
                 .slice()
                 .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
-                .map((w) => (
-                <div key={w.id} style={styles.freeBanner}>
+                .map((w) => {
+                  const linkedSession = w.sessionId
+                    ? (sessionsByDate[w.dateKey] || []).find((session) => session.id === w.sessionId) || null
+                    : null;
+                  const bookedClientIds = new Set(
+                    (linkedSession?.participants || []).map((participant) => participant.clientId).filter(Boolean)
+                  );
+                  const bookedClientUsernames = new Set(
+                    (linkedSession?.participants || [])
+                      .map((participant) => participant.clientUsername)
+                      .filter(Boolean)
+                      .map((username) => username.replace(/^@/, ""))
+                  );
+                  const assignableClients = clients.filter((c) => {
+                    if (!canScheduleClientOnDate(clients, c.username)) return false;
+                    if (!w.isGroup) return true;
+                    if (bookedClientIds.has(c.id)) return false;
+                    return !bookedClientUsernames.has(c.username.replace(/^@/, ""));
+                  });
+                  return (
+                    <div key={w.id} style={styles.freeBanner}>
                   <div style={styles.freeBannerLeft}>
                     <div style={styles.freeBannerTitle}>
                       {w.isGroup ? tr("Групповое окно", "Group slot") : tr("Свободное окно", "Available slot")}
@@ -7997,13 +8018,11 @@ function TrainerSchedule(props: {
                           aria-label="assign client"
                         >
                           <option value="">{tr("Выбери клиента", "Choose client")}</option>
-                          {clients
-                            .filter((c) => canScheduleClientOnDate(clients, c.username))
-                            .map((c) => (
-                              <option key={c.id} value={c.username}>
-                                {c.fullName?.trim() ? c.fullName : `@${c.username}`}
-                              </option>
-                            ))}
+                          {assignableClients.map((c) => (
+                            <option key={c.id} value={c.username}>
+                              {c.fullName?.trim() ? c.fullName : `@${c.username}`}
+                            </option>
+                          ))}
                           {!w.isGroup ? (
                             <option value="__one_time__">{tr("Разовая тренировка", "One-time session")}</option>
                           ) : null}
@@ -8015,7 +8034,7 @@ function TrainerSchedule(props: {
                     <button
                       type="button"
                       onClick={() => {
-                        if (clients.length === 0) return;
+                        if (w.isGroup && assignableClients.length === 0) return;
                         if (!canBookSlot(w.dateKey, w.start)) {
                           setFreeError(tr("Окно уже началось.", "The slot has already started."));
                           return;
@@ -8052,8 +8071,9 @@ function TrainerSchedule(props: {
                       </span>
                     </button>
                   </div>
-                </div>
-              ))}
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
