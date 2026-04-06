@@ -177,6 +177,9 @@ type TrainingSlot = {
   dateKey: string;
   start: string;
   end: string;
+  isGroup?: boolean;
+  capacity?: number | null;
+  bookedCount?: number;
 };
 
 type SessionItem = {
@@ -4474,10 +4477,18 @@ function ClientSchedule(props: {
               {slots.map((w) => (
                 <div key={w.id} style={styles.freeBanner}>
                   <div style={styles.freeBannerLeft}>
-                    <div style={styles.freeBannerTitle}>{tr("Свободное окно", "Available slot")}</div>
+                    <div style={styles.freeBannerTitle}>
+                      {w.isGroup ? tr("Групповое окно", "Group slot") : tr("Свободное окно", "Available slot")}
+                    </div>
                     <div style={styles.freeBannerTime}>
                       {w.start} — {w.end}
                     </div>
+                    {w.isGroup ? (
+                      <div style={styles.freeBannerMeta}>
+                        {tr("Мест", "Spots")}: {Math.max(0, (w.capacity ?? 2) - (w.bookedCount ?? 0))}/
+                        {w.capacity ?? 2}
+                      </div>
+                    ) : null}
                   </div>
                   <div style={styles.freeBannerActions}>
                     <button
@@ -4505,7 +4516,17 @@ function ClientSchedule(props: {
                             setSlotError(tr("Не удалось записаться.", "Booking failed."));
                             return;
                           }
-                          setSlots((prev) => prev.filter((s) => s.id !== w.id));
+                          setSlots((prev) => {
+                            if (!w.isGroup) return prev.filter((s) => s.id !== w.id);
+                            const nextBookedCount = Number(w.bookedCount || 0) + 1;
+                            const nextCapacity = w.capacity ?? 2;
+                            if (nextBookedCount >= nextCapacity) {
+                              return prev.filter((s) => s.id !== w.id);
+                            }
+                            return prev.map((s) =>
+                              s.id === w.id ? { ...s, bookedCount: nextBookedCount } : s
+                            );
+                          });
                           onBooked();
                         } catch {
                           setSlotError(tr("Не удалось записаться.", "Booking failed."));
@@ -5180,6 +5201,8 @@ function TrainerSchedule(props: {
   const [showFreeSchedule, setShowFreeSchedule] = useState(false);
   const [freeStart, setFreeStart] = useState("");
   const [freeEnd, setFreeEnd] = useState("");
+  const [freeIsGroup, setFreeIsGroup] = useState(false);
+  const [freeCapacity, setFreeCapacity] = useState("2");
   const [freeError, setFreeError] = useState("");
   const [isCreatingSlot, setIsCreatingSlot] = useState(false);
   const [slotError, setSlotError] = useState("");
@@ -5551,7 +5574,12 @@ function TrainerSchedule(props: {
     };
   }, [selected, token, trainerTgUserId, apiBase, tr, applySlots]);
 
-  async function createSlot(dateKey: string, start: string, end: string) {
+  async function createSlot(
+    dateKey: string,
+    start: string,
+    end: string,
+    options?: { isGroup?: boolean; capacity?: number | null }
+  ) {
     if (!token) {
       setFreeError(tr("Сначала войдите в аккаунт.", "Please login first."));
       return null;
@@ -5560,7 +5588,13 @@ function TrainerSchedule(props: {
       const res = await fetch(`${apiBase}/slots`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ dateKey, start, end }),
+        body: JSON.stringify({
+          dateKey,
+          start,
+          end,
+          isGroup: options?.isGroup === true,
+          capacity: options?.isGroup ? options.capacity ?? 2 : null,
+        }),
       });
       if (!res.ok) {
         throw new Error(`slots create: ${res.status}`);
@@ -5590,6 +5624,15 @@ function TrainerSchedule(props: {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
+        if (res.status === 409) {
+          setSlotError(
+            tr(
+              "Нельзя удалить окно, пока на него уже записались клиенты.",
+              "You can't delete a slot that already has booked clients."
+            )
+          );
+          return;
+        }
         throw new Error(`slots delete: ${res.status}`);
       }
       setSlotsByDate((prev) => {
@@ -7763,6 +7806,8 @@ function TrainerSchedule(props: {
             onClick={() => {
               setShowFreeSchedule(true);
               setFreeError("");
+              setFreeIsGroup(false);
+              setFreeCapacity("2");
             }}
             style={styles.scheduleAddWindowBtn}
           >
@@ -7779,10 +7824,18 @@ function TrainerSchedule(props: {
                 .map((w) => (
                 <div key={w.id} style={styles.freeBanner}>
                   <div style={styles.freeBannerLeft}>
-                    <div style={styles.freeBannerTitle}>{tr("Свободное окно", "Available slot")}</div>
+                    <div style={styles.freeBannerTitle}>
+                      {w.isGroup ? tr("Групповое окно", "Group slot") : tr("Свободное окно", "Available slot")}
+                    </div>
                     <div style={styles.freeBannerTime}>
                       {w.start} — {w.end}
                     </div>
+                    {w.isGroup ? (
+                      <div style={styles.freeBannerMeta}>
+                        {tr("Мест", "Spots")}: {Math.max(0, (w.capacity ?? 2) - (w.bookedCount ?? 0))}/
+                        {w.capacity ?? 2}
+                      </div>
+                    ) : null}
                     {assignForId === w.id ? (
                       <div style={styles.assignRow}>
                         <select
@@ -7907,6 +7960,15 @@ function TrainerSchedule(props: {
                     <button
                       type="button"
                       onClick={() => {
+                        if (w.isGroup) {
+                          setFreeError(
+                            tr(
+                              "Групповое окно пока можно бронировать только через запись клиента.",
+                              "Group slots can currently be booked only from the client side."
+                            )
+                          );
+                          return;
+                        }
                         if (clients.length === 0) return;
                         if (!canBookSlot(w.dateKey, w.start)) {
                           setFreeError(tr("Окно уже началось.", "The slot has already started."));
@@ -8028,6 +8090,33 @@ function TrainerSchedule(props: {
                   style={styles.scheduleQuickInput}
                 />
               </div>
+              <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
+                <button
+                  type="button"
+                  style={styles.groupSlotToggle}
+                  onClick={() => setFreeIsGroup((prev) => !prev)}
+                >
+                  <span style={{ ...styles.groupSlotCheckbox, ...(freeIsGroup ? styles.groupSlotCheckboxActive : null) }}>
+                    {freeIsGroup ? <IconCheck size={16} strokeWidth={2.4} /> : null}
+                  </span>
+                  <span style={styles.groupSlotToggleText}>
+                    {tr("Окно для групповой тренировки", "Slot for group training")}
+                  </span>
+                </button>
+              </div>
+              {freeIsGroup ? (
+                <div style={{ ...styles.scheduleQuickField, ...styles.scheduleQuickFieldFull }}>
+                  <div style={styles.scheduleQuickLabel}>{tr("Количество клиентов", "Clients capacity")}</div>
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={freeCapacity}
+                    onChange={(e) => setFreeCapacity(e.target.value.replace(/[^\d]/g, ""))}
+                    placeholder="2"
+                    style={styles.scheduleQuickInput}
+                  />
+                </div>
+              ) : null}
               {freeError ? (
                 <div style={{ ...styles.errorText, ...styles.scheduleQuickFieldFull }}>{freeError}</div>
               ) : null}
@@ -8087,7 +8176,24 @@ function TrainerSchedule(props: {
                     setIsCreatingSlot(false);
                     return;
                   }
-                  const created = await createSlot(dateKey, start, end);
+                  let capacity: number | null = null;
+                  if (freeIsGroup) {
+                    capacity = Number(freeCapacity);
+                    if (!Number.isFinite(capacity) || capacity < 2) {
+                      setFreeError(
+                        tr(
+                          "Для группового окна укажите минимум 2 клиента.",
+                          "For a group slot, set capacity to at least 2 clients."
+                        )
+                      );
+                      setIsCreatingSlot(false);
+                      return;
+                    }
+                  }
+                  const created = await createSlot(dateKey, start, end, {
+                    isGroup: freeIsGroup,
+                    capacity,
+                  });
                   if (!created) {
                     setIsCreatingSlot(false);
                     return;
@@ -8096,6 +8202,8 @@ function TrainerSchedule(props: {
                   setFreeError("");
                   setFreeStart("");
                   setFreeEnd("");
+                  setFreeIsGroup(false);
+                  setFreeCapacity("2");
                   setIsCreatingSlot(false);
                 }}
               >
@@ -11939,6 +12047,9 @@ function buildSlotsSignature(list: TrainingSlot[]) {
       dateKey: slot.dateKey,
       start: slot.start,
       end: slot.end,
+      isGroup: slot.isGroup ?? false,
+      capacity: slot.capacity ?? null,
+      bookedCount: slot.bookedCount ?? 0,
     }));
   return stableStringify(normalized);
 }
@@ -17266,6 +17377,12 @@ const styles: Record<string, any> = {
     fontSize: 13,
     color: "var(--text-secondary)",
   },
+  freeBannerMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "var(--accent)",
+  },
   freeBannerDelete: {
     width: 38,
     height: 38,
@@ -17302,6 +17419,42 @@ const styles: Record<string, any> = {
   },
   assignRow: {
     marginTop: 8,
+  },
+  groupSlotToggle: {
+    width: "100%",
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
+    boxShadow: "var(--glass-pill-shadow)",
+    borderRadius: 20,
+    padding: "12px 14px",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    cursor: "pointer",
+    color: "var(--text-primary)",
+  },
+  groupSlotCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 8,
+    border: "1px solid var(--glass-pill-border)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flex: "0 0 auto",
+    color: "#ffffff",
+    background: "transparent",
+  },
+  groupSlotCheckboxActive: {
+    background: "var(--accent-grad)",
+    borderColor: "rgba(120, 170, 220, 0.6)",
+    boxShadow: "var(--accent-shadow)",
+  },
+  groupSlotToggleText: {
+    fontSize: 14,
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-primary)",
+    textAlign: "left",
   },
 
   codeBox: {

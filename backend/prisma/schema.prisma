@@ -200,6 +200,10 @@ model TrainingSlot {
   dateKey         String
   start           String
   end             String
+  isGroup         Boolean  @default(false)
+  capacity        Int?
+  bookedCount     Int      @default(0)
+  sessionId       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

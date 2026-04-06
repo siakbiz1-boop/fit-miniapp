@@ -237,6 +237,12 @@ function serializeSlot(slot: any) {
   };
 }
 
+function getSlotCapacity(slot: any) {
+  const raw = Number(slot?.capacity);
+  if (!Number.isFinite(raw) || raw < 2) return 2;
+  return Math.floor(raw);
+}
+
 async function adjustSubscriptionLeft(
   trainerTgUserId: bigint,
   clientUsername: string,
@@ -270,6 +276,11 @@ function buildProfilePayload(profile: any) {
     instagram: profile.instagram ?? null,
     otherSocial: profile.otherSocial ?? null,
   };
+}
+
+async function getLinkedSlotBySessionId(sessionId: string) {
+  if (!sessionId) return null;
+  return prismaAny.trainingSlot.findFirst({ where: { sessionId } });
 }
 
 // --------------------
@@ -1826,7 +1837,12 @@ app.get("/slots", async (req, reply) => {
     orderBy: [{ dateKey: "asc" }, { start: "asc" }],
   });
 
-  return { ok: true, slots: slots.map((s: any) => serializeSlot(s)) };
+  const visibleSlots = slots.filter((slot: any) => {
+    if (!slot.isGroup) return true;
+    return Number(slot.bookedCount || 0) < getSlotCapacity(slot);
+  });
+
+  return { ok: true, slots: visibleSlots.map((s: any) => serializeSlot(s)) };
 });
 
 app.post("/slots", async (req, reply) => {
@@ -1837,7 +1853,9 @@ app.post("/slots", async (req, reply) => {
   const dateKey = String(body?.dateKey || "");
   const start = String(body?.start || "");
   const end = String(body?.end || "");
-  const tzOffset = typeof body?.tzOffset === "number" ? body.tzOffset : null;
+  const isGroup = body?.isGroup === true;
+  const capacity =
+    isGroup && Number.isFinite(Number(body?.capacity)) ? Math.max(2, Math.floor(Number(body.capacity))) : null;
   if (!dateKey || !start || !end) {
     return reply.code(400).send({ message: "dateKey/start/end required" });
   }
@@ -1850,7 +1868,16 @@ app.post("/slots", async (req, reply) => {
   }
 
   const slot = await prismaAny.trainingSlot.create({
-    data: { trainerTgUserId: dbUser.tgUserId, dateKey, start, end },
+    data: {
+      trainerTgUserId: dbUser.tgUserId,
+      dateKey,
+      start,
+      end,
+      isGroup,
+      capacity,
+      bookedCount: 0,
+      sessionId: null,
+    },
   });
 
   return { ok: true, slot: serializeSlot(slot) };
@@ -1866,6 +1893,9 @@ app.delete("/slots/:id", async (req, reply) => {
   const slot = await prismaAny.trainingSlot.findUnique({ where: { id } });
   if (!slot || slot.trainerTgUserId !== dbUser.tgUserId) {
     return reply.code(404).send({ message: "slot not found" });
+  }
+  if (slot.sessionId || Number(slot.bookedCount || 0) > 0) {
+    return reply.code(409).send({ message: "slot already has bookings" });
   }
 
   await prismaAny.trainingSlot.delete({ where: { id } });
@@ -1950,8 +1980,81 @@ app.post("/book", async (req, reply) => {
   }
   const reminderHours = (trainer as any)?.reminderHours ?? 1;
   const remindAt = computeRemindAt(startAt, reminderHours);
-  const id = `${trainerTgUserId.toString()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  if (slot.isGroup) {
+    const capacity = getSlotCapacity(slot);
+    const result = await prismaAny.$transaction(async (tx: any) => {
+      const currentSlot = await tx.trainingSlot.findUnique({ where: { id: slot.id } });
+      if (!currentSlot) return { status: "missing" as const };
+      if (Number(currentSlot.bookedCount || 0) >= capacity) return { status: "full" as const };
 
+      let session = currentSlot.sessionId
+        ? await tx.trainingSession.findUnique({
+            where: { id: currentSlot.sessionId },
+            include: { participants: true },
+          })
+        : null;
+
+      if (!session) {
+        const sessionId = `${trainerTgUserId.toString()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        session = await tx.trainingSession.create({
+          data: {
+            id: sessionId,
+            trainerTgUserId,
+            clientUsername: "group",
+            clientName: null,
+            startAt,
+            endAt,
+            startTime: start,
+            endTime: end,
+            type: "group",
+            source: "client",
+            remindAt,
+          },
+          include: { participants: true },
+        });
+        await tx.trainingSlot.update({
+          where: { id: currentSlot.id },
+          data: { sessionId: session.id },
+        });
+      }
+
+      const alreadyBooked = (session.participants || []).some(
+        (p: any) => p.clientId === relation.id || p.clientUsername === relation.clientUsername
+      );
+      if (alreadyBooked) return { status: "duplicate" as const };
+
+      await tx.groupSessionParticipant.create({
+        data: {
+          sessionId: session.id,
+          clientId: relation.id,
+          clientUsername: relation.clientUsername,
+          clientName: relation.fullName || null,
+        },
+      });
+
+      const nextBookedCount = Number(currentSlot.bookedCount || 0) + 1;
+      await tx.trainingSlot.update({
+        where: { id: currentSlot.id },
+        data: { bookedCount: nextBookedCount },
+      });
+
+      const updatedSession = await tx.trainingSession.findUnique({
+        where: { id: session.id },
+        include: { participants: true },
+      });
+
+      return { status: "ok" as const, session: updatedSession };
+    });
+
+    if (result.status === "missing") return reply.code(404).send({ message: "slot not found" });
+    if (result.status === "full") return reply.code(409).send({ message: "slot is full" });
+    if (result.status === "duplicate") return reply.code(409).send({ message: "already booked" });
+
+    await adjustSubscriptionLeft(trainerTgUserId, relation.clientUsername, -1);
+    return { ok: true, session: serializeSession(result.session) };
+  }
+
+  const id = `${trainerTgUserId.toString()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const session = await prismaAny.trainingSession.create({
     data: {
       id,
@@ -2164,7 +2267,14 @@ app.delete("/sessions/:id", async (req, reply) => {
       include: { participants: true },
     });
     if (!session || session.trainerTgUserId !== dbUser.tgUserId) return null;
+    const linkedSlot = await getLinkedSlotBySessionId(session.id);
     await prismaAny.trainingSession.delete({ where: { id: sessionId } });
+    if (linkedSlot) {
+      await prismaAny.trainingSlot.update({
+        where: { id: linkedSlot.id },
+        data: { sessionId: null, bookedCount: 0 },
+      });
+    }
     return session;
   };
 
@@ -2247,6 +2357,7 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
     Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.max(0, total - perClient) : total;
 
   const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
+  const linkedSlot = await getLinkedSlotBySessionId(session.id);
 
   await prismaAny.$transaction(async (tx: any) => {
     await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
@@ -2255,6 +2366,22 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
         where: { id: session.id },
         data: { price: String(nextTotal) },
       });
+    }
+    if (linkedSlot) {
+      const nextBookedCount = Math.max(0, Number(linkedSlot.bookedCount || 0) - 1);
+      if (remaining.length === 0) {
+        await tx.trainingSlot.update({
+          where: { id: linkedSlot.id },
+          data: { bookedCount: 0, sessionId: null },
+        });
+        await tx.trainingSession.delete({ where: { id: session.id } });
+        return;
+      }
+      await tx.trainingSlot.update({
+        where: { id: linkedSlot.id },
+        data: { bookedCount: nextBookedCount },
+      });
+      return;
     }
     if (remaining.length === 1) {
       const solo = remaining[0];
@@ -2428,6 +2555,10 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
     (p: any) => p.clientId === client.id || p.clientUsername === client.clientUsername
   );
   if (already) return { ok: true, session: serializeSession(session) };
+  const linkedSlot = await getLinkedSlotBySessionId(session.id);
+  if (linkedSlot && Number(linkedSlot.bookedCount || 0) >= getSlotCapacity(linkedSlot)) {
+    return reply.code(409).send({ message: "slot is full" });
+  }
 
   const total = parseInt(String(session.price || "").replace(/[^\d]/g, ""), 10);
   const countBefore = Array.isArray(session.participants) ? session.participants.length : 0;
@@ -2436,26 +2567,46 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
   const nextTotal =
     Number.isFinite(total) && total > 0 && countBefore > 0 ? total + perClient : total;
 
-  const updated = await prismaAny.$transaction(async (tx: any) => {
-    await tx.groupSessionParticipant.create({
-      data: {
-        sessionId: session.id,
-        clientId: client.id,
-        clientUsername: client.clientUsername,
-        clientName: client.fullName || null,
-      },
-    });
-    if (Number.isFinite(nextTotal) && total > 0 && countBefore > 0) {
-      await tx.trainingSession.update({
-        where: { id: session.id },
-        data: { price: String(nextTotal) },
+  let updated;
+  try {
+    updated = await prismaAny.$transaction(async (tx: any) => {
+      if (linkedSlot) {
+        const freshSlot = await tx.trainingSlot.findUnique({ where: { id: linkedSlot.id } });
+        if (!freshSlot || Number(freshSlot.bookedCount || 0) >= getSlotCapacity(freshSlot)) {
+          throw new Error("slot is full");
+        }
+      }
+      await tx.groupSessionParticipant.create({
+        data: {
+          sessionId: session.id,
+          clientId: client.id,
+          clientUsername: client.clientUsername,
+          clientName: client.fullName || null,
+        },
       });
-    }
-    return tx.trainingSession.findUnique({
-      where: { id: session.id },
-      include: { participants: true },
+      if (Number.isFinite(nextTotal) && total > 0 && countBefore > 0) {
+        await tx.trainingSession.update({
+          where: { id: session.id },
+          data: { price: String(nextTotal) },
+        });
+      }
+      if (linkedSlot) {
+        await tx.trainingSlot.update({
+          where: { id: linkedSlot.id },
+          data: { bookedCount: { increment: 1 } },
+        });
+      }
+      return tx.trainingSession.findUnique({
+        where: { id: session.id },
+        include: { participants: true },
+      });
     });
-  });
+  } catch (err: any) {
+    if (String(err?.message || "").includes("slot is full")) {
+      return reply.code(409).send({ message: "slot is full" });
+    }
+    throw err;
+  }
 
   return { ok: true, session: serializeSession(updated) };
 });
@@ -2493,6 +2644,7 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
   const nextTotal =
     Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.max(0, total - perClient) : total;
   const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
+  const linkedSlot = await getLinkedSlotBySessionId(session.id);
 
   const updated = await prismaAny.$transaction(async (tx: any) => {
     await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
@@ -2502,7 +2654,21 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
         data: { price: String(nextTotal) },
       });
     }
-    if (remaining.length === 1) {
+    if (linkedSlot) {
+      const nextBookedCount = Math.max(0, Number(linkedSlot.bookedCount || 0) - 1);
+      if (remaining.length === 0) {
+        await tx.trainingSlot.update({
+          where: { id: linkedSlot.id },
+          data: { bookedCount: 0, sessionId: null },
+        });
+        await tx.trainingSession.delete({ where: { id: session.id } });
+        return null;
+      }
+      await tx.trainingSlot.update({
+        where: { id: linkedSlot.id },
+        data: { bookedCount: nextBookedCount },
+      });
+    } else if (remaining.length === 1) {
       const solo = remaining[0];
       const relation = await tx.trainerClient.findFirst({
         where: {
@@ -2527,7 +2693,7 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
     });
   });
 
-  return { ok: true, session: serializeSession(updated) };
+  return { ok: true, session: updated ? serializeSession(updated) : null };
 });
 
 // Client sessions
