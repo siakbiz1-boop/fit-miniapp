@@ -9428,6 +9428,7 @@ function ClientDetailScreen(props: {
   const [draftSubTotal, setDraftSubTotal] = useState("");
   const [draftSubLeft, setDraftSubLeft] = useState("");
   const [draftSubEnabled, setDraftSubEnabled] = useState(false);
+  const [subscriptionCreateError, setSubscriptionCreateError] = useState("");
   const [draftContactPhone, setDraftContactPhone] = useState("");
   const [draftContactInstagram, setDraftContactInstagram] = useState("");
   const [draftContactOtherSocial, setDraftContactOtherSocial] = useState("");
@@ -9681,6 +9682,58 @@ function ClientDetailScreen(props: {
       return;
     }
     if (window.confirm(message)) disableMode();
+  };
+  const handleCreateSubscription = () => {
+    if (!client) return;
+    const start = draftSubStart.trim();
+    const end = draftSubEnd.trim();
+    const price = normalizePriceRUB(draftSubPrice);
+    const total = (draftSubTotal || "").trim();
+    const missing: string[] = [];
+    if (!start) missing.push(tr("дату начала", "start date"));
+    if (!end) missing.push(tr("дату завершения", "end date"));
+    if (!price) missing.push(tr("стоимость тренировки", "session price"));
+    if (!total) missing.push(tr("количество занятий", "sessions count"));
+    if (missing.length) {
+      setSubscriptionCreateError(
+        `${tr("Необходимо заполнить", "Please fill in")} ${missing.join(", ")}.`
+      );
+      return;
+    }
+    const startDate = parseDateDMY(start);
+    const endDate = parseDateDMY(end);
+    if (startDate && endDate && endDate.getTime() < startDate.getTime()) {
+      setSubscriptionCreateError(
+        tr(
+          "Дата завершения не может быть раньше даты начала.",
+          "End date cannot be earlier than start date."
+        )
+      );
+      return;
+    }
+    setSubscriptionCreateError("");
+    setDraftSubPrice(price);
+    setDraftSubLeft(total);
+    const nextHistory: SubscriptionHistoryItem[] = [
+      {
+        id: cryptoId(),
+        purchasedAt: formatDateShort(new Date()),
+        price,
+        total,
+        start,
+        end,
+      },
+      ...(client.subscriptionHistory || []),
+    ];
+    onUpdateClient(client.id, {
+      subscriptionEnabled: true,
+      subscriptionStart: start,
+      subscriptionEnd: end,
+      subscriptionPrice: price,
+      subscriptionTotal: total,
+      subscriptionLeft: total,
+      subscriptionHistory: nextHistory,
+    });
   };
 
   return (
@@ -10272,26 +10325,7 @@ function ClientDetailScreen(props: {
                     onChange={(e) => {
                       const next = fromISODate(e.target.value);
                       setDraftSubStart(next);
-                    }}
-                    onBlur={() => {
-                      saveSubscriptionField("subscriptionStart", draftSubStart);
-                      const start = parseDateDMY(draftSubStart);
-                      const end = parseDateDMY(draftSubEnd);
-                      if (start && end && end.getTime() < start.getTime()) {
-                        const message = tr(
-                          "Дата завершения не может быть раньше даты начала.",
-                          "End date cannot be earlier than start date."
-                        );
-                        if (typeof WebApp?.showPopup === "function") {
-                          WebApp.showPopup({
-                            title: tr("Неверная дата", "Invalid date"),
-                            message,
-                            buttons: [{ type: "ok" }],
-                          });
-                        } else {
-                          window.alert(message);
-                        }
-                      }
+                      if (subscriptionCreateError) setSubscriptionCreateError("");
                     }}
                     style={styles.clientDetailInput}
                   />
@@ -10304,27 +10338,7 @@ function ClientDetailScreen(props: {
                     onChange={(e) => {
                       const next = fromISODate(e.target.value);
                       setDraftSubEnd(next);
-                    }}
-                    onBlur={() => {
-                      const start = parseDateDMY(draftSubStart);
-                      const end = parseDateDMY(draftSubEnd);
-                      if (start && end && end.getTime() < start.getTime()) {
-                        const message = tr(
-                          "Дата завершения не может быть раньше даты начала.",
-                          "End date cannot be earlier than start date."
-                        );
-                        if (typeof WebApp?.showPopup === "function") {
-                          WebApp.showPopup({
-                            title: tr("Неверная дата", "Invalid date"),
-                            message,
-                            buttons: [{ type: "ok" }],
-                          });
-                        } else {
-                          window.alert(message);
-                        }
-                        return;
-                      }
-                      saveSubscriptionField("subscriptionEnd", draftSubEnd);
+                      if (subscriptionCreateError) setSubscriptionCreateError("");
                     }}
                     style={styles.clientDetailInput}
                   />
@@ -10341,11 +10355,7 @@ function ClientDetailScreen(props: {
                     onChange={(e) => {
                       const value = normalizePriceRUBWithDelete(e.target.value, draftSubPrice);
                       setDraftSubPrice(value);
-                    }}
-                    onBlur={() => {
-                      const value = normalizePriceRUB(draftSubPrice);
-                      if (value) setDraftSubPrice(value);
-                      saveSubscriptionField("subscriptionPrice", value);
+                      if (subscriptionCreateError) setSubscriptionCreateError("");
                     }}
                     placeholder={tr("Введите стоимость", "Enter price")}
                     style={{ ...styles.clientDetailInput, flex: 1 }}
@@ -10370,34 +10380,9 @@ function ClientDetailScreen(props: {
                     inputMode="numeric"
                     pattern="[0-9]*"
                     value={draftSubTotal}
-                    onChange={(e) => setDraftSubTotal(e.target.value.replace(/[^\d]/g, ""))}
-                    onBlur={() => {
-                      const value = (draftSubTotal || "").trim();
-                      const normalizedPrice = normalizePriceRUB(draftSubPrice);
-                      const shouldAppendHistory =
-                        Boolean(value) &&
-                        (value !== (client?.subscriptionTotal || "").trim() ||
-                          normalizedPrice !== (client?.subscriptionPrice || "").trim() ||
-                          draftSubStart.trim() !== (client?.subscriptionStart || "").trim() ||
-                          draftSubEnd.trim() !== (client?.subscriptionEnd || "").trim());
-                      setDraftSubTotal(value);
-                      setDraftSubLeft(value);
-                      saveSubscriptionField("subscriptionTotal", value);
-                      saveSubscriptionField("subscriptionLeft", value);
-                      if (shouldAppendHistory && client) {
-                        const nextHistory: SubscriptionHistoryItem[] = [
-                          {
-                            id: cryptoId(),
-                            purchasedAt: formatDateShort(new Date()),
-                            price: normalizedPrice,
-                            total: value,
-                            start: draftSubStart.trim(),
-                            end: draftSubEnd.trim(),
-                          },
-                          ...(client.subscriptionHistory || []),
-                        ];
-                        onUpdateClient(client.id, { subscriptionHistory: nextHistory });
-                      }
+                    onChange={(e) => {
+                      setDraftSubTotal(e.target.value.replace(/[^\d]/g, ""));
+                      if (subscriptionCreateError) setSubscriptionCreateError("");
                     }}
                     placeholder={tr("Занятий", "Sessions")}
                     style={styles.clientDetailInput}
@@ -10405,9 +10390,13 @@ function ClientDetailScreen(props: {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={styles.clientDetailFieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
-                  <div style={styles.clientDetailValueBox}>{draftSubLeft || draftSubTotal || "—"}</div>
+                  <div style={styles.clientDetailValueBox}>{draftSubLeft || client?.subscriptionLeft || "—"}</div>
                 </div>
               </div>
+              <button type="button" style={styles.clientDetailActionBtn} onClick={handleCreateSubscription}>
+                {tr("Создать абонемент", "Create subscription")}
+              </button>
+              {subscriptionCreateError ? <div style={styles.errorText}>{subscriptionCreateError}</div> : null}
             </>
           ) : null}
 
