@@ -117,6 +117,7 @@ type TrainerClientInvite = {
   subscriptionPrice?: string;
   subscriptionTotal?: string;
   subscriptionLeft?: string;
+  subscriptionEnabled?: boolean;
   subscriptionHistory?: SubscriptionHistoryItem[];
   archived?: boolean;
   clientProfile?: {
@@ -9426,6 +9427,7 @@ function ClientDetailScreen(props: {
   const [draftSubPrice, setDraftSubPrice] = useState("");
   const [draftSubTotal, setDraftSubTotal] = useState("");
   const [draftSubLeft, setDraftSubLeft] = useState("");
+  const [draftSubEnabled, setDraftSubEnabled] = useState(false);
   const [draftContactPhone, setDraftContactPhone] = useState("");
   const [draftContactInstagram, setDraftContactInstagram] = useState("");
   const [draftContactOtherSocial, setDraftContactOtherSocial] = useState("");
@@ -9483,6 +9485,17 @@ function ClientDetailScreen(props: {
     setDraftSubPrice(client?.subscriptionPrice ?? "");
     setDraftSubTotal(client?.subscriptionTotal ?? "");
     setDraftSubLeft(client?.subscriptionLeft ?? "");
+    setDraftSubEnabled(
+      typeof client?.subscriptionEnabled === "boolean"
+        ? client.subscriptionEnabled
+        : Boolean(
+            client?.subscriptionStart ||
+              client?.subscriptionEnd ||
+              client?.subscriptionPrice ||
+              client?.subscriptionTotal ||
+              client?.subscriptionLeft
+          )
+    );
     setDraftContactPhone(client?.contactPhone ?? "");
     setDraftContactInstagram(client?.contactInstagram ?? "");
     setDraftContactOtherSocial(client?.contactOtherSocial ?? "");
@@ -9499,6 +9512,7 @@ function ClientDetailScreen(props: {
     client?.subscriptionPrice,
     client?.subscriptionTotal,
     client?.subscriptionLeft,
+    client?.subscriptionEnabled,
     client?.contactPhone,
     client?.contactInstagram,
     client?.contactOtherSocial,
@@ -9611,21 +9625,63 @@ function ClientDetailScreen(props: {
 
   const saveSubscriptionField = (
     field:
+      | "subscriptionEnabled"
       | "subscriptionStart"
       | "subscriptionEnd"
       | "subscriptionPrice"
       | "subscriptionTotal"
       | "subscriptionLeft"
       | "subscriptionHistory",
-    value: string
+    value: string | boolean | SubscriptionHistoryItem[]
   ) => {
     if (!client) return;
     const current = (client as any)?.[field] ?? "";
-    if (String(current || "").trim() === String(value || "").trim()) return;
+    if (typeof value === "boolean") {
+      if (Boolean(current) === value) return;
+    } else if (Array.isArray(value)) {
+      if (stableStringify(current || []) === stableStringify(value)) return;
+    } else if (String(current || "").trim() === String(value || "").trim()) {
+      return;
+    }
     onUpdateClient(client.id, { [field]: value } as Partial<TrainerClientInvite>);
   };
 
   const subscriptionHistory = client?.subscriptionHistory || [];
+  const handleSubscriptionModeToggle = () => {
+    if (!client) return;
+    if (!draftSubEnabled) {
+      setDraftSubEnabled(true);
+      saveSubscriptionField("subscriptionEnabled", true);
+      return;
+    }
+    const message = tr(
+      "Выход из режима абонемента приведет к обнулению текущего абонемента.",
+      "Leaving subscription mode will reset the current subscription."
+    );
+    const disableMode = () => {
+      setDraftSubEnabled(false);
+      setDraftSubStart("");
+      setDraftSubEnd("");
+      setDraftSubPrice("");
+      setDraftSubTotal("");
+      setDraftSubLeft("");
+      onUpdateClient(client.id, {
+        subscriptionEnabled: false,
+        subscriptionStart: "",
+        subscriptionEnd: "",
+        subscriptionPrice: "",
+        subscriptionTotal: "",
+        subscriptionLeft: "",
+      });
+    };
+    if (typeof WebApp?.showConfirm === "function") {
+      WebApp.showConfirm(message, (yes) => {
+        if (yes) disableMode();
+      });
+      return;
+    }
+    if (window.confirm(message)) disableMode();
+  };
 
   return (
     <div style={styles.pageContainer}>
@@ -10157,8 +10213,8 @@ function ClientDetailScreen(props: {
             }}
             style={
               client?.archived
-                ? { ...styles.saveBtn, ...styles.neutralBtn, marginTop: 18 }
-                : { ...styles.saveBtn, ...styles.dangerBtn, marginTop: 18 }
+                ? styles.archiveActionBtn
+                : { ...styles.archiveActionBtn, ...styles.archiveActionDangerBtn }
             }
           >
             {client?.archived ? tr("Разархивировать", "Unarchive") : tr("Архивировать", "Archive")}
@@ -10183,7 +10239,7 @@ function ClientDetailScreen(props: {
                 }
                 if (window.confirm(message)) doDelete();
               }}
-              style={{ ...styles.saveBtn, ...styles.dangerBtn, marginTop: 10 }}
+              style={{ ...styles.archiveActionBtn, ...styles.archiveActionDangerBtn, marginTop: 10 }}
             >
               {tr("Удалить клиента", "Delete client")}
             </button>
@@ -10191,151 +10247,169 @@ function ClientDetailScreen(props: {
         </div>
       ) : visibleTab === "subscription" ? (
         <div style={styles.clientPanelPlain}>
-          <div style={styles.metricsRow}>
-            <div style={{ flex: 1 }}>
-              <div style={styles.clientDetailFieldLabel}>{tr("Дата начала", "Start date")}</div>
-              <input
-                type="date"
-                value={toISODate(draftSubStart)}
-                onChange={(e) => {
-                  const next = fromISODate(e.target.value);
-                  setDraftSubStart(next);
-                }}
-                onBlur={() => {
-                  saveSubscriptionField("subscriptionStart", draftSubStart);
-                  const start = parseDateDMY(draftSubStart);
-                  const end = parseDateDMY(draftSubEnd);
-                  if (start && end && end.getTime() < start.getTime()) {
-                    const message = tr(
-                      "Дата завершения не может быть раньше даты начала.",
-                      "End date cannot be earlier than start date."
-                    );
-                    if (typeof WebApp?.showPopup === "function") {
-                      WebApp.showPopup({
-                        title: tr("Неверная дата", "Invalid date"),
-                        message,
-                        buttons: [{ type: "ok" }],
-                      });
-                    } else {
-                      window.alert(message);
-                    }
-                  }
-                }}
-                style={styles.clientDetailInput}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={styles.clientDetailFieldLabel}>{tr("Дата завершения", "End date")}</div>
-              <input
-                type="date"
-                value={toISODate(draftSubEnd)}
-                onChange={(e) => {
-                  const next = fromISODate(e.target.value);
-                  setDraftSubEnd(next);
-                }}
-                onBlur={() => {
-                  const start = parseDateDMY(draftSubStart);
-                  const end = parseDateDMY(draftSubEnd);
-                  if (start && end && end.getTime() < start.getTime()) {
-                    const message = tr(
-                      "Дата завершения не может быть раньше даты начала.",
-                      "End date cannot be earlier than start date."
-                    );
-                    if (typeof WebApp?.showPopup === "function") {
-                      WebApp.showPopup({
-                        title: tr("Неверная дата", "Invalid date"),
-                        message,
-                        buttons: [{ type: "ok" }],
-                      });
-                    } else {
-                      window.alert(message);
-                    }
-                    return;
-                  }
-                  saveSubscriptionField("subscriptionEnd", draftSubEnd);
-                }}
-                style={styles.clientDetailInput}
-              />
-            </div>
-          </div>
+          <button type="button" style={styles.groupSlotToggle} onClick={handleSubscriptionModeToggle}>
+            <span
+              style={{
+                ...styles.groupSlotCheckbox,
+                ...(draftSubEnabled ? styles.groupSlotCheckboxActive : null),
+              }}
+            >
+              {draftSubEnabled ? <IconCheck size={16} strokeWidth={2.4} /> : null}
+            </span>
+            <span style={styles.groupSlotToggleText}>
+              {tr("Включить режим абонемента", "Enable subscription mode")}
+            </span>
+          </button>
 
-          <div style={{ marginTop: 16 }}>
-            <div style={styles.clientDetailFieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
-            <div style={styles.inputRow}>
-              <input
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={draftSubPrice}
-                onChange={(e) => {
-                  const value = normalizePriceRUBWithDelete(e.target.value, draftSubPrice);
-                  setDraftSubPrice(value);
-                }}
-                onBlur={() => {
-                  const value = normalizePriceRUB(draftSubPrice);
-                  if (value) setDraftSubPrice(value);
-                  saveSubscriptionField("subscriptionPrice", value);
-                }}
-                placeholder={tr("Введите стоимость", "Enter price")}
-                style={{ ...styles.clientDetailInput, flex: 1 }}
-              />
-              <button
-                type="button"
-                style={styles.inlineCheckBtn}
-                onClick={() => {
-                  (document.activeElement as HTMLElement | null)?.blur?.();
-                }}
-                aria-label="save"
-              >
-                ✓
-              </button>
-            </div>
-          </div>
+          {draftSubEnabled ? (
+            <>
+              <div style={styles.metricsRow}>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.clientDetailFieldLabel}>{tr("Дата начала", "Start date")}</div>
+                  <input
+                    type="date"
+                    value={toISODate(draftSubStart)}
+                    onChange={(e) => {
+                      const next = fromISODate(e.target.value);
+                      setDraftSubStart(next);
+                    }}
+                    onBlur={() => {
+                      saveSubscriptionField("subscriptionStart", draftSubStart);
+                      const start = parseDateDMY(draftSubStart);
+                      const end = parseDateDMY(draftSubEnd);
+                      if (start && end && end.getTime() < start.getTime()) {
+                        const message = tr(
+                          "Дата завершения не может быть раньше даты начала.",
+                          "End date cannot be earlier than start date."
+                        );
+                        if (typeof WebApp?.showPopup === "function") {
+                          WebApp.showPopup({
+                            title: tr("Неверная дата", "Invalid date"),
+                            message,
+                            buttons: [{ type: "ok" }],
+                          });
+                        } else {
+                          window.alert(message);
+                        }
+                      }
+                    }}
+                    style={styles.clientDetailInput}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.clientDetailFieldLabel}>{tr("Дата завершения", "End date")}</div>
+                  <input
+                    type="date"
+                    value={toISODate(draftSubEnd)}
+                    onChange={(e) => {
+                      const next = fromISODate(e.target.value);
+                      setDraftSubEnd(next);
+                    }}
+                    onBlur={() => {
+                      const start = parseDateDMY(draftSubStart);
+                      const end = parseDateDMY(draftSubEnd);
+                      if (start && end && end.getTime() < start.getTime()) {
+                        const message = tr(
+                          "Дата завершения не может быть раньше даты начала.",
+                          "End date cannot be earlier than start date."
+                        );
+                        if (typeof WebApp?.showPopup === "function") {
+                          WebApp.showPopup({
+                            title: tr("Неверная дата", "Invalid date"),
+                            message,
+                            buttons: [{ type: "ok" }],
+                          });
+                        } else {
+                          window.alert(message);
+                        }
+                        return;
+                      }
+                      saveSubscriptionField("subscriptionEnd", draftSubEnd);
+                    }}
+                    style={styles.clientDetailInput}
+                  />
+                </div>
+              </div>
 
-          <div style={{ ...styles.metricsRow, marginTop: 16 }}>
-            <div style={{ flex: 1 }}>
-              <div style={styles.clientDetailFieldLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
-              <input
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={draftSubTotal}
-                onChange={(e) => setDraftSubTotal(e.target.value.replace(/[^\d]/g, ""))}
-                onBlur={() => {
-                  const value = (draftSubTotal || "").trim();
-                  const normalizedPrice = normalizePriceRUB(draftSubPrice);
-                  const shouldAppendHistory =
-                    Boolean(value) &&
-                    (value !== (client?.subscriptionTotal || "").trim() ||
-                      normalizedPrice !== (client?.subscriptionPrice || "").trim() ||
-                      draftSubStart.trim() !== (client?.subscriptionStart || "").trim() ||
-                      draftSubEnd.trim() !== (client?.subscriptionEnd || "").trim());
-                  setDraftSubTotal(value);
-                  setDraftSubLeft(value);
-                  saveSubscriptionField("subscriptionTotal", value);
-                  saveSubscriptionField("subscriptionLeft", value);
-                  if (shouldAppendHistory && client) {
-                    const nextHistory: SubscriptionHistoryItem[] = [
-                      {
-                        id: cryptoId(),
-                        purchasedAt: formatDateShort(new Date()),
-                        price: normalizedPrice,
-                        total: value,
-                        start: draftSubStart.trim(),
-                        end: draftSubEnd.trim(),
-                      },
-                      ...(client.subscriptionHistory || []),
-                    ];
-                    onUpdateClient(client.id, { subscriptionHistory: nextHistory });
-                  }
-                }}
-                placeholder={tr("Занятий", "Sessions")}
-                style={styles.clientDetailInput}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={styles.clientDetailFieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
-              <div style={styles.clientDetailValueBox}>{draftSubLeft || draftSubTotal || "—"}</div>
-            </div>
-          </div>
+              <div style={{ marginTop: 16 }}>
+                <div style={styles.clientDetailFieldLabel}>{tr("Стоимость тренировки", "Session price")}</div>
+                <div style={styles.inputRow}>
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={draftSubPrice}
+                    onChange={(e) => {
+                      const value = normalizePriceRUBWithDelete(e.target.value, draftSubPrice);
+                      setDraftSubPrice(value);
+                    }}
+                    onBlur={() => {
+                      const value = normalizePriceRUB(draftSubPrice);
+                      if (value) setDraftSubPrice(value);
+                      saveSubscriptionField("subscriptionPrice", value);
+                    }}
+                    placeholder={tr("Введите стоимость", "Enter price")}
+                    style={{ ...styles.clientDetailInput, flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    style={styles.inlineCheckBtn}
+                    onClick={() => {
+                      (document.activeElement as HTMLElement | null)?.blur?.();
+                    }}
+                    aria-label="save"
+                  >
+                    ✓
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ ...styles.metricsRow, marginTop: 16 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.clientDetailFieldLabel}>{tr("Занятий в абонементе", "Sessions in subscription")}</div>
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={draftSubTotal}
+                    onChange={(e) => setDraftSubTotal(e.target.value.replace(/[^\d]/g, ""))}
+                    onBlur={() => {
+                      const value = (draftSubTotal || "").trim();
+                      const normalizedPrice = normalizePriceRUB(draftSubPrice);
+                      const shouldAppendHistory =
+                        Boolean(value) &&
+                        (value !== (client?.subscriptionTotal || "").trim() ||
+                          normalizedPrice !== (client?.subscriptionPrice || "").trim() ||
+                          draftSubStart.trim() !== (client?.subscriptionStart || "").trim() ||
+                          draftSubEnd.trim() !== (client?.subscriptionEnd || "").trim());
+                      setDraftSubTotal(value);
+                      setDraftSubLeft(value);
+                      saveSubscriptionField("subscriptionTotal", value);
+                      saveSubscriptionField("subscriptionLeft", value);
+                      if (shouldAppendHistory && client) {
+                        const nextHistory: SubscriptionHistoryItem[] = [
+                          {
+                            id: cryptoId(),
+                            purchasedAt: formatDateShort(new Date()),
+                            price: normalizedPrice,
+                            total: value,
+                            start: draftSubStart.trim(),
+                            end: draftSubEnd.trim(),
+                          },
+                          ...(client.subscriptionHistory || []),
+                        ];
+                        onUpdateClient(client.id, { subscriptionHistory: nextHistory });
+                      }
+                    }}
+                    placeholder={tr("Занятий", "Sessions")}
+                    style={styles.clientDetailInput}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={styles.clientDetailFieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
+                  <div style={styles.clientDetailValueBox}>{draftSubLeft || draftSubTotal || "—"}</div>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <div style={styles.subscriptionHistoryDivider} />
           <div style={styles.subscriptionHistoryTitle}>{tr("История абонементов", "Subscription history")}</div>
@@ -12249,6 +12323,10 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     subscriptionPrice: c.subscriptionPrice ?? "",
     subscriptionTotal: c.subscriptionTotal ?? "",
     subscriptionLeft: c.subscriptionLeft ?? "",
+    subscriptionEnabled:
+      typeof c.subscriptionEnabled === "boolean"
+        ? c.subscriptionEnabled
+        : Boolean(c.subscriptionStart || c.subscriptionEnd || c.subscriptionPrice || c.subscriptionTotal || c.subscriptionLeft),
     subscriptionHistory: parseSubscriptionHistory(c.subscriptionHistory),
     archived: Boolean(c.archived),
   };
@@ -16756,6 +16834,25 @@ const styles: Record<string, any> = {
     fontWeight: 800,
     fontSize: 15,
     color: "var(--text)",
+  },
+  archiveActionBtn: {
+    marginTop: 18,
+    width: "100%",
+    height: 54,
+    borderRadius: 999,
+    border: "1px solid var(--glass-pill-border)",
+    background: "var(--glass-pill-bg)",
+    boxShadow: "var(--glass-pill-shadow)",
+    cursor: "pointer",
+    fontWeight: 800,
+    fontSize: 16,
+    color: "var(--text-primary)",
+  },
+  archiveActionDangerBtn: {
+    background: "linear-gradient(135deg, #eb575c, #ff6f74)",
+    borderColor: "rgba(235, 87, 92, 0.6)",
+    color: "#ffffff",
+    boxShadow: "0 16px 28px rgba(235, 87, 92, 0.28)",
   },
   dangerBtn: {
     background: "#e5484d",

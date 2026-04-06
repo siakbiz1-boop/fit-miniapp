@@ -976,6 +976,7 @@ app.patch("/clients/:id", async (req, reply) => {
       subscriptionPrice: body?.subscriptionPrice,
       subscriptionTotal: body?.subscriptionTotal,
       subscriptionLeft: body?.subscriptionLeft,
+      subscriptionEnabled: body?.subscriptionEnabled,
       subscriptionHistory:
         body?.subscriptionHistory !== undefined ? JSON.stringify(body.subscriptionHistory) : undefined,
     },
