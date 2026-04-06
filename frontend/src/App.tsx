@@ -180,6 +180,7 @@ type TrainingSlot = {
   isGroup?: boolean;
   capacity?: number | null;
   bookedCount?: number;
+  sessionId?: string | null;
 };
 
 type SessionItem = {
@@ -3980,6 +3981,16 @@ function ClientSchedule(props: {
     return invites.find((t) => t.trainerTgUserId === activeSession.trainerTgUserId) || null;
   }, [activeSession?.trainerTgUserId, invites]);
   const clientExercises = activeTrainer?.exercises || [];
+  const bookedGroupSlotKeys = useMemo(() => {
+    const keys = new Set<string>();
+    Object.values(sessionsByDate)
+      .flat()
+      .forEach((session) => {
+        if (!(session.type === "group" || session.clientUsername === "group")) return;
+        keys.add(`${session.trainerTgUserId}_${session.dateKey}_${session.start}_${session.end}`);
+      });
+    return keys;
+  }, [sessionsByDate]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTs(Date.now()), 30000);
@@ -4251,7 +4262,7 @@ function ClientSchedule(props: {
                     };
                     void doLeave();
                   }}
-                  style={{ ...styles.saveBtn, ...styles.neutralBtn, marginTop: 16 }}
+                  style={styles.sessionDangerBtn}
                 >
                   {tr("Отказаться от тренировки", "Cancel participation")}
                 </button>
@@ -4323,7 +4334,7 @@ function ClientSchedule(props: {
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.schedulePage }}>
-      {section === "book" ? (
+      {section === "book" && trainers.length > 1 ? (
         <div style={styles.scheduleHeaderRow}>
           <div style={styles.trainerSelectWrap}>
             <div style={styles.trainerSelectLabel}>{tr("Тренер", "Coach")}</div>
@@ -4331,7 +4342,6 @@ function ClientSchedule(props: {
               value={selectedTrainerId ?? ""}
               onChange={(e) => setSelectedTrainerId(e.target.value || null)}
               style={styles.trainerSelect}
-              disabled={trainers.length <= 1}
               aria-label={tr("Выбрать тренера", "Choose coach")}
             >
               {trainers.length === 0 ? (
@@ -4475,75 +4485,88 @@ function ClientSchedule(props: {
           return (
             <div style={styles.freeList}>
               {slots.map((w) => (
-                <div key={w.id} style={styles.freeBanner}>
-                  <div style={styles.freeBannerLeft}>
-                    <div style={styles.freeBannerTitle}>
-                      {w.isGroup ? tr("Групповое окно", "Group slot") : tr("Свободное окно", "Available slot")}
-                    </div>
-                    <div style={styles.freeBannerTime}>
-                      {w.start} — {w.end}
-                    </div>
-                    {w.isGroup ? (
-                      <div style={styles.freeBannerMeta}>
-                        {tr("Мест", "Spots")}: {Math.max(0, (w.capacity ?? 2) - (w.bookedCount ?? 0))}/
-                        {w.capacity ?? 2}
+                (() => {
+                  const isBookedGroupSlot =
+                    w.isGroup &&
+                    !!trainer.trainerTgUserId &&
+                    bookedGroupSlotKeys.has(`${trainer.trainerTgUserId}_${w.dateKey}_${w.start}_${w.end}`);
+                  return (
+                    <div key={w.id} style={styles.freeBanner}>
+                      <div style={styles.freeBannerLeft}>
+                        <div style={styles.freeBannerTitle}>
+                          {w.isGroup ? tr("Групповое окно", "Group slot") : tr("Свободное окно", "Available slot")}
+                        </div>
+                        <div style={styles.freeBannerTime}>
+                          {w.start} — {w.end}
+                        </div>
+                        {w.isGroup ? (
+                          <div style={styles.freeBannerMeta}>
+                            {tr("Мест", "Spots")}: {Math.max(0, (w.capacity ?? 2) - (w.bookedCount ?? 0))}/
+                            {w.capacity ?? 2}
+                          </div>
+                        ) : null}
+                        {isBookedGroupSlot ? (
+                          <div style={styles.freeBannerMeta}>{tr("Вы уже записаны", "You are already booked")}</div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
-                  <div style={styles.freeBannerActions}>
-                    <button
-                      type="button"
-                      style={styles.freeBannerAdd}
-                      disabled={!canBookSlot(w.dateKey, w.start)}
-                      onClick={async () => {
-                        if (!trainer.trainerTgUserId) return;
-                        if (!canBookSlot(w.dateKey, w.start)) {
-                          setSlotError(tr("Окно уже началось.", "The slot has already started."));
-                          return;
-                        }
-                        try {
-                          const res = await fetch(`${apiBase}/book`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({
-                              trainerTgUserId: trainer.trainerTgUserId,
-                              dateKey: w.dateKey,
-                              start: w.start,
-                              end: w.end,
-                            }),
-                          });
-                          if (!res.ok) {
-                            setSlotError(tr("Не удалось записаться.", "Booking failed."));
-                            return;
-                          }
-                          setSlots((prev) => {
-                            if (!w.isGroup) return prev.filter((s) => s.id !== w.id);
-                            const nextBookedCount = Number(w.bookedCount || 0) + 1;
-                            const nextCapacity = w.capacity ?? 2;
-                            if (nextBookedCount >= nextCapacity) {
-                              return prev.filter((s) => s.id !== w.id);
+                      <div style={styles.freeBannerActions}>
+                        <button
+                          type="button"
+                          style={styles.freeBannerAdd}
+                          disabled={!canBookSlot(w.dateKey, w.start) || isBookedGroupSlot}
+                          onClick={async () => {
+                            if (!trainer.trainerTgUserId) return;
+                            if (isBookedGroupSlot) return;
+                            if (!canBookSlot(w.dateKey, w.start)) {
+                              setSlotError(tr("Окно уже началось.", "The slot has already started."));
+                              return;
                             }
-                            return prev.map((s) =>
-                              s.id === w.id ? { ...s, bookedCount: nextBookedCount } : s
-                            );
-                          });
-                          onBooked();
-                        } catch {
-                          setSlotError(tr("Не удалось записаться.", "Booking failed."));
-                        }
-                      }}
-                    >
-                      <span style={styles.iconOnAccent}>
-                        <HugeiconsIcon
-                          icon={UserAdd02Icon}
-                          size={20}
-                          strokeWidth={2.2}
-                          style={{ color: "#ffffff", stroke: "currentColor" }}
-                        />
-                      </span>
-                    </button>
-                  </div>
-                </div>
+                            try {
+                              const res = await fetch(`${apiBase}/book`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({
+                                  trainerTgUserId: trainer.trainerTgUserId,
+                                  dateKey: w.dateKey,
+                                  start: w.start,
+                                  end: w.end,
+                                }),
+                              });
+                              if (!res.ok) {
+                                setSlotError(tr("Не удалось записаться.", "Booking failed."));
+                                return;
+                              }
+                              setSlots((prev) => {
+                                if (!w.isGroup) return prev.filter((s) => s.id !== w.id);
+                                const nextBookedCount = Math.min((w.capacity ?? 2), Number(w.bookedCount || 0) + 1);
+                                return prev.map((s) =>
+                                  s.id === w.id ? { ...s, bookedCount: nextBookedCount } : s
+                                );
+                              });
+                              onBooked();
+                            } catch {
+                              setSlotError(tr("Не удалось записаться.", "Booking failed."));
+                            }
+                          }}
+                          title={
+                            isBookedGroupSlot
+                              ? tr("Вы уже записаны", "Already booked")
+                              : tr("Записаться", "Book")
+                          }
+                        >
+                          <span style={styles.iconOnAccent}>
+                            <HugeiconsIcon
+                              icon={UserAdd02Icon}
+                              size={20}
+                              strokeWidth={2.2}
+                              style={{ color: "#ffffff", stroke: "currentColor" }}
+                            />
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
               ))}
             </div>
           );
@@ -5672,14 +5695,15 @@ function TrainerSchedule(props: {
           </div>
           <div style={{ width: 36 }} />
         </div>
-        <div style={styles.clientTabsScroll}>
-          <div style={styles.clientTabs}>
+        <div style={styles.clientDetailTabsScroll}>
+          <div style={styles.trainerClientTabsWrap}>
             <button
               type="button"
               onClick={() => setGroupClientTab("weights")}
               style={{
-                ...styles.clientTab,
-                ...(groupClientTab === "weights" ? styles.clientTabActive : null),
+                ...styles.clientDetailTab,
+                ...styles.trainerClientTabButton,
+                ...(groupClientTab === "weights" ? styles.clientDetailTabActive : null),
               }}
             >
               {tr("Статистика упражнений", "Exercise stats")}
@@ -5688,15 +5712,16 @@ function TrainerSchedule(props: {
               type="button"
               onClick={() => setGroupClientTab("history")}
               style={{
-                ...styles.clientTab,
-                ...(groupClientTab === "history" ? styles.clientTabActive : null),
+                ...styles.clientDetailTab,
+                ...styles.trainerClientTabButton,
+                ...(groupClientTab === "history" ? styles.clientDetailTabActive : null),
               }}
             >
               {tr("История тренировок клиента", "Client history")}
             </button>
           </div>
         </div>
-        <div style={styles.clientTabsDivider} />
+        <div style={styles.clientDetailTabsDivider} />
         <div style={styles.clientPanelPlain}>
           {groupClientTab === "weights" ? (
             <ExerciseStatsPanel
@@ -5764,6 +5789,7 @@ function TrainerSchedule(props: {
     const canEditTime = canDeleteByTime;
     const isOneTimeSession = activeSession.clientUsername === "one_time" || activeSession.type === "one_time";
     const isGroupSession = activeSession.clientUsername === "group" || activeSession.type === "group";
+    const hasExtraSessionTabs = !isOneTimeSession && !isGroupSession;
     const participantClients = (activeSession.participants || [])
       .map((p) => ({
         id: p.clientId || p.clientUsername,
@@ -5801,19 +5827,30 @@ function TrainerSchedule(props: {
         <div style={{ width: 36 }} />
       </div>
         <div style={styles.sessionTabsScroll}>
-          <div style={styles.sessionTabsWrap}>
-            <div style={styles.sessionTabs}>
+          <div
+            style={{
+              ...styles.sessionTabsWrap,
+              ...(!hasExtraSessionTabs ? styles.sessionSingleTabWrap : null),
+            }}
+          >
+            <div
+              style={{
+                ...styles.sessionTabs,
+                ...(!hasExtraSessionTabs ? styles.sessionSingleTabList : null),
+              }}
+            >
             <button
               type="button"
               onClick={() => setSessionTab("info")}
               style={{
                 ...styles.sessionTabPill,
+                ...(!hasExtraSessionTabs ? styles.sessionSingleTabPill : null),
                 ...(sessionTab === "info" ? styles.sessionTabPillActive : null),
               }}
             >
               {tr("Информация о тренировке", "Session info")}
             </button>
-            {!isOneTimeSession && !isGroupSession ? (
+            {hasExtraSessionTabs ? (
               <>
                 <button
                   type="button"
@@ -6206,22 +6243,24 @@ function TrainerSchedule(props: {
                 )}
               </div>
               <div style={styles.sessionCard}>
-                <div style={styles.sessionCardRow}>
-                  <div style={styles.sessionCardLabel}>
+                <div style={styles.sessionCardLabelRow}>
+                  <div style={styles.sessionCardLabelWithInfo}>
+                    <div style={styles.sessionCardLabel}>
                     {isGroupSession
                       ? tr("Общая стоимость тренировки", "Total session price")
                       : tr("Стоимость тренировки", "Session price")}
+                    </div>
+                    {isGroupSession ? (
+                      <button
+                        type="button"
+                        style={styles.sessionInfoBadge}
+                        onClick={() => setGroupPriceInfoOpen(true)}
+                        aria-label={tr("Информация", "Info")}
+                      >
+                        i
+                      </button>
+                    ) : null}
                   </div>
-                  {isGroupSession ? (
-                    <button
-                      type="button"
-                      style={styles.sessionInfoBadge}
-                      onClick={() => setGroupPriceInfoOpen(true)}
-                      aria-label={tr("Информация", "Info")}
-                    >
-                      i
-                    </button>
-                  ) : null}
                 </div>
                 <div style={styles.sessionCardRow}>
                   <input
@@ -7904,22 +7943,16 @@ function TrainerSchedule(props: {
                               const client = clients.find((c) => c.username === value);
                               if (!client || !canScheduleClientOnDate(clients, value)) return;
                               try {
-                                const res = await fetch(`${apiBase}/sessions`, {
+                                const res = await fetch(`${apiBase}/slots/${encodeURIComponent(w.id)}/assign`, {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                                    body: JSON.stringify({
-                                      dateKey,
-                                      start: w.start,
-                                      end: w.end,
-                                      tzOffset: new Date().getTimezoneOffset(),
-                                      clientId: client.id,
-                                    }),
-                                  });
+                                  body: JSON.stringify({ clientId: client.id }),
+                                });
                                 if (!res.ok) {
                                   setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
                                   return;
                                 }
-                                const data = (await res.json()) as { ok: boolean; session?: any };
+                                const data = (await res.json()) as { ok: boolean; session?: any; slot?: TrainingSlot | null };
                                 if (!data?.session) {
                                   setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
                                   return;
@@ -7927,10 +7960,30 @@ function TrainerSchedule(props: {
                                 const mapped = mapSessionFromApi(data.session);
                                 setSessionsByDate((prev) => {
                                   const list = prev[mapped.dateKey] ? [...prev[mapped.dateKey]] : [];
-                                  list.push(mapped);
+                                  const existingIndex = list.findIndex((item) => item.id === mapped.id);
+                                  if (existingIndex >= 0) {
+                                    list[existingIndex] = mapped;
+                                  } else {
+                                    list.push(mapped);
+                                  }
                                   return { ...prev, [mapped.dateKey]: list };
                                 });
-                                void deleteSlot(w.id, dateKey);
+                                const nextSlot = data.slot;
+                                setSlotsByDate((prev) => {
+                                  const list = prev[dateKey] ? [...prev[dateKey]] : [];
+                                  const filtered = list.filter((slot) => slot.id !== w.id);
+                                  if (!nextSlot || (nextSlot.capacity ?? 2) <= (nextSlot.bookedCount ?? 0)) {
+                                    return filtered.length ? { ...prev, [dateKey]: filtered } : Object.fromEntries(
+                                      Object.entries(prev).filter(([key]) => key !== dateKey)
+                                    );
+                                  }
+                                  return {
+                                    ...prev,
+                                    [dateKey]: [...filtered, nextSlot].sort(
+                                      (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
+                                    ),
+                                  };
+                                });
                               } catch {
                                 setFreeError(tr("Не удалось создать тренировку.", "Failed to create session."));
                                 return;
@@ -7951,7 +8004,9 @@ function TrainerSchedule(props: {
                                 {c.fullName?.trim() ? c.fullName : `@${c.username}`}
                               </option>
                             ))}
-                          <option value="__one_time__">{tr("Разовая тренировка", "One-time session")}</option>
+                          {!w.isGroup ? (
+                            <option value="__one_time__">{tr("Разовая тренировка", "One-time session")}</option>
+                          ) : null}
                         </select>
                       </div>
                     ) : null}
@@ -7960,15 +8015,6 @@ function TrainerSchedule(props: {
                     <button
                       type="button"
                       onClick={() => {
-                        if (w.isGroup) {
-                          setFreeError(
-                            tr(
-                              "Групповое окно пока можно бронировать только через запись клиента.",
-                              "Group slots can currently be booked only from the client side."
-                            )
-                          );
-                          return;
-                        }
                         if (clients.length === 0) return;
                         if (!canBookSlot(w.dateKey, w.start)) {
                           setFreeError(tr("Окно уже началось.", "The slot has already started."));
@@ -12050,6 +12096,7 @@ function buildSlotsSignature(list: TrainingSlot[]) {
       isGroup: slot.isGroup ?? false,
       capacity: slot.capacity ?? null,
       bookedCount: slot.bookedCount ?? 0,
+      sessionId: slot.sessionId ?? null,
     }));
   return stableStringify(normalized);
 }
@@ -15249,10 +15296,19 @@ const styles: Record<string, any> = {
     boxShadow: "var(--session-tabs-wrap-shadow)",
     minWidth: "max-content",
   },
+  sessionSingleTabWrap: {
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+  },
   sessionTabs: {
     display: "flex",
     gap: 8,
     minWidth: "max-content",
+  },
+  sessionSingleTabList: {
+    width: "100%",
+    minWidth: 0,
   },
   sessionTabPill: {
     height: 40,
@@ -15265,6 +15321,10 @@ const styles: Record<string, any> = {
     color: "var(--session-tab-text)",
     padding: "0 16px",
     whiteSpace: "nowrap",
+  },
+  sessionSingleTabPill: {
+    flex: 1,
+    width: "100%",
   },
   sessionTabPillActive: {
     background: "var(--session-tab-active-bg)",
@@ -16187,6 +16247,17 @@ const styles: Record<string, any> = {
     gap: 10,
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  sessionCardLabelRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    marginBottom: 6,
+  },
+  sessionCardLabelWithInfo: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
   },
   sessionCardLabel: {
     fontSize: 12,
@@ -17143,10 +17214,10 @@ const styles: Record<string, any> = {
   },
   trainerSelectWrap: {
     display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: 6,
-    flex: "0 0 auto",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 8,
+    width: "100%",
   },
   trainerSelectLabel: {
     fontSize: 11,
@@ -17154,11 +17225,12 @@ const styles: Record<string, any> = {
     letterSpacing: 0.2,
     textTransform: "uppercase",
     color: "var(--text-secondary)",
+    whiteSpace: "nowrap",
   },
   trainerSelect: {
     border: "1px solid rgba(22, 119, 255, 0.35)",
     borderRadius: 14,
-    padding: "10px 12px",
+    padding: "8px 12px",
     fontSize: 14,
     fontWeight: 700,
     background: "rgba(22, 119, 255, 0.08)",
