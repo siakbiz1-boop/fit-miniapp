@@ -61,6 +61,7 @@ model TrainingSession {
   source           SessionSource @default(trainer)
   remindAt         DateTime
   remindedAt       DateTime?
+  subscriptionChargedAt DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   participants     GroupSessionParticipant[]
@@ -77,6 +78,7 @@ model GroupSessionParticipant {
   clientName     String?
   createdAt      DateTime @default(now())
   remindedAt     DateTime?
+  subscriptionChargedAt DateTime?
 
   session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 

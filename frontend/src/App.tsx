@@ -221,7 +221,13 @@ type SessionItem = {
   price?: string;
   comment?: string;
   color?: string;
-  participants?: { clientId: string; clientUsername: string; clientName?: string }[];
+  subscriptionChargedAt?: string | null;
+  participants?: {
+    clientId: string;
+    clientUsername: string;
+    clientName?: string;
+    subscriptionChargedAt?: string | null;
+  }[];
 };
 
 
@@ -7923,6 +7929,7 @@ function TrainerSchedule(props: {
                 .slice()
                 .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
                 .map((w) => {
+                  const trainerSessions = Object.values(sessionsByDate).flat();
                   const linkedSession = w.sessionId
                     ? (sessionsByDate[w.dateKey] || []).find((session) => session.id === w.sessionId) || null
                     : null;
@@ -7936,7 +7943,7 @@ function TrainerSchedule(props: {
                       .map((username) => username.replace(/^@/, ""))
                   );
                   const assignableClients = clients.filter((c) => {
-                    if (!canScheduleClientOnDate(clients, c.username)) return false;
+                    if (!canScheduleClientOnDate(clients, c.username, trainerSessions)) return false;
                     if (!w.isGroup) return true;
                     if (bookedClientIds.has(c.id)) return false;
                     return !bookedClientUsernames.has(c.username.replace(/^@/, ""));
@@ -8022,7 +8029,7 @@ function TrainerSchedule(props: {
                                 return;
                               }
                               const client = clients.find((c) => c.username === value);
-                              if (!client || !canScheduleClientOnDate(clients, value)) return;
+                              if (!client || !canScheduleClientOnDate(clients, value, trainerSessions)) return;
                               try {
                                 const res = await fetch(`${apiBase}/slots/${encodeURIComponent(w.id)}/assign`, {
                                   method: "POST",
@@ -8631,6 +8638,7 @@ function TrainerClients(props: {
           <div style={{ marginTop: 18 }}>
             <div style={styles.clientsList}>
               {filtered.map((inv) => {
+                const trainerSessions = Object.values(sessionsByDate).flat();
                 const isLocal = inv.isLocal || inv.username.startsWith("local_");
                 const displayName = inv.fullName?.trim()
                   ? inv.fullName
@@ -8639,27 +8647,18 @@ function TrainerClients(props: {
                     : isLocal
                       ? tr("Клиент", "Client")
                       : `@${inv.username}`;
-                const hasSubData = Boolean(
-                  inv.subscriptionEnabled ||
-                    (inv.subscriptionStart && inv.subscriptionStart.trim()) ||
-                    (inv.subscriptionEnd && inv.subscriptionEnd.trim()) ||
-                    (inv.subscriptionPrice && inv.subscriptionPrice.trim()) ||
-                    (inv.subscriptionTotal && inv.subscriptionTotal.trim()) ||
-                    (inv.subscriptionLeft && inv.subscriptionLeft.trim())
-                );
-                const left = parseInt(inv.subscriptionLeft || "", 10);
-                const endDate = inv.subscriptionEnd ? parseDateDMY(inv.subscriptionEnd) : null;
-                const isExpiredByDate = endDate ? endDateEnd(endDate).getTime() <= Date.now() : false;
-                const missingSubscriptionData =
-                  Boolean(inv.subscriptionEnabled) &&
-                  (!inv.subscriptionStart?.trim() ||
-                    !inv.subscriptionEnd?.trim() ||
-                    !inv.subscriptionPrice?.trim() ||
-                    !inv.subscriptionTotal?.trim() ||
-                    Number.isNaN(left));
-                const shouldWarn =
-                  hasSubData &&
-                  (missingSubscriptionData || (Number.isNaN(left) ? false : left <= 0) || isExpiredByDate);
+                const subscriptionInfo = getClientSubscriptionBookingInfo(inv, trainerSessions);
+                const shouldWarn = subscriptionInfo.shouldWarn;
+                const subscriptionText =
+                  subscriptionInfo.enabled &&
+                  subscriptionInfo.available !== null &&
+                  subscriptionInfo.total !== null &&
+                  !shouldWarn
+                    ? tr(
+                        `Тренировок в абонементе ${subscriptionInfo.available}/${subscriptionInfo.total}`,
+                        `Sessions in subscription ${subscriptionInfo.available}/${subscriptionInfo.total}`
+                      )
+                    : null;
                 return (
                   <div
                     key={inv.id}
@@ -8697,6 +8696,8 @@ function TrainerClients(props: {
                               <span style={styles.subscriptionWarningText}>
                                 {tr("Необходимо продлить абонемент", "Subscription renewal required")}
                               </span>
+                            ) : subscriptionText ? (
+                              <span style={styles.subscriptionLeftText}>{subscriptionText}</span>
                             ) : null}
                           </div>
                         </div>
@@ -9625,6 +9626,11 @@ function ClientDetailScreen(props: {
     };
   }, [scheduleDragging]);
 
+  const clientSubscriptionInfo = useMemo(
+    () => getClientSubscriptionBookingInfo(client, Object.values(sessionsByDate).flat()),
+    [client, sessionsByDate]
+  );
+
   const maybeCloseSchedule = (planned: boolean) => {
     setScheduleOpen(false);
     if (!planned) return;
@@ -9938,7 +9944,7 @@ function ClientDetailScreen(props: {
                 onClick={async () => {
                   if (scheduleSaving) return;
                   if (!client) return;
-                  if (!canScheduleClientOnDate([client], client.username)) {
+                  if (!canScheduleClientOnDate([client], client.username, Object.values(sessionsByDate).flat())) {
                     setScheduleError(
                       tr(
                         "Нельзя создать тренировку: необходимо обновить данные абонемента.",
@@ -10458,7 +10464,11 @@ function ClientDetailScreen(props: {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.clientDetailFieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
-                  <div style={styles.clientDetailValueBox}>{draftSubLeft || client?.subscriptionLeft || "—"}</div>
+                  <div style={styles.clientDetailValueBox}>
+                    {clientSubscriptionInfo.available !== null
+                      ? String(clientSubscriptionInfo.available)
+                      : draftSubLeft || client?.subscriptionLeft || "—"}
+                  </div>
                 </div>
               </div>
               <div style={styles.subscriptionCreateActionRow}>
@@ -12491,11 +12501,13 @@ function mapSessionFromApi(s: any): SessionItem {
     price: s.price ? String(s.price) : undefined,
     comment: s.comment ? String(s.comment) : undefined,
     color: s.color ? String(s.color) : undefined,
+    subscriptionChargedAt: s.subscriptionChargedAt ? String(s.subscriptionChargedAt) : null,
     participants: Array.isArray(s.participants)
       ? s.participants.map((p: any) => ({
           clientId: String(p.clientId || ""),
           clientUsername: String(p.clientUsername || ""),
           clientName: p.clientName ? String(p.clientName) : undefined,
+          subscriptionChargedAt: p.subscriptionChargedAt ? String(p.subscriptionChargedAt) : null,
         }))
       : [],
   };
@@ -12545,6 +12557,10 @@ function isLocalClientUsername(username: string) {
   return username.startsWith("local_");
 }
 
+function normalizeUsernameValue(username: string) {
+  return String(username || "").replace(/^@/, "");
+}
+
 function getTrainerLabel(trainer: TrainerClientInvite, tr: (ru: string, en: string) => string) {
   if (trainer.trainerName && trainer.trainerName.trim()) return trainer.trainerName;
   if (trainer.trainerUsername && trainer.trainerUsername.trim()) return `@${trainer.trainerUsername}`;
@@ -12553,7 +12569,8 @@ function getTrainerLabel(trainer: TrainerClientInvite, tr: (ru: string, en: stri
 
 function canScheduleClientOnDate(
   clients: TrainerClientInvite[],
-  username: string
+  username: string,
+  sessions: SessionItem[] = []
 ) {
   const c = clients.find((x) => x.username === username);
   if (!c || c.archived) return false;
@@ -12567,11 +12584,85 @@ function canScheduleClientOnDate(
     if (!start || !end || !price || !total || Number.isNaN(left) || left <= 0) return false;
     const endDate = parseDateDMY(end);
     if (!endDate || endDateEnd(endDate).getTime() < Date.now()) return false;
-    return true;
+    const reserved = getReservedSubscriptionCount(sessions, c.username);
+    return Math.max(0, left - reserved) > 0;
   }
   const left = parseInt(c.subscriptionLeft || "", 10);
   if (!Number.isNaN(left) && left <= 0) return false;
   return true;
+}
+
+function sessionStartDateTime(session: SessionItem) {
+  const day = parseDateKey(session.dateKey);
+  if (!day) return null;
+  const [hours, minutes] = session.start.split(":").map((value) => parseInt(value, 10));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  const out = new Date(day);
+  out.setHours(hours, minutes, 0, 0);
+  return out;
+}
+
+function getReservedSubscriptionCount(sessions: SessionItem[], username: string, now = new Date()) {
+  const normalizedUsername = normalizeUsernameValue(username);
+  return sessions.reduce((count, session) => {
+    const startAt = sessionStartDateTime(session);
+    if (!startAt || startAt.getTime() <= now.getTime()) return count;
+    if (session.clientUsername === normalizedUsername) {
+      return session.subscriptionChargedAt ? count : count + 1;
+    }
+    if (!(session.clientUsername === "group" || session.type === "group")) return count;
+    const participant = (session.participants || []).find(
+      (item) => normalizeUsernameValue(item.clientUsername) === normalizedUsername
+    );
+    if (!participant || participant.subscriptionChargedAt) return count;
+    return count + 1;
+  }, 0);
+}
+
+function getClientSubscriptionBookingInfo(
+  client: TrainerClientInvite | null | undefined,
+  sessions: SessionItem[] = [],
+  now = new Date()
+) {
+  if (!client) {
+    return { enabled: false, hasData: false, missingData: false, expired: false, total: null as number | null, left: null as number | null, reserved: 0, available: null as number | null, shouldWarn: false };
+  }
+  const hasData = Boolean(
+    client.subscriptionEnabled ||
+      client.subscriptionStart?.trim() ||
+      client.subscriptionEnd?.trim() ||
+      client.subscriptionPrice?.trim() ||
+      client.subscriptionTotal?.trim() ||
+      client.subscriptionLeft?.trim()
+  );
+  if (!client.subscriptionEnabled) {
+    return { enabled: false, hasData, missingData: false, expired: false, total: null as number | null, left: null as number | null, reserved: 0, available: null as number | null, shouldWarn: false };
+  }
+  const total = parseInt(client.subscriptionTotal || "", 10);
+  const left = parseInt(client.subscriptionLeft || "", 10);
+  const missingData =
+    !client.subscriptionStart?.trim() ||
+    !client.subscriptionEnd?.trim() ||
+    !client.subscriptionPrice?.trim() ||
+    !client.subscriptionTotal?.trim() ||
+    Number.isNaN(left) ||
+    Number.isNaN(total);
+  const endDate = client.subscriptionEnd ? parseDateDMY(client.subscriptionEnd) : null;
+  const expired = endDate ? endDateEnd(endDate).getTime() < now.getTime() : false;
+  const reserved = missingData ? 0 : getReservedSubscriptionCount(sessions, client.username, now);
+  const available = missingData || Number.isNaN(left) ? null : Math.max(0, left - reserved);
+  const shouldWarn = hasData && (missingData || expired || available === 0);
+  return {
+    enabled: true,
+    hasData,
+    missingData,
+    expired,
+    total: Number.isNaN(total) ? null : total,
+    left: Number.isNaN(left) ? null : left,
+    reserved,
+    available,
+    shouldWarn,
+  };
 }
 
 function normalizeNumberWithUnit(raw: string, unit: "см" | "кг") {

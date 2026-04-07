@@ -243,24 +243,9 @@ function getSlotCapacity(slot: any) {
   return Math.floor(raw);
 }
 
-async function adjustSubscriptionLeft(
-  trainerTgUserId: bigint,
-  clientUsername: string,
-  delta: number
-) {
-  if (!trainerTgUserId || !clientUsername || !delta) return;
-  const relation = await prismaAny.trainerClient.findFirst({
-    where: { trainerTgUserId, clientUsername },
-  });
-  if (!relation) return;
-  const left = parseInt(String(relation.subscriptionLeft || ""), 10);
-  if (Number.isNaN(left)) return;
-  const nextLeft = Math.max(0, left + delta);
-  if (nextLeft === left) return;
-  await prismaAny.trainerClient.update({
-    where: { id: relation.id },
-    data: { subscriptionLeft: String(nextLeft) },
-  });
+function parseSubscriptionCount(raw: any) {
+  const value = parseInt(String(raw || ""), 10);
+  return Number.isNaN(value) ? null : value;
 }
 
 function parseDateDMY(value: string | null | undefined) {
@@ -282,28 +267,205 @@ function parseDateDMY(value: string | null | undefined) {
   return date;
 }
 
-function isSubscriptionAvailable(client: any, now = new Date()) {
-  if (!client?.subscriptionEnabled) return true;
+function getSubscriptionValidity(client: any, now = new Date()) {
+  if (!client?.subscriptionEnabled) {
+    return { enabled: false, valid: true, reason: null as string | null };
+  }
   const start = String(client.subscriptionStart || "").trim();
   const end = String(client.subscriptionEnd || "").trim();
   const price = String(client.subscriptionPrice || "").trim();
   const total = String(client.subscriptionTotal || "").trim();
-  const left = parseInt(String(client.subscriptionLeft || ""), 10);
-  if (!start || !end || !price || !total || Number.isNaN(left)) return false;
-  if (left <= 0) return false;
+  const left = parseSubscriptionCount(client.subscriptionLeft);
+  if (!start || !end || !price || !total || left === null) {
+    return { enabled: true, valid: false, reason: "incomplete" as const };
+  }
+  if (left <= 0) {
+    return { enabled: true, valid: false, reason: "empty" as const };
+  }
   const endDate = parseDateDMY(end);
-  if (!endDate) return false;
+  if (!endDate) {
+    return { enabled: true, valid: false, reason: "invalid_end" as const };
+  }
   endDate.setHours(23, 59, 59, 999);
-  return now.getTime() <= endDate.getTime();
+  if (now.getTime() > endDate.getTime()) {
+    return { enabled: true, valid: false, reason: "expired" as const };
+  }
+  return { enabled: true, valid: true, reason: null as string | null };
 }
 
-function shouldRefundSubscriptionOnCancel(startAt: Date | string, cancelWindowHours: number | null | undefined) {
+function getSubscriptionChargeMoment(startAt: Date | string, cancelWindowHours: number | null | undefined) {
   const sessionStart = startAt instanceof Date ? startAt : new Date(startAt);
-  if (!Number.isFinite(sessionStart.getTime())) return false;
-  if (sessionStart.getTime() <= Date.now()) return false;
+  if (!Number.isFinite(sessionStart.getTime())) return null;
   const hours = typeof cancelWindowHours === "number" ? cancelWindowHours : 0;
-  if (!hours || hours <= 0) return true;
-  return Date.now() <= sessionStart.getTime() - hours * 60 * 60 * 1000;
+  if (!hours || hours <= 0) return sessionStart;
+  return new Date(sessionStart.getTime() - hours * 60 * 60 * 1000);
+}
+
+function shouldChargeSubscriptionNow(
+  startAt: Date | string,
+  cancelWindowHours: number | null | undefined,
+  now = new Date()
+) {
+  const chargeMoment = getSubscriptionChargeMoment(startAt, cancelWindowHours);
+  if (!chargeMoment) return false;
+  return now.getTime() > chargeMoment.getTime();
+}
+
+async function getTrainerCancelWindowHours(trainerTgUserId: bigint) {
+  const trainer = await prisma.user.findUnique({
+    where: { tgUserId: trainerTgUserId },
+    select: { id: true },
+  });
+  if (!trainer) return 0;
+  const profile = await prismaAny.trainerProfile.findUnique({
+    where: { userId: trainer.id },
+    select: { cancelWindowHours: true },
+  });
+  return typeof profile?.cancelWindowHours === "number" ? profile.cancelWindowHours : 0;
+}
+
+async function reconcileSubscriptionChargesForClient(
+  trainerTgUserId: bigint,
+  clientUsername: string,
+  now = new Date()
+) {
+  const normalizedUsername = normalizeUsername(clientUsername || "");
+  if (!normalizedUsername) return null;
+
+  const relation = await prismaAny.trainerClient.findFirst({
+    where: { trainerTgUserId, clientUsername: normalizedUsername },
+  });
+  if (!relation) return null;
+
+  const validity = getSubscriptionValidity(relation, now);
+  if (!validity.enabled) return relation;
+
+  const cancelWindowHours = await getTrainerCancelWindowHours(trainerTgUserId);
+  const directSessions = await prismaAny.trainingSession.findMany({
+    where: {
+      trainerTgUserId,
+      clientUsername: normalizedUsername,
+      subscriptionChargedAt: null,
+    },
+    select: { id: true, startAt: true },
+  });
+  const groupParticipants = await prismaAny.groupSessionParticipant.findMany({
+    where: {
+      clientUsername: normalizedUsername,
+      subscriptionChargedAt: null,
+      session: { trainerTgUserId },
+    },
+    include: {
+      session: {
+        select: { startAt: true },
+      },
+    },
+  });
+
+  const directSessionIds = directSessions
+    .filter((session: any) => shouldChargeSubscriptionNow(session.startAt, cancelWindowHours, now))
+    .map((session: any) => session.id);
+  const participantIds = groupParticipants
+    .filter((participant: any) => shouldChargeSubscriptionNow(participant.session?.startAt, cancelWindowHours, now))
+    .map((participant: any) => participant.id);
+
+  const chargeCount = directSessionIds.length + participantIds.length;
+  if (!chargeCount) return relation;
+
+  await prismaAny.$transaction(async (tx: any) => {
+    const freshRelation = await tx.trainerClient.findFirst({
+      where: { trainerTgUserId, clientUsername: normalizedUsername },
+    });
+    if (!freshRelation) return;
+
+    const left = parseSubscriptionCount(freshRelation.subscriptionLeft);
+    if (left !== null) {
+      await tx.trainerClient.update({
+        where: { id: freshRelation.id },
+        data: { subscriptionLeft: String(Math.max(0, left - chargeCount)) },
+      });
+    }
+
+    if (directSessionIds.length) {
+      await tx.trainingSession.updateMany({
+        where: { id: { in: directSessionIds }, subscriptionChargedAt: null },
+        data: { subscriptionChargedAt: now },
+      });
+    }
+    if (participantIds.length) {
+      await tx.groupSessionParticipant.updateMany({
+        where: { id: { in: participantIds }, subscriptionChargedAt: null },
+        data: { subscriptionChargedAt: now },
+      });
+    }
+  });
+
+  return prismaAny.trainerClient.findFirst({
+    where: { trainerTgUserId, clientUsername: normalizedUsername },
+  });
+}
+
+async function getReservedSubscriptionCount(
+  trainerTgUserId: bigint,
+  clientUsername: string,
+  now = new Date()
+) {
+  const normalizedUsername = normalizeUsername(clientUsername || "");
+  if (!normalizedUsername) return 0;
+  const [directCount, groupCount] = await Promise.all([
+    prismaAny.trainingSession.count({
+      where: {
+        trainerTgUserId,
+        clientUsername: normalizedUsername,
+        subscriptionChargedAt: null,
+        startAt: { gt: now },
+      },
+    }),
+    prismaAny.groupSessionParticipant.count({
+      where: {
+        clientUsername: normalizedUsername,
+        subscriptionChargedAt: null,
+        session: {
+          trainerTgUserId,
+          startAt: { gt: now },
+        },
+      },
+    }),
+  ]);
+  return directCount + groupCount;
+}
+
+async function getSubscriptionBookingState(client: any, now = new Date()) {
+  if (!client?.subscriptionEnabled) {
+    return { allowed: true, available: Number.POSITIVE_INFINITY, relation: client, reason: null as string | null };
+  }
+
+  const reconciled = await reconcileSubscriptionChargesForClient(
+    client.trainerTgUserId,
+    client.clientUsername,
+    now
+  );
+  const relation = reconciled || client;
+  const validity = getSubscriptionValidity(relation, now);
+  if (!validity.valid) {
+    return { allowed: false, available: 0, relation, reason: validity.reason };
+  }
+
+  const left = parseSubscriptionCount(relation.subscriptionLeft) || 0;
+  const reserved = await getReservedSubscriptionCount(
+    relation.trainerTgUserId,
+    relation.clientUsername,
+    now
+  );
+  const available = Math.max(0, left - reserved);
+  return {
+    allowed: available > 0,
+    available,
+    reserved,
+    left,
+    relation,
+    reason: available > 0 ? null : "reserved",
+  };
 }
 
 function buildProfilePayload(profile: any) {
@@ -837,11 +999,24 @@ app.get("/clients", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
 
-  const list = await prismaAny.trainerClient.findMany({
+  let list = await prismaAny.trainerClient.findMany({
     where: { trainerTgUserId: dbUser.tgUserId },
     orderBy: { createdAt: "desc" },
     include: { exercises: true },
   });
+  const enabledClients = list.filter((client: any) => client.subscriptionEnabled);
+  if (enabledClients.length) {
+    await Promise.all(
+      enabledClients.map((client: any) =>
+        reconcileSubscriptionChargesForClient(dbUser.tgUserId, client.clientUsername)
+      )
+    );
+    list = await prismaAny.trainerClient.findMany({
+      where: { trainerTgUserId: dbUser.tgUserId },
+      orderBy: { createdAt: "desc" },
+      include: { exercises: true },
+    });
+  }
 
   const clientTgIds = Array.from(new Set(list.map((c: any) => c.clientTgUserId)))
     .filter((id: any) => id !== null && id !== undefined)
@@ -1036,6 +1211,7 @@ app.patch("/clients/:id", async (req, reply) => {
       },
     });
     for (const s of futureSessions) {
+      await reconcileSubscriptionChargesForClient(s.trainerTgUserId, s.clientUsername);
       const startAt = new Date(s.startAt);
       const dateKey = `${startAt.getFullYear()}-${String(startAt.getMonth() + 1).padStart(2, "0")}-${String(
         startAt.getDate()
@@ -1059,7 +1235,6 @@ app.patch("/clients/:id", async (req, reply) => {
         });
       }
       await prismaAny.trainingSession.delete({ where: { id: s.id } });
-      await adjustSubscriptionLeft(s.trainerTgUserId, s.clientUsername, 1);
     }
   }
 
@@ -1216,6 +1391,7 @@ app.get("/clients/:id/sessions", async (req, reply) => {
   if (!client || client.trainerTgUserId !== dbUser.tgUserId) {
     return reply.code(404).send({ message: "Client not found" });
   }
+  await reconcileSubscriptionChargesForClient(client.trainerTgUserId, client.clientUsername);
 
   const sessions = await prismaAny.trainingSession.findMany({
     where: {
@@ -1751,7 +1927,7 @@ app.get("/client/trainers", async (req, reply) => {
   if (!dbUser) return;
 
   const username = dbUser.username || "";
-  const trainers = await prismaAny.trainerClient.findMany({
+  let trainers = await prismaAny.trainerClient.findMany({
     where: {
       status: "active",
       archived: false,
@@ -1762,6 +1938,25 @@ app.get("/client/trainers", async (req, reply) => {
     },
     include: { exercises: true },
   });
+  const enabledRelations = trainers.filter((client: any) => client.subscriptionEnabled);
+  if (enabledRelations.length) {
+    await Promise.all(
+      enabledRelations.map((client: any) =>
+        reconcileSubscriptionChargesForClient(client.trainerTgUserId, client.clientUsername)
+      )
+    );
+    trainers = await prismaAny.trainerClient.findMany({
+      where: {
+        status: "active",
+        archived: false,
+        OR: [
+          { clientTgUserId: dbUser.tgUserId },
+          ...(username ? [{ clientUsername: username.replace(/^@/, "") }] : []),
+        ],
+      },
+      include: { exercises: true },
+    });
+  }
 
   const trainerIds = Array.from(new Set(trainers.map((c: any) => c.trainerTgUserId)))
     .filter((id: any) => id !== null && id !== undefined)
@@ -1830,6 +2025,7 @@ app.delete("/client/sessions/:id", async (req, reply) => {
     return reply.code(403).send({ message: "forbidden" });
   }
 
+  await reconcileSubscriptionChargesForClient(session.trainerTgUserId, session.clientUsername);
   const trainer = await prisma.user.findUnique({ where: { tgUserId: session.trainerTgUserId } });
   const profile = trainer
     ? await prismaAny.trainerProfile.findUnique({ where: { userId: trainer.id } })
@@ -1863,9 +2059,6 @@ app.delete("/client/sessions/:id", async (req, reply) => {
   }
 
   await prismaAny.trainingSession.delete({ where: { id } });
-  if (shouldRefundSubscriptionOnCancel(session.startAt, profile?.cancelWindowHours)) {
-    await adjustSubscriptionLeft(session.trainerTgUserId, session.clientUsername, 1);
-  }
   return { ok: true };
 });
 
@@ -2019,7 +2212,8 @@ app.post("/slots/:id/assign", async (req, reply) => {
   });
   if (!client) return reply.code(404).send({ message: "client not found" });
 
-  if (!isSubscriptionAvailable(client)) {
+  const bookingState = await getSubscriptionBookingState(client);
+  if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
   }
 
@@ -2061,7 +2255,7 @@ app.post("/slots/:id/assign", async (req, reply) => {
     });
 
     await prismaAny.trainingSlot.delete({ where: { id: slot.id } });
-    await adjustSubscriptionLeft(dbUser.tgUserId, client.clientUsername, -1);
+    await reconcileSubscriptionChargesForClient(dbUser.tgUserId, client.clientUsername);
     return { ok: true, session: serializeSession(session), slot: null };
   }
 
@@ -2132,7 +2326,7 @@ app.post("/slots/:id/assign", async (req, reply) => {
   if (result.status === "full") return reply.code(409).send({ message: "slot is full" });
   if (result.status === "duplicate") return reply.code(409).send({ message: "already booked" });
 
-  await adjustSubscriptionLeft(dbUser.tgUserId, client.clientUsername, -1);
+  await reconcileSubscriptionChargesForClient(dbUser.tgUserId, client.clientUsername);
   return { ok: true, session: serializeSession(result.session), slot: serializeSlot(result.slot) };
 });
 
@@ -2167,7 +2361,8 @@ app.post("/book", async (req, reply) => {
     },
   });
   if (!relation) return reply.code(403).send({ message: "client not connected to trainer" });
-  if (!isSubscriptionAvailable(relation)) {
+  const bookingState = await getSubscriptionBookingState(relation);
+  if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
   }
 
@@ -2283,7 +2478,7 @@ app.post("/book", async (req, reply) => {
     if (result.status === "full") return reply.code(409).send({ message: "slot is full" });
     if (result.status === "duplicate") return reply.code(409).send({ message: "already booked" });
 
-    await adjustSubscriptionLeft(trainerTgUserId, relation.clientUsername, -1);
+    await reconcileSubscriptionChargesForClient(trainerTgUserId, relation.clientUsername);
     return { ok: true, session: serializeSession(result.session) };
   }
 
@@ -2305,8 +2500,8 @@ app.post("/book", async (req, reply) => {
   });
 
   await prismaAny.trainingSlot.delete({ where: { id: slot.id } });
-  await adjustSubscriptionLeft(trainerTgUserId, relation.clientUsername, -1);
 
+  await reconcileSubscriptionChargesForClient(trainerTgUserId, relation.clientUsername);
   return { ok: true, session: serializeSession(session) };
 });
 
@@ -2314,6 +2509,18 @@ app.post("/book", async (req, reply) => {
 app.get("/sessions", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
+
+  const subscriptionClients = await prismaAny.trainerClient.findMany({
+    where: { trainerTgUserId: dbUser.tgUserId, subscriptionEnabled: true },
+    select: { clientUsername: true },
+  });
+  if (subscriptionClients.length) {
+    await Promise.all(
+      subscriptionClients.map((client: any) =>
+        reconcileSubscriptionChargesForClient(dbUser.tgUserId, client.clientUsername)
+      )
+    );
+  }
 
   const sessions = await prismaAny.trainingSession.findMany({
     where: { trainerTgUserId: dbUser.tgUserId },
@@ -2397,7 +2604,11 @@ app.post("/sessions", async (req, reply) => {
     if (groupClients.length !== groupClientIds.length) {
       return reply.code(404).send({ message: "client not found" });
     }
-    const unavailableClient = groupClients.find((client: any) => !isSubscriptionAvailable(client));
+    const bookingStates = await Promise.all(
+      groupClients.map((client: any) => getSubscriptionBookingState(client))
+    );
+    const unavailableClientIndex = bookingStates.findIndex((state: any) => !state.allowed);
+    const unavailableClient = unavailableClientIndex >= 0 ? groupClients[unavailableClientIndex] : null;
     if (unavailableClient) {
       return reply.code(403).send({ message: "subscription limit reached" });
     }
@@ -2416,7 +2627,8 @@ app.post("/sessions", async (req, reply) => {
     if (relation.status !== "active" || relation.archived) {
       return reply.code(403).send({ message: "client inactive" });
     }
-    if (!isSubscriptionAvailable(relation)) {
+    const bookingState = await getSubscriptionBookingState(relation);
+    if (!bookingState.allowed) {
       return reply.code(403).send({ message: "subscription limit reached" });
     }
   }
@@ -2480,13 +2692,15 @@ app.post("/sessions", async (req, reply) => {
     }
   }
 
-  if (!oneTime && startAt.getTime() > Date.now()) {
+  if (!oneTime) {
     if (isGroup) {
-      for (const c of groupClients) {
-        await adjustSubscriptionLeft(dbUser.tgUserId, c.clientUsername, -1);
-      }
+      await Promise.all(
+        groupClients.map((client: any) =>
+          reconcileSubscriptionChargesForClient(dbUser.tgUserId, client.clientUsername)
+        )
+      );
     } else {
-      await adjustSubscriptionLeft(dbUser.tgUserId, relation.clientUsername, -1);
+      await reconcileSubscriptionChargesForClient(dbUser.tgUserId, relation.clientUsername);
     }
   }
 
@@ -2507,6 +2721,15 @@ app.delete("/sessions/:id", async (req, reply) => {
       include: { participants: true },
     });
     if (!session || session.trainerTgUserId !== dbUser.tgUserId) return null;
+    if (session.type === "group" && Array.isArray(session.participants)) {
+      await Promise.all(
+        session.participants.map((p: any) =>
+          reconcileSubscriptionChargesForClient(session.trainerTgUserId, p.clientUsername)
+        )
+      );
+    } else {
+      await reconcileSubscriptionChargesForClient(session.trainerTgUserId, session.clientUsername);
+    }
     const linkedSlot = await getLinkedSlotBySessionId(session.id);
     await prismaAny.trainingSession.delete({ where: { id: sessionId } });
     if (linkedSlot) {
@@ -2518,22 +2741,9 @@ app.delete("/sessions/:id", async (req, reply) => {
     return session;
   };
 
-  const trainerProfile = await prismaAny.trainerProfile.findUnique({
-    where: { userId: dbUser.id },
-  });
-
   const prefix = `${dbUser.tgUserId.toString()}_`;
   const deleted = await tryDelete(id);
   if (deleted) {
-    if (shouldRefundSubscriptionOnCancel(deleted.startAt, trainerProfile?.cancelWindowHours)) {
-      if (deleted.type === "group" && Array.isArray(deleted.participants)) {
-        for (const p of deleted.participants) {
-          await adjustSubscriptionLeft(deleted.trainerTgUserId, p.clientUsername, 1);
-        }
-      } else {
-        await adjustSubscriptionLeft(deleted.trainerTgUserId, deleted.clientUsername, 1);
-      }
-    }
     return { ok: true };
   }
   if (id.startsWith(prefix)) {
@@ -2543,19 +2753,6 @@ app.delete("/sessions/:id", async (req, reply) => {
       if (normalized !== id) {
         const deletedNormalized = await tryDelete(normalized);
         if (deletedNormalized) {
-          if (shouldRefundSubscriptionOnCancel(deletedNormalized.startAt, trainerProfile?.cancelWindowHours)) {
-            if (deletedNormalized.type === "group" && Array.isArray(deletedNormalized.participants)) {
-              for (const p of deletedNormalized.participants) {
-                await adjustSubscriptionLeft(deletedNormalized.trainerTgUserId, p.clientUsername, 1);
-              }
-            } else {
-              await adjustSubscriptionLeft(
-                deletedNormalized.trainerTgUserId,
-                deletedNormalized.clientUsername,
-                1
-              );
-            }
-          }
           return { ok: true };
         }
       }
@@ -2602,10 +2799,7 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
 
   const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
   const linkedSlot = await getLinkedSlotBySessionId(session.id);
-  const trainer = await prisma.user.findUnique({ where: { tgUserId: session.trainerTgUserId } });
-  const profile = trainer
-    ? await prismaAny.trainerProfile.findUnique({ where: { userId: trainer.id } })
-    : null;
+  await reconcileSubscriptionChargesForClient(session.trainerTgUserId, participant.clientUsername);
 
   await prismaAny.$transaction(async (tx: any) => {
     await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
@@ -2646,15 +2840,12 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
           clientName: solo.clientName || null,
           type: null,
           price: relation?.subscriptionPrice || null,
+          subscriptionChargedAt: solo.subscriptionChargedAt || null,
         },
       });
       await tx.groupSessionParticipant.delete({ where: { id: solo.id } });
     }
   });
-
-  if (shouldRefundSubscriptionOnCancel(session.startAt, profile?.cancelWindowHours)) {
-    await adjustSubscriptionLeft(session.trainerTgUserId, participant.clientUsername, 1);
-  }
 
   return { ok: true };
 });
@@ -2798,6 +2989,10 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
     },
   });
   if (!client) return reply.code(404).send({ message: "client not found" });
+  const bookingState = await getSubscriptionBookingState(client);
+  if (!bookingState.allowed) {
+    return reply.code(403).send({ message: "subscription limit reached" });
+  }
 
   const already = (session.participants || []).some(
     (p: any) => p.clientId === client.id || p.clientUsername === client.clientUsername
@@ -2856,6 +3051,7 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
     throw err;
   }
 
+  await reconcileSubscriptionChargesForClient(session.trainerTgUserId, client.clientUsername);
   return { ok: true, session: serializeSession(updated) };
 });
 
@@ -2893,9 +3089,7 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
     Number.isFinite(total) && total > 0 && countBefore > 0 ? Math.max(0, total - perClient) : total;
   const remaining = (session.participants || []).filter((p: any) => p.id !== participant.id);
   const linkedSlot = await getLinkedSlotBySessionId(session.id);
-  const trainerProfile = await prismaAny.trainerProfile.findUnique({
-    where: { userId: dbUser.id },
-  });
+  await reconcileSubscriptionChargesForClient(session.trainerTgUserId, participant.clientUsername);
 
   const updated = await prismaAny.$transaction(async (tx: any) => {
     await tx.groupSessionParticipant.delete({ where: { id: participant.id } });
@@ -2934,6 +3128,7 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
           clientName: solo.clientName || null,
           type: null,
           price: relation?.subscriptionPrice || null,
+          subscriptionChargedAt: solo.subscriptionChargedAt || null,
         },
       });
       await tx.groupSessionParticipant.delete({ where: { id: solo.id } });
@@ -2943,10 +3138,6 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
       include: { participants: true },
     });
   });
-
-  if (shouldRefundSubscriptionOnCancel(session.startAt, trainerProfile?.cancelWindowHours)) {
-    await adjustSubscriptionLeft(session.trainerTgUserId, participant.clientUsername, 1);
-  }
 
   return { ok: true, session: updated ? serializeSession(updated) : null };
 });
@@ -2959,6 +3150,24 @@ app.get("/client/sessions", async (req, reply) => {
   const username = dbUser.username || "";
   if (!username) return { ok: true, sessions: [] };
   const normalizedUsername = username.replace(/^@/, "");
+
+  const activeRelations = await prismaAny.trainerClient.findMany({
+    where: {
+      subscriptionEnabled: true,
+      OR: [
+        { clientTgUserId: dbUser.tgUserId },
+        { clientUsername: normalizedUsername },
+      ],
+    },
+    select: { trainerTgUserId: true, clientUsername: true },
+  });
+  if (activeRelations.length) {
+    await Promise.all(
+      activeRelations.map((relation: any) =>
+        reconcileSubscriptionChargesForClient(relation.trainerTgUserId, relation.clientUsername)
+      )
+    );
+  }
 
   const sessions = await prismaAny.trainingSession.findMany({
     where: {
@@ -3080,16 +3289,6 @@ app.post("/sessions/sync", async (req, reply) => {
   );
 
   await prisma.$transaction(ops);
-  if (createdSessions.length > 0) {
-    for (const s of createdSessions) {
-      await adjustSubscriptionLeft(s.trainerTgUserId, s.clientUsername, -1);
-    }
-  }
-  if (removedSessions.length > 0) {
-    for (const s of removedSessions) {
-      await adjustSubscriptionLeft(s.trainerTgUserId, s.clientUsername, 1);
-    }
-  }
   return { ok: true, count: normalized.length };
 });
 
