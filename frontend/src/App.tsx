@@ -8655,8 +8655,8 @@ function TrainerClients(props: {
                   subscriptionInfo.total !== null &&
                   !shouldWarn
                     ? tr(
-                        `Тренировок в абонементе ${subscriptionInfo.available}/${subscriptionInfo.total}`,
-                        `Sessions in subscription ${subscriptionInfo.available}/${subscriptionInfo.total}`
+                        `Остаток для записи ${subscriptionInfo.available}/${subscriptionInfo.total}`,
+                        `Booking balance ${subscriptionInfo.available}/${subscriptionInfo.total}`
                       )
                     : null;
                 return (
@@ -10465,8 +10465,8 @@ function ClientDetailScreen(props: {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={styles.clientDetailFieldLabel}>{tr("Занятий осталось", "Sessions left")}</div>
                   <div style={styles.clientDetailValueBox}>
-                    {clientSubscriptionInfo.available !== null
-                      ? String(clientSubscriptionInfo.available)
+                    {clientSubscriptionInfo.left !== null
+                      ? String(clientSubscriptionInfo.left)
                       : draftSubLeft || client?.subscriptionLeft || "—"}
                   </div>
                 </div>
