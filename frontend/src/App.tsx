@@ -7941,6 +7941,12 @@ function TrainerSchedule(props: {
                 .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
                 .map((w) => {
                   const trainerSessions = Object.values(sessionsByDate).flat();
+                  const slotDate = parseDateKey(w.dateKey);
+                  const [slotHours, slotMinutes] = w.start.split(":").map((value) => parseInt(value, 10));
+                  const slotStartAt = slotDate ? new Date(slotDate) : null;
+                  if (slotStartAt && !Number.isNaN(slotHours) && !Number.isNaN(slotMinutes)) {
+                    slotStartAt.setHours(slotHours, slotMinutes, 0, 0);
+                  }
                   const linkedSession = w.sessionId
                     ? (sessionsByDate[w.dateKey] || []).find((session) => session.id === w.sessionId) || null
                     : null;
@@ -7954,7 +7960,7 @@ function TrainerSchedule(props: {
                       .map((username) => username.replace(/^@/, ""))
                   );
                   const assignableClients = clients.filter((c) => {
-                    if (!canScheduleClientOnDate(clients, c.username, trainerSessions)) return false;
+                    if (!canScheduleClientOnDate(clients, c.username, trainerSessions, slotStartAt)) return false;
                     if (!w.isGroup) return true;
                     if (bookedClientIds.has(c.id)) return false;
                     return !bookedClientUsernames.has(c.username.replace(/^@/, ""));
@@ -8040,7 +8046,7 @@ function TrainerSchedule(props: {
                                 return;
                               }
                               const client = clients.find((c) => c.username === value);
-                              if (!client || !canScheduleClientOnDate(clients, value, trainerSessions)) return;
+                              if (!client || !canScheduleClientOnDate(clients, value, trainerSessions, slotStartAt)) return;
                               try {
                                 const res = await fetch(`${apiBase}/slots/${encodeURIComponent(w.id)}/assign`, {
                                   method: "POST",
@@ -9966,19 +9972,24 @@ function ClientDetailScreen(props: {
                 onClick={async () => {
                   if (scheduleSaving) return;
                   if (!client) return;
-                  if (!canScheduleClientOnDate([client], client.username, Object.values(sessionsByDate).flat())) {
+                  const start = normalizeTimeInput(scheduleStart);
+                  const end = normalizeTimeInput(scheduleEnd);
+                  const targetStartAt = new Date(scheduleSelected);
+                  const [targetHours, targetMinutes] = start.split(":").map((value) => parseInt(value, 10));
+                  if (!Number.isNaN(targetHours) && !Number.isNaN(targetMinutes)) {
+                    targetStartAt.setHours(targetHours, targetMinutes, 0, 0);
+                  }
+                  if (!canScheduleClientOnDate([client], client.username, Object.values(sessionsByDate).flat(), targetStartAt)) {
                     setScheduleError(
                       tr(
-                        "Нельзя создать тренировку: необходимо обновить данные абонемента.",
-                        "Can't schedule session: subscription data must be renewed."
+                        "Нельзя создать тренировку: дата не входит в период абонемента или абонемент требует обновления.",
+                        "Can't schedule session: the date is outside the subscription period or the subscription must be renewed."
                       )
                     );
                     return;
                   }
                   setScheduleSaving(true);
                   const dateKey = formatDateKey(scheduleSelected);
-                  const start = normalizeTimeInput(scheduleStart);
-                  const end = normalizeTimeInput(scheduleEnd);
                   if (!start || !end) {
                     setScheduleError(tr("Укажите время в формате ЧЧ:ММ (например 10:00).", "Enter time in HH:MM (e.g., 10:00)."));
                     setScheduleSaving(false);
@@ -12666,7 +12677,8 @@ function getTrainerLabel(trainer: TrainerClientInvite, tr: (ru: string, en: stri
 function canScheduleClientOnDate(
   clients: TrainerClientInvite[],
   username: string,
-  sessions: SessionItem[] = []
+  sessions: SessionItem[] = [],
+  targetDate?: Date | null
 ) {
   const c = clients.find((x) => x.username === username);
   if (!c || c.archived) return false;
@@ -12678,8 +12690,13 @@ function canScheduleClientOnDate(
     const total = (c.subscriptionTotal || "").trim();
     const left = parseInt(c.subscriptionLeft || "", 10);
     if (!start || !end || !price || !total || Number.isNaN(left) || left <= 0) return false;
+    const startDate = parseDateDMY(start);
     const endDate = parseDateDMY(end);
-    if (!endDate || endDateEnd(endDate).getTime() < Date.now()) return false;
+    if (!startDate || !endDate || endDateEnd(endDate).getTime() < Date.now()) return false;
+    if (targetDate) {
+      const targetTs = targetDate.getTime();
+      if (targetTs < startOfDay(startDate).getTime() || targetTs > endDateEnd(endDate).getTime()) return false;
+    }
     const reserved = getReservedSubscriptionCount(sessions, c.username);
     return Math.max(0, left - reserved) > 0;
   }

@@ -285,7 +285,7 @@ function parseDateDMY(value: string | null | undefined) {
   return date;
 }
 
-function getSubscriptionValidity(client: any, now = new Date()) {
+function getSubscriptionValidity(client: any, now = new Date(), sessionStartAt?: Date | null) {
   if (!client?.subscriptionEnabled) {
     return { enabled: false, valid: true, reason: null as string | null };
   }
@@ -300,12 +300,22 @@ function getSubscriptionValidity(client: any, now = new Date()) {
   if (left <= 0) {
     return { enabled: true, valid: false, reason: "empty" as const };
   }
+  const startDate = parseDateDMY(start);
   const endDate = parseDateDMY(end);
-  if (!endDate) {
-    return { enabled: true, valid: false, reason: "invalid_end" as const };
+  if (!startDate || !endDate) {
+    return { enabled: true, valid: false, reason: "invalid_range" as const };
   }
-  endDate.setHours(23, 59, 59, 999);
-  if (now.getTime() > endDate.getTime()) {
+  const rangeStart = new Date(startDate);
+  rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setHours(23, 59, 59, 999);
+  if (sessionStartAt && Number.isFinite(sessionStartAt.getTime())) {
+    const targetTs = sessionStartAt.getTime();
+    if (targetTs < rangeStart.getTime() || targetTs > rangeEnd.getTime()) {
+      return { enabled: true, valid: false, reason: "out_of_range" as const };
+    }
+  }
+  if (now.getTime() > rangeEnd.getTime()) {
     return { enabled: true, valid: false, reason: "expired" as const };
   }
   return { enabled: true, valid: true, reason: null as string | null };
@@ -453,7 +463,7 @@ async function getReservedSubscriptionCount(
   return directCount + groupCount;
 }
 
-async function getSubscriptionBookingState(client: any, now = new Date()) {
+async function getSubscriptionBookingState(client: any, now = new Date(), sessionStartAt?: Date | null) {
   if (!client?.subscriptionEnabled) {
     return { allowed: true, available: Number.POSITIVE_INFINITY, relation: client, reason: null as string | null };
   }
@@ -464,7 +474,7 @@ async function getSubscriptionBookingState(client: any, now = new Date()) {
     now
   );
   const relation = reconciled || client;
-  const validity = getSubscriptionValidity(relation, now);
+  const validity = getSubscriptionValidity(relation, now, sessionStartAt);
   if (!validity.valid) {
     return { allowed: false, available: 0, relation, reason: validity.reason };
   }
@@ -2232,11 +2242,6 @@ app.post("/slots/:id/assign", async (req, reply) => {
   if (!client) return reply.code(404).send({ message: "client not found" });
   const activeSubscriptionHistoryId = getActiveSubscriptionHistoryId(client);
 
-  const bookingState = await getSubscriptionBookingState(client);
-  if (!bookingState.allowed) {
-    return reply.code(403).send({ message: "subscription limit reached" });
-  }
-
   const day = parseDateKey(slot.dateKey);
   if (!day) return reply.code(400).send({ message: "dateKey invalid" });
   const [sh, sm] = slot.start.split(":").map((x) => parseInt(x, 10));
@@ -2251,6 +2256,10 @@ app.post("/slots/:id/assign", async (req, reply) => {
   endAt.setHours(eh, em, 0, 0);
   if (Date.now() >= startAt.getTime()) {
     return reply.code(403).send({ message: "slot already started" });
+  }
+  const bookingState = await getSubscriptionBookingState(client, new Date(), startAt);
+  if (!bookingState.allowed) {
+    return reply.code(403).send({ message: "subscription limit reached" });
   }
 
   const reminderHours = (dbUser as any)?.reminderHours ?? 1;
@@ -2385,11 +2394,6 @@ app.post("/book", async (req, reply) => {
   });
   if (!relation) return reply.code(403).send({ message: "client not connected to trainer" });
   const activeSubscriptionHistoryId = getActiveSubscriptionHistoryId(relation);
-  const bookingState = await getSubscriptionBookingState(relation);
-  if (!bookingState.allowed) {
-    return reply.code(403).send({ message: "subscription limit reached" });
-  }
-
   const trainer = await prisma.user.findUnique({ where: { tgUserId: trainerTgUserId } });
   const profile = trainer
     ? await prismaAny.trainerProfile.findUnique({ where: { userId: trainer.id } })
@@ -2429,6 +2433,10 @@ app.post("/book", async (req, reply) => {
   }
   if (Date.now() >= startAt.getTime()) {
     return reply.code(403).send({ message: "slot already started" });
+  }
+  const bookingState = await getSubscriptionBookingState(relation, new Date(), startAt);
+  if (!bookingState.allowed) {
+    return reply.code(403).send({ message: "subscription limit reached" });
   }
   const reminderHours = (trainer as any)?.reminderHours ?? 1;
   const remindAt = computeRemindAt(startAt, reminderHours);
@@ -2633,7 +2641,7 @@ app.post("/sessions", async (req, reply) => {
       return reply.code(404).send({ message: "client not found" });
     }
     const bookingStates = await Promise.all(
-      groupClients.map((client: any) => getSubscriptionBookingState(client))
+      groupClients.map((client: any) => getSubscriptionBookingState(client, new Date(), startAt))
     );
     groupSubscriptionHistoryIds = new Map(
       groupClients.map((client: any) => [client.id, getActiveSubscriptionHistoryId(client)])
@@ -2658,7 +2666,7 @@ app.post("/sessions", async (req, reply) => {
     if (relation.status !== "active" || relation.archived) {
       return reply.code(403).send({ message: "client inactive" });
     }
-    const bookingState = await getSubscriptionBookingState(relation);
+    const bookingState = await getSubscriptionBookingState(relation, new Date(), startAt);
     if (!bookingState.allowed) {
       return reply.code(403).send({ message: "subscription limit reached" });
     }
@@ -3023,7 +3031,7 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
     },
   });
   if (!client) return reply.code(404).send({ message: "client not found" });
-  const bookingState = await getSubscriptionBookingState(client);
+  const bookingState = await getSubscriptionBookingState(client, new Date(), new Date(session.startAt));
   if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
   }
