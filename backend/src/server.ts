@@ -2244,8 +2244,8 @@ app.post("/slots/:id/assign", async (req, reply) => {
 
   const day = parseDateKey(slot.dateKey);
   if (!day) return reply.code(400).send({ message: "dateKey invalid" });
-  const [sh, sm] = slot.start.split(":").map((x) => parseInt(x, 10));
-  const [eh, em] = slot.end.split(":").map((x) => parseInt(x, 10));
+  const [sh, sm] = slot.start.split(":").map((x: string) => parseInt(x, 10));
+  const [eh, em] = slot.end.split(":").map((x: string) => parseInt(x, 10));
   if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
     return reply.code(400).send({ message: "time invalid" });
   }
