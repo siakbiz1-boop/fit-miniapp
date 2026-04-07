@@ -24,7 +24,7 @@ function formatReminderLabel(hours: number, language: "ru" | "en", t: UiText) {
 }
 
 function formatCancellationLabel(hours: number, language: "ru" | "en", t: UiText) {
-  if (!hours || hours <= 0) return t.remindersOff;
+  if (!hours || hours <= 0) return language === "en" ? "From session start" : "С момента начала";
   if (language === "en") {
     if (hours === 24) return "1 day";
     if (hours < 1) return `${Math.round(hours * 60)} min`;
@@ -667,7 +667,7 @@ export default function App() {
       settingsPayments: language === "en" ? "Payment info" : "Платежная информация",
       settingsUseful: language === "en" ? "Useful" : "Полезное",
       settingsBooking: language === "en" ? "Booking" : "Запись на тренировки",
-      settingsCancellationPolicy: language === "en" ? "Cancellation rule" : "Условие отмены тренировок",
+      settingsCancellationPolicy: language === "en" ? "Subscription charge timing" : "Списание тренировок по абонементу",
       settingsReminders: language === "en" ? "Session reminders" : "Напоминание о занятиях",
       settingsLanguage: language === "en" ? "Language" : "Язык интерфейса",
       settingsTheme: language === "en" ? "Color scheme" : "Цветовая схема",
@@ -10665,6 +10665,15 @@ function TrainerSettings(props: {
     }
   }, [showCancellationRow, screen, setScreen]);
 
+  useEffect(() => {
+    const scrollArea = document.querySelector("[data-scroll-area]") as HTMLElement | null;
+    if (scrollArea) {
+      scrollArea.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [screen]);
+
   if (screen === "personal") {
     return (
     <PersonalDataScreen
@@ -11037,6 +11046,11 @@ function CancellationWindowScreen(props: {
           </button>
         )}
         <div style={styles.bookingTitle}>{t.settingsCancellationPolicy}</div>
+      </div>
+      <div style={styles.settingsScreenHint}>
+        {language === "en"
+          ? "Example: if training starts at 20:00 and you choose 1 hour, the session is charged at 19:00."
+          : "Например: если тренировка начинается в 20:00 и выбрано 1 час, то занятие спишется в 19:00."}
       </div>
 
       <div style={styles.remindersList}>
@@ -14293,6 +14307,13 @@ const styles: Record<string, any> = {
     color: "var(--text)",
     textAlign: "left",
     paddingLeft: 2,
+  },
+  settingsScreenHint: {
+    marginTop: 10,
+    color: "var(--muted)",
+    fontSize: 16,
+    lineHeight: 1.45,
+    maxWidth: 640,
   },
   bookingOptionsRow: {
     marginTop: 28,
