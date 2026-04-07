@@ -166,6 +166,14 @@ type SubscriptionHistoryItem = {
   end?: string;
 };
 
+type SubscriptionSessionDetail = {
+  id: string;
+  title: string;
+  dateLabel: string;
+  timeLabel: string;
+  statusLabel: string;
+};
+
 type TrainerProfile = {
   fullName?: string;
   fitnessClub?: string;
@@ -9500,6 +9508,7 @@ function ClientDetailScreen(props: {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleDragY, setScheduleDragY] = useState(0);
   const [scheduleDragging, setScheduleDragging] = useState(false);
+  const [selectedSubscriptionHistory, setSelectedSubscriptionHistory] = useState<SubscriptionHistoryItem | null>(null);
   const scheduleDragStartRef = useRef<number>(0);
   const scheduleDragYRef = useRef<number>(0);
   const isLocalClient = Boolean(client?.isLocal || (client?.username || "").startsWith("local_"));
@@ -9629,6 +9638,13 @@ function ClientDetailScreen(props: {
   const clientSubscriptionInfo = useMemo(
     () => getClientSubscriptionBookingInfo(client, Object.values(sessionsByDate).flat()),
     [client, sessionsByDate]
+  );
+  const subscriptionSheetSessions = useMemo(
+    () =>
+      selectedSubscriptionHistory
+        ? getSubscriptionSessionDetails(selectedSubscriptionHistory, history, tr)
+        : [],
+    [selectedSubscriptionHistory, history, tr]
   );
 
   const maybeCloseSchedule = (planned: boolean) => {
@@ -10493,12 +10509,19 @@ function ClientDetailScreen(props: {
                   item.end ? `${tr("Дата завершения", "End date")}: ${item.end}` : "",
                 ].filter(Boolean);
                 return (
-                  <div key={item.id || `${idx}`} style={styles.subscriptionHistoryCard}>
+                  <button
+                    key={item.id || `${idx}`}
+                    type="button"
+                    style={styles.subscriptionHistoryCardButton}
+                    onClick={() => setSelectedSubscriptionHistory(item)}
+                  >
+                    <div style={styles.subscriptionHistoryCard}>
                     <div style={styles.subscriptionHistoryCardTitle}>
                       {tr("Абонемент", "Subscription")} #{subscriptionHistory.length - idx}
                     </div>
                     <div style={styles.subscriptionHistoryCardMeta}>{meta.join(", ")}</div>
-                  </div>
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -10507,6 +10530,56 @@ function ClientDetailScreen(props: {
               {tr("Пока нет оформленных абонементов.", "No subscriptions yet.")}
             </div>
           )}
+          {selectedSubscriptionHistory ? (
+            <div style={styles.clientScheduleOverlay}>
+              <button
+                type="button"
+                aria-label="close subscription history"
+                style={styles.clientScheduleBackdrop}
+                onClick={() => setSelectedSubscriptionHistory(null)}
+              />
+              <div style={{ ...styles.clientScheduleSheet, ...styles.subscriptionHistorySheet }}>
+                <div style={styles.clientScheduleHandle} />
+                <div style={styles.clientScheduleTitleRow}>
+                  <div style={styles.clientScheduleTitle}>
+                    {tr("Тренировки по абонементу", "Subscription sessions")}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubscriptionHistory(null)}
+                    style={styles.clientScheduleCloseBtn}
+                  >
+                    {tr("Закрыть", "Close")}
+                  </button>
+                </div>
+                <div style={styles.subscriptionHistorySheetMeta}>
+                  {selectedSubscriptionHistory.start && selectedSubscriptionHistory.end
+                    ? `${selectedSubscriptionHistory.start} — ${selectedSubscriptionHistory.end}`
+                    : selectedSubscriptionHistory.purchasedAt}
+                </div>
+                {subscriptionSheetSessions.length ? (
+                  <div style={styles.subscriptionHistorySheetList}>
+                    {subscriptionSheetSessions.map((session) => (
+                      <div key={session.id} style={styles.sessionHistoryCard}>
+                        <div style={styles.sessionHistoryTitle}>{session.title}</div>
+                        <div style={styles.sessionHistorySubtitle}>
+                          {session.dateLabel} • {session.timeLabel}
+                        </div>
+                        <div style={styles.sessionHistorySubtitle}>{session.statusLabel}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={styles.subscriptionHistoryEmpty}>
+                    {tr(
+                      "Для этого абонемента пока нет тренировок.",
+                      "There are no sessions for this subscription yet."
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : visibleTab === "history" ? (
         <div style={styles.clientPanelPlain}>
@@ -12677,6 +12750,37 @@ function getClientSubscriptionBookingInfo(
     available,
     shouldWarn,
   };
+}
+
+function getSubscriptionSessionDetails(
+  item: SubscriptionHistoryItem,
+  sessions: SessionItem[],
+  tr: (ru: string, en: string) => string
+): SubscriptionSessionDetail[] {
+  const startDate = item.start ? parseDateDMY(item.start) : null;
+  const endDate = item.end ? parseDateDMY(item.end) : null;
+  if (!startDate || !endDate) return [];
+  const rangeStart = startOfDay(startDate).getTime();
+  const rangeEnd = endDateEnd(endDate).getTime();
+  const now = new Date();
+
+  return sessions
+    .filter((session) => {
+      const startAt = sessionStartDateTime(session);
+      if (!startAt) return false;
+      const ts = startAt.getTime();
+      return ts >= rangeStart && ts <= rangeEnd;
+    })
+    .sort((a, b) => sessionStartTime(a).getTime() - sessionStartTime(b).getTime())
+    .map((session) => ({
+      id: session.id,
+      title: sessionTitle(session, tr),
+      dateLabel: formatDateShort(parseDateKey(session.dateKey)),
+      timeLabel: `${session.start} — ${session.end}`,
+      statusLabel: isSessionEnded(session, now)
+        ? tr("Проведена", "Completed")
+        : tr("Запланирована", "Planned"),
+    }));
 }
 
 function normalizeNumberWithUnit(raw: string, unit: "см" | "кг") {
@@ -17086,6 +17190,13 @@ const styles: Record<string, any> = {
     boxShadow: "var(--glass-card-shadow)",
     padding: "14px 16px",
   },
+  subscriptionHistoryCardButton: {
+    padding: 0,
+    border: "none",
+    background: "transparent",
+    textAlign: "left",
+    cursor: "pointer",
+  },
   subscriptionHistoryCardTitle: {
     fontSize: 16,
     fontWeight: "var(--font-strong)",
@@ -17101,6 +17212,22 @@ const styles: Record<string, any> = {
     marginTop: 12,
     fontSize: 14,
     color: "var(--text-secondary)",
+  },
+  subscriptionHistorySheet: {
+    minHeight: "36vh",
+    maxHeight: "72vh",
+    overflowY: "auto",
+  },
+  subscriptionHistorySheetMeta: {
+    marginTop: -4,
+    marginBottom: 14,
+    fontSize: 14,
+    color: "var(--text-secondary)",
+  },
+  subscriptionHistorySheetList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
   },
   inputRow: {
     display: "flex",
