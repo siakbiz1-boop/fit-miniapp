@@ -61,6 +61,7 @@ model TrainingSession {
   source           SessionSource @default(trainer)
   remindAt         DateTime
   remindedAt       DateTime?
+  subscriptionHistoryId String?
   subscriptionChargedAt DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -78,6 +79,7 @@ model GroupSessionParticipant {
   clientName     String?
   createdAt      DateTime @default(now())
   remindedAt     DateTime?
+  subscriptionHistoryId String?
   subscriptionChargedAt DateTime?
 
   session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -155,13 +157,14 @@ model TrainerClient {
   contactInstagram   String?
   contactOtherSocial String?
 
-  subscriptionStart  String?
-  subscriptionEnd    String?
-  subscriptionPrice  String?
-  subscriptionTotal  String?
-  subscriptionLeft   String?
-  subscriptionEnabled Boolean      @default(false)
-  subscriptionHistory String?
+  subscriptionStart           String?
+  subscriptionEnd             String?
+  subscriptionPrice           String?
+  subscriptionTotal           String?
+  subscriptionLeft            String?
+  subscriptionEnabled         Boolean @default(false)
+  activeSubscriptionHistoryId String?
+  subscriptionHistory         String?
 
   exercises          ClientExercise[]
   exerciseHistory    ClientExerciseHistory[]

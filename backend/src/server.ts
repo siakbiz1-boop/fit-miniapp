@@ -248,6 +248,24 @@ function parseSubscriptionCount(raw: any) {
   return Number.isNaN(value) ? null : value;
 }
 
+function parseSubscriptionHistory(raw: any) {
+  if (!raw) return [];
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function getActiveSubscriptionHistoryId(client: any) {
+  const explicit = String(client?.activeSubscriptionHistoryId || "").trim();
+  if (explicit) return explicit;
+  const history = parseSubscriptionHistory(client?.subscriptionHistory);
+  const latest = history.find((item: any) => String(item?.id || "").trim());
+  return latest ? String(latest.id) : null;
+}
+
 function parseDateDMY(value: string | null | undefined) {
   const raw = String(value || "").trim();
   const match = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
@@ -276,7 +294,7 @@ function getSubscriptionValidity(client: any, now = new Date()) {
   const price = String(client.subscriptionPrice || "").trim();
   const total = String(client.subscriptionTotal || "").trim();
   const left = parseSubscriptionCount(client.subscriptionLeft);
-  if (!start || !end || !price || !total || left === null) {
+  if (!start || !end || !price || !total || left === null || !getActiveSubscriptionHistoryId(client)) {
     return { enabled: true, valid: false, reason: "incomplete" as const };
   }
   if (left <= 0) {
@@ -1195,6 +1213,7 @@ app.patch("/clients/:id", async (req, reply) => {
       subscriptionTotal: body?.subscriptionTotal,
       subscriptionLeft: body?.subscriptionLeft,
       subscriptionEnabled: body?.subscriptionEnabled,
+      activeSubscriptionHistoryId: body?.activeSubscriptionHistoryId,
       subscriptionHistory:
         body?.subscriptionHistory !== undefined ? JSON.stringify(body.subscriptionHistory) : undefined,
     },
@@ -2211,6 +2230,7 @@ app.post("/slots/:id/assign", async (req, reply) => {
     },
   });
   if (!client) return reply.code(404).send({ message: "client not found" });
+  const activeSubscriptionHistoryId = getActiveSubscriptionHistoryId(client);
 
   const bookingState = await getSubscriptionBookingState(client);
   if (!bookingState.allowed) {
@@ -2251,6 +2271,7 @@ app.post("/slots/:id/assign", async (req, reply) => {
         type: null,
         source: "trainer",
         remindAt,
+        subscriptionHistoryId: activeSubscriptionHistoryId,
       },
     });
 
@@ -2286,6 +2307,7 @@ app.post("/slots/:id/assign", async (req, reply) => {
           type: "group",
           source: "trainer",
           remindAt,
+          subscriptionHistoryId: activeSubscriptionHistoryId,
         },
         include: { participants: true },
       });
@@ -2306,6 +2328,7 @@ app.post("/slots/:id/assign", async (req, reply) => {
         clientId: client.id,
         clientUsername: client.clientUsername,
         clientName: client.fullName || null,
+        subscriptionHistoryId: activeSubscriptionHistoryId,
       },
     });
 
@@ -2361,6 +2384,7 @@ app.post("/book", async (req, reply) => {
     },
   });
   if (!relation) return reply.code(403).send({ message: "client not connected to trainer" });
+  const activeSubscriptionHistoryId = getActiveSubscriptionHistoryId(relation);
   const bookingState = await getSubscriptionBookingState(relation);
   if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
@@ -2437,6 +2461,7 @@ app.post("/book", async (req, reply) => {
             type: "group",
             source: "client",
             remindAt,
+            subscriptionHistoryId: activeSubscriptionHistoryId,
           },
           include: { participants: true },
         });
@@ -2457,6 +2482,7 @@ app.post("/book", async (req, reply) => {
           clientId: relation.id,
           clientUsername: relation.clientUsername,
           clientName: relation.fullName || null,
+          subscriptionHistoryId: activeSubscriptionHistoryId,
         },
       });
 
@@ -2496,6 +2522,7 @@ app.post("/book", async (req, reply) => {
       type: null,
       source: "client",
       remindAt,
+      subscriptionHistoryId: activeSubscriptionHistoryId,
     },
   });
 
@@ -2592,6 +2619,7 @@ app.post("/sessions", async (req, reply) => {
 
   let relation = null as any;
   let groupClients: any[] = [];
+  let groupSubscriptionHistoryIds = new Map<string, string | null>();
   if (!oneTime && isGroup) {
     groupClients = await prismaAny.trainerClient.findMany({
       where: {
@@ -2606,6 +2634,9 @@ app.post("/sessions", async (req, reply) => {
     }
     const bookingStates = await Promise.all(
       groupClients.map((client: any) => getSubscriptionBookingState(client))
+    );
+    groupSubscriptionHistoryIds = new Map(
+      groupClients.map((client: any) => [client.id, getActiveSubscriptionHistoryId(client)])
     );
     const unavailableClientIndex = bookingStates.findIndex((state: any) => !state.allowed);
     const unavailableClient = unavailableClientIndex >= 0 ? groupClients[unavailableClientIndex] : null;
@@ -2658,6 +2689,7 @@ app.post("/sessions", async (req, reply) => {
       type: oneTime ? "one_time" : isGroup ? "group" : null,
       source: "trainer",
       remindAt,
+      subscriptionHistoryId: !oneTime && !isGroup ? getActiveSubscriptionHistoryId(relation) : null,
       ...(color ? { color } : {}),
     },
   });
@@ -2669,6 +2701,7 @@ app.post("/sessions", async (req, reply) => {
         clientId: c.id,
         clientUsername: c.clientUsername,
         clientName: c.fullName || null,
+        subscriptionHistoryId: groupSubscriptionHistoryIds.get(c.id) || null,
       })),
     });
   }
@@ -2840,6 +2873,7 @@ app.post("/client/sessions/:id/leave", async (req, reply) => {
           clientName: solo.clientName || null,
           type: null,
           price: relation?.subscriptionPrice || null,
+          subscriptionHistoryId: solo.subscriptionHistoryId || null,
           subscriptionChargedAt: solo.subscriptionChargedAt || null,
         },
       });
@@ -2993,6 +3027,7 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
   if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
   }
+  const activeSubscriptionHistoryId = getActiveSubscriptionHistoryId(client);
 
   const already = (session.participants || []).some(
     (p: any) => p.clientId === client.id || p.clientUsername === client.clientUsername
@@ -3021,12 +3056,13 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
       }
       await tx.groupSessionParticipant.create({
         data: {
-          sessionId: session.id,
-          clientId: client.id,
-          clientUsername: client.clientUsername,
-          clientName: client.fullName || null,
-        },
-      });
+        sessionId: session.id,
+        clientId: client.id,
+        clientUsername: client.clientUsername,
+        clientName: client.fullName || null,
+        subscriptionHistoryId: activeSubscriptionHistoryId,
+      },
+    });
       if (Number.isFinite(nextTotal) && total > 0 && countBefore > 0) {
         await tx.trainingSession.update({
           where: { id: session.id },
@@ -3128,6 +3164,7 @@ app.post("/sessions/:id/group/remove", async (req, reply) => {
           clientName: solo.clientName || null,
           type: null,
           price: relation?.subscriptionPrice || null,
+          subscriptionHistoryId: solo.subscriptionHistoryId || null,
           subscriptionChargedAt: solo.subscriptionChargedAt || null,
         },
       });

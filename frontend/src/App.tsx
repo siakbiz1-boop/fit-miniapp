@@ -131,6 +131,7 @@ type TrainerClientInvite = {
   subscriptionTotal?: string;
   subscriptionLeft?: string;
   subscriptionEnabled?: boolean;
+  activeSubscriptionHistoryId?: string;
   subscriptionHistory?: SubscriptionHistoryItem[];
   archived?: boolean;
   clientProfile?: {
@@ -229,11 +230,13 @@ type SessionItem = {
   price?: string;
   comment?: string;
   color?: string;
+  subscriptionHistoryId?: string | null;
   subscriptionChargedAt?: string | null;
   participants?: {
     clientId: string;
     clientUsername: string;
     clientName?: string;
+    subscriptionHistoryId?: string | null;
     subscriptionChargedAt?: string | null;
   }[];
 };
@@ -9713,6 +9716,7 @@ function ClientDetailScreen(props: {
       | "subscriptionPrice"
       | "subscriptionTotal"
       | "subscriptionLeft"
+      | "activeSubscriptionHistoryId"
       | "subscriptionHistory",
     value: string | boolean | SubscriptionHistoryItem[]
   ) => {
@@ -9754,6 +9758,7 @@ function ClientDetailScreen(props: {
         subscriptionPrice: "",
         subscriptionTotal: "",
         subscriptionLeft: "",
+        activeSubscriptionHistoryId: "",
       });
     };
     if (typeof WebApp?.showConfirm === "function") {
@@ -9813,6 +9818,7 @@ function ClientDetailScreen(props: {
       subscriptionPrice: price,
       subscriptionTotal: total,
       subscriptionLeft: total,
+      activeSubscriptionHistoryId: nextHistory[0].id,
       subscriptionHistory: nextHistory,
     });
   };
@@ -12564,6 +12570,7 @@ function mapClientFromApi(c: any): TrainerClientInvite {
     subscriptionPrice: c.subscriptionPrice ?? "",
     subscriptionTotal: c.subscriptionTotal ?? "",
     subscriptionLeft: c.subscriptionLeft ?? "",
+    activeSubscriptionHistoryId: c.activeSubscriptionHistoryId ?? "",
     subscriptionEnabled:
       typeof c.subscriptionEnabled === "boolean"
         ? c.subscriptionEnabled
@@ -12588,12 +12595,14 @@ function mapSessionFromApi(s: any): SessionItem {
     price: s.price ? String(s.price) : undefined,
     comment: s.comment ? String(s.comment) : undefined,
     color: s.color ? String(s.color) : undefined,
+    subscriptionHistoryId: s.subscriptionHistoryId ? String(s.subscriptionHistoryId) : null,
     subscriptionChargedAt: s.subscriptionChargedAt ? String(s.subscriptionChargedAt) : null,
     participants: Array.isArray(s.participants)
       ? s.participants.map((p: any) => ({
           clientId: String(p.clientId || ""),
           clientUsername: String(p.clientUsername || ""),
           clientName: p.clientName ? String(p.clientName) : undefined,
+          subscriptionHistoryId: p.subscriptionHistoryId ? String(p.subscriptionHistoryId) : null,
           subscriptionChargedAt: p.subscriptionChargedAt ? String(p.subscriptionChargedAt) : null,
         }))
       : [],
@@ -12757,12 +12766,30 @@ function getSubscriptionSessionDetails(
   sessions: SessionItem[],
   tr: (ru: string, en: string) => string
 ): SubscriptionSessionDetail[] {
+  const tagged = sessions
+    .filter((session) => {
+      if (session.subscriptionHistoryId === item.id) return true;
+      return (session.participants || []).some((participant) => participant.subscriptionHistoryId === item.id);
+    })
+    .sort((a, b) => sessionStartTime(a).getTime() - sessionStartTime(b).getTime())
+    .map((session) => ({
+      id: session.id,
+      title: sessionTitle(session, tr),
+      dateLabel: formatDateShort(parseDateKey(session.dateKey)),
+      timeLabel: `${session.start} — ${session.end}`,
+      statusLabel: isSessionEnded(session, new Date())
+        ? tr("Проведена", "Completed")
+        : tr("Запланирована", "Planned"),
+    }));
+  if (tagged.length) return tagged;
+
   const startDate = item.start ? parseDateDMY(item.start) : null;
   const endDate = item.end ? parseDateDMY(item.end) : null;
   if (!startDate || !endDate) return [];
   const rangeStart = startOfDay(startDate).getTime();
   const rangeEnd = endDateEnd(endDate).getTime();
   const now = new Date();
+  const total = parseInt(item.total || "", 10);
 
   return sessions
     .filter((session) => {
@@ -12772,6 +12799,7 @@ function getSubscriptionSessionDetails(
       return ts >= rangeStart && ts <= rangeEnd;
     })
     .sort((a, b) => sessionStartTime(a).getTime() - sessionStartTime(b).getTime())
+    .slice(0, Number.isNaN(total) ? undefined : Math.max(0, total))
     .map((session) => ({
       id: session.id,
       title: sessionTitle(session, tr),
@@ -17214,9 +17242,9 @@ const styles: Record<string, any> = {
     color: "var(--text-secondary)",
   },
   subscriptionHistorySheet: {
-    minHeight: "36vh",
-    maxHeight: "72vh",
-    overflowY: "auto",
+    minHeight: 0,
+    maxHeight: 420,
+    overflow: "hidden",
   },
   subscriptionHistorySheetMeta: {
     marginTop: -4,
@@ -17228,6 +17256,9 @@ const styles: Record<string, any> = {
     display: "flex",
     flexDirection: "column",
     gap: 10,
+    maxHeight: 232,
+    overflowY: "auto",
+    paddingRight: 4,
   },
   inputRow: {
     display: "flex",
