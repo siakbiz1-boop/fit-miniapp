@@ -11289,9 +11289,14 @@ function PaymentMethodsScreen(props: {
   const [cards, setCards] = useState<Array<{ id: string; brand: string; masked: string }>>([
     { id: cryptoId(), brand: tr("Банковская карта", "Bank card"), masked: "•••• 2800" },
   ]);
+  const [activeCardId, setActiveCardId] = useState<string | null>(cards[0]?.id ?? null);
 
   const removeCard = (id: string) => {
-    setCards((prev) => prev.filter((item) => item.id !== id));
+    setCards((prev) => {
+      const next = prev.filter((item) => item.id !== id);
+      setActiveCardId((current) => (current === id ? next[0]?.id ?? null : current));
+      return next;
+    });
   };
 
   return (
@@ -11333,9 +11338,17 @@ function PaymentMethodsScreen(props: {
                   <IconTrash size={20} strokeWidth={2.2} />
                 </button>
               ) : (
-                <div style={styles.paymentMethodStatus}>
-                  <IconCheck />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveCardId(item.id)}
+                  style={{
+                    ...styles.paymentMethodStatus,
+                    ...(activeCardId === item.id ? styles.paymentMethodStatusActive : styles.paymentMethodStatusIdle),
+                  }}
+                  aria-label={tr("Сделать основной картой", "Set as primary card")}
+                >
+                  {activeCardId === item.id ? <IconCheck /> : null}
+                </button>
               )}
             </div>
           ))
@@ -14799,13 +14812,25 @@ const styles: Record<string, any> = {
     width: 42,
     height: 42,
     borderRadius: "50%",
-    background: "var(--accent-grad)",
-    color: "#fff",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "var(--accent-shadow)",
     flex: "0 0 auto",
+    border: "none",
+    cursor: "pointer",
+    padding: 0,
+  },
+  paymentMethodStatusActive: {
+    background: "var(--accent-grad)",
+    color: "#fff",
+    boxShadow: "var(--accent-shadow)",
+    border: "none",
+  },
+  paymentMethodStatusIdle: {
+    background: "transparent",
+    color: "var(--accent)",
+    border: "2px solid var(--glass-card-border)",
+    boxShadow: "none",
   },
   paymentMethodDeleteBtn: {
     width: 42,
