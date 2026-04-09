@@ -11290,14 +11290,6 @@ function PaymentMethodsScreen(props: {
     { id: cryptoId(), brand: tr("Банковская карта", "Bank card"), masked: "•••• 2800" },
   ]);
 
-  const addCard = () => {
-    const nextTail = String(1000 + cards.length * 173).slice(-4);
-    setCards((prev) => [
-      ...prev,
-      { id: cryptoId(), brand: tr("Банковская карта", "Bank card"), masked: `•••• ${nextTail}` },
-    ]);
-  };
-
   const removeCard = (id: string) => {
     setCards((prev) => prev.filter((item) => item.id !== id));
   };
@@ -11311,9 +11303,11 @@ function PaymentMethodsScreen(props: {
           </button>
         )}
         <div style={styles.paymentMethodsTitle}>{tr("Способы оплаты", "Payment methods")}</div>
-        <button type="button" onClick={() => setEditMode((prev) => !prev)} style={styles.paymentMethodsEditBtn}>
-          {editMode ? tr("Готово", "Done") : tr("Изменить", "Edit")}
-        </button>
+        <div style={styles.paymentMethodsHeaderRight}>
+          <button type="button" onClick={() => setEditMode((prev) => !prev)} style={styles.paymentMethodsEditBtn}>
+            {editMode ? tr("Готово", "Done") : tr("Изменить", "Edit")}
+          </button>
+        </div>
       </div>
 
       <div style={styles.paymentMethodsStack}>
@@ -11351,7 +11345,11 @@ function PaymentMethodsScreen(props: {
           </div>
         )}
 
-        <button type="button" onClick={addCard} style={styles.paymentMethodAddBtn}>
+        <button
+          type="button"
+          onClick={() => alert(tr("Интеграцию с банком подключим позже", "Bank integration will be added later."))}
+          style={styles.paymentMethodAddBtn}
+        >
           <div style={styles.paymentMethodAddIcon}>
             <IconCard />
           </div>
@@ -14721,33 +14719,39 @@ const styles: Record<string, any> = {
     lineHeight: 1.45,
   },
   paymentMethodsHeader: {
-    position: "relative",
     minHeight: 44,
     marginBottom: 28,
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    gap: 12,
   },
   paymentMethodsTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "var(--font-strong)",
     color: "var(--text-primary)",
-    letterSpacing: -0.4,
-    textAlign: "center",
-    padding: "0 72px",
+    letterSpacing: -0.3,
+    textAlign: "left",
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: 48,
+  },
+  paymentMethodsHeaderRight: {
+    display: "flex",
+    justifyContent: "flex-end",
+    flex: "0 0 auto",
   },
   paymentMethodsEditBtn: {
-    position: "absolute",
-    right: 0,
-    top: 0,
     height: 36,
-    border: "none",
-    background: "transparent",
-    color: "#31c36a",
-    fontSize: 17,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    color: "var(--accent)",
+    fontSize: 15,
     fontWeight: "var(--font-medium)",
     cursor: "pointer",
-    padding: "0 4px",
+    padding: "0 14px",
+    borderRadius: 999,
+    boxShadow: "var(--glass-card-shadow)",
   },
   paymentMethodsStack: {
     display: "flex",
@@ -14815,15 +14819,15 @@ const styles: Record<string, any> = {
     border: "none",
     background: "linear-gradient(135deg, rgba(255, 110, 110, 0.96), rgba(239, 68, 68, 0.96))",
     color: "#fff",
-    fontSize: 28,
-    lineHeight: 1,
+    fontSize: 26,
+    lineHeight: "42px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
     boxShadow: "0 16px 24px rgba(239, 68, 68, 0.28)",
     flex: "0 0 auto",
-    paddingBottom: 3,
+    padding: 0,
   },
   paymentMethodAddBtn: {
     width: "100%",
