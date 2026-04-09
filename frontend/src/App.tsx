@@ -59,6 +59,7 @@ type SettingsScreen =
   | "cancellation"
   | "reminders"
   | "language"
+  | "paymentMethods"
   | "paymentHistory";
 type ClientsScreen = "list" | "add" | "detail";
 type TariffPeriod = "month" | "quarter" | "year";
@@ -10847,6 +10848,9 @@ function TrainerSettings(props: {
   if (screen === "paymentHistory") {
     return <PaymentHistoryScreen onBack={() => setScreen("main")} />;
   }
+  if (screen === "paymentMethods") {
+    return <PaymentMethodsScreen onBack={() => setScreen("main")} />;
+  }
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.settingsPage }}>
@@ -10915,7 +10919,7 @@ function TrainerSettings(props: {
             <SettingsRowGlass
               icon={<IconCard />}
               title={t.settingsPaymentMethods}
-              onClick={() => alert(tr("Скоро добавим способы оплаты", "Payment methods will be added later."))}
+              onClick={() => setScreen("paymentMethods")}
             />
             <SettingsRowGlass
               icon={<IconHistory />}
@@ -11271,6 +11275,92 @@ function PaymentHistoryScreen(props: {
             {tr("Пока нет проведённых оплат.", "No completed payments yet.")}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PaymentMethodsScreen(props: {
+  onBack: () => void;
+}) {
+  const { onBack } = props;
+  const tr = useTr();
+  const [editMode, setEditMode] = useState(false);
+  const [cards, setCards] = useState<Array<{ id: string; brand: string; masked: string }>>([
+    { id: cryptoId(), brand: tr("Банковская карта", "Bank card"), masked: "•••• 2800" },
+  ]);
+
+  const addCard = () => {
+    const nextTail = String(1000 + cards.length * 173).slice(-4);
+    setCards((prev) => [
+      ...prev,
+      { id: cryptoId(), brand: tr("Банковская карта", "Bank card"), masked: `•••• ${nextTail}` },
+    ]);
+  };
+
+  const removeCard = (id: string) => {
+    setCards((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  return (
+    <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
+      <div style={styles.paymentMethodsHeader}>
+        {typeof WebApp?.BackButton?.show === "function" ? null : (
+          <button onClick={onBack} style={styles.backBtnInline} aria-label="back">
+            <IconArrowLeft />
+          </button>
+        )}
+        <div style={styles.paymentMethodsTitle}>{tr("Способы оплаты", "Payment methods")}</div>
+        <button type="button" onClick={() => setEditMode((prev) => !prev)} style={styles.paymentMethodsEditBtn}>
+          {editMode ? tr("Готово", "Done") : tr("Изменить", "Edit")}
+        </button>
+      </div>
+
+      <div style={styles.paymentMethodsStack}>
+        {cards.length ? (
+          cards.map((item) => (
+            <div key={item.id} style={styles.paymentMethodCard}>
+              <div style={styles.paymentMethodCardLeft}>
+                <div style={styles.paymentMethodIconWrap}>
+                  <IconCard />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={styles.paymentMethodBrand}>{item.brand}</div>
+                  <div style={styles.paymentMethodMasked}>{item.masked}</div>
+                </div>
+              </div>
+              {editMode ? (
+                <button
+                  type="button"
+                  onClick={() => removeCard(item.id)}
+                  style={styles.paymentMethodDeleteBtn}
+                  aria-label={tr("Удалить карту", "Remove card")}
+                >
+                  -
+                </button>
+              ) : (
+                <div style={styles.paymentMethodStatus}>
+                  <IconCheck />
+                </div>
+              )}
+            </div>
+          ))
+        ) : (
+          <div style={styles.paymentHistoryEmpty}>
+            {tr("Пока не привязана ни одна банковская карта.", "No bank cards linked yet.")}
+          </div>
+        )}
+
+        <button type="button" onClick={addCard} style={styles.paymentMethodAddBtn}>
+          <div style={styles.paymentMethodAddIcon}>
+            <IconCard />
+          </div>
+          <div style={styles.paymentMethodAddText}>
+            {cards.length
+              ? tr("Добавить карту", "Add card")
+              : tr("Привязать банковскую карту", "Link bank card")}
+          </div>
+        </button>
       </div>
     </div>
   );
@@ -14629,6 +14719,142 @@ const styles: Record<string, any> = {
     fontSize: 16,
     color: "var(--text-secondary)",
     lineHeight: 1.45,
+  },
+  paymentMethodsHeader: {
+    position: "relative",
+    minHeight: 44,
+    marginBottom: 28,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paymentMethodsTitle: {
+    fontSize: 22,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    letterSpacing: -0.4,
+    textAlign: "center",
+    padding: "0 72px",
+  },
+  paymentMethodsEditBtn: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    height: 36,
+    border: "none",
+    background: "transparent",
+    color: "#31c36a",
+    fontSize: 17,
+    fontWeight: "var(--font-medium)",
+    cursor: "pointer",
+    padding: "0 4px",
+  },
+  paymentMethodsStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+    marginTop: 6,
+  },
+  paymentMethodCard: {
+    borderRadius: 26,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "18px 18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+  },
+  paymentMethodCardLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    minWidth: 0,
+  },
+  paymentMethodIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    background: "var(--accent-soft)",
+    color: "var(--accent)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flex: "0 0 auto",
+  },
+  paymentMethodBrand: {
+    fontSize: 16,
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-primary)",
+    lineHeight: 1.2,
+  },
+  paymentMethodMasked: {
+    marginTop: 4,
+    fontSize: 20,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    letterSpacing: 0.4,
+  },
+  paymentMethodStatus: {
+    width: 42,
+    height: 42,
+    borderRadius: "50%",
+    background: "var(--accent-grad)",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "var(--accent-shadow)",
+    flex: "0 0 auto",
+  },
+  paymentMethodDeleteBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: "50%",
+    border: "none",
+    background: "linear-gradient(135deg, rgba(255, 110, 110, 0.96), rgba(239, 68, 68, 0.96))",
+    color: "#fff",
+    fontSize: 28,
+    lineHeight: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    boxShadow: "0 16px 24px rgba(239, 68, 68, 0.28)",
+    flex: "0 0 auto",
+    paddingBottom: 3,
+  },
+  paymentMethodAddBtn: {
+    width: "100%",
+    borderRadius: 26,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "18px 18px",
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    cursor: "pointer",
+    textAlign: "left",
+  },
+  paymentMethodAddIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    background: "var(--accent-grad)",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "var(--accent-shadow)",
+    flex: "0 0 auto",
+  },
+  paymentMethodAddText: {
+    fontSize: 18,
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-primary)",
+    letterSpacing: -0.2,
   },
   homeIntroWork: {
     gap: 16,
