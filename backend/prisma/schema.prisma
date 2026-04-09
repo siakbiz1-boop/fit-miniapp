@@ -43,6 +43,56 @@ model User {
   updatedAt DateTime @updatedAt
 
   trainerProfile TrainerProfile?
+  paymentMethods PaymentMethod[]
+  payments       Payment[]
+}
+
+model PaymentMethod {
+  id               String   @id @default(cuid())
+  userId           Int
+  provider         String   @default("yookassa")
+  providerMethodId String   @unique
+  cardBrand        String?
+  cardType         String?
+  last4            String?
+  title            String?
+  active           Boolean  @default(true)
+  isDefault        Boolean  @default(false)
+  detachedAt       DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId, active])
+}
+
+model Payment {
+  id                 String   @id @default(cuid())
+  userId             Int
+  paymentMethodId    String?
+  provider           String   @default("yookassa")
+  providerPaymentId  String   @unique
+  kind               String   @default("subscription")
+  providerMethodId   String?
+  amountValue        String
+  currency           String   @default("RUB")
+  status             String
+  description        String?
+  planId             String?
+  planName           String?
+  months             Int?
+  paymentMethodTitle String?
+  paidAt             DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([paymentMethodId])
 }
 
 model TrainingSession {

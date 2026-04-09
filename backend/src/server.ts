@@ -12,8 +12,13 @@ const PORT = Number(process.env.PORT ?? 3001);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
 const ADMIN_STATS_TOKEN = (process.env.ADMIN_STATS_TOKEN ?? "").trim();
+const YOOKASSA_SHOP_ID = (process.env.YOOKASSA_SHOP_ID ?? "").trim();
+const YOOKASSA_SECRET_KEY = (process.env.YOOKASSA_SECRET_KEY ?? "").trim();
 const WEBAPP_URL = (process.env.WEBAPP_URL ?? "https://app.fitminiapp.tech/")
   .replace(/^WEBAPP_URL\s*=\s*/i, "")
+  .replace(/^["']|["']$/g, "")
+  .trim();
+const YOOKASSA_RETURN_URL = (process.env.YOOKASSA_RETURN_URL ?? WEBAPP_URL)
   .replace(/^["']|["']$/g, "")
   .trim();
 
@@ -28,6 +33,7 @@ if (!JWT_SECRET) {
 const BOT_TOKEN: string = TELEGRAM_BOT_TOKEN;
 const SECRET: string = JWT_SECRET;
 const FAR_FUTURE = new Date(8640000000000000);
+const YOOKASSA_API_BASE = "https://api.yookassa.ru/v3";
 
 // --------------------
 // Prisma + Fastify
@@ -235,6 +241,178 @@ function serializeSlot(slot: any) {
     ...slot,
     trainerTgUserId: slot.trainerTgUserId?.toString?.() ?? slot.trainerTgUserId,
   };
+}
+
+function serializePaymentMethod(method: any) {
+  if (!method) return method;
+  return {
+    ...method,
+    userId: method.userId?.toString?.() ?? method.userId,
+  };
+}
+
+function serializePayment(payment: any) {
+  if (!payment) return payment;
+  return {
+    ...payment,
+    userId: payment.userId?.toString?.() ?? payment.userId,
+  };
+}
+
+function ensureYooKassaConfigured() {
+  if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) {
+    throw new Error("YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY are required");
+  }
+}
+
+function makeYooKassaAuthHeader() {
+  ensureYooKassaConfigured();
+  return `Basic ${Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64")}`;
+}
+
+async function yookassaRequest(path: string, init: RequestInit = {}, idempotenceKey?: string) {
+  ensureYooKassaConfigured();
+  const headers = new Headers(init.headers || {});
+  headers.set("Content-Type", "application/json");
+  headers.set("Authorization", makeYooKassaAuthHeader());
+  if (idempotenceKey) headers.set("Idempotence-Key", idempotenceKey);
+
+  const res = await fetch(`${YOOKASSA_API_BASE}${path}`, {
+    ...init,
+    headers,
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    const err = new Error(data?.description || data?.message || "YooKassa request failed");
+    (err as any).status = res.status;
+    (err as any).payload = data;
+    throw err;
+  }
+  return data;
+}
+
+function parseAmountToKopecString(amount: any) {
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return value.toFixed(2);
+}
+
+function getPaymentMethodPresentation(methodData: any) {
+  const card = methodData?.card || null;
+  return {
+    cardBrand: card?.card_type ? String(card.card_type) : null,
+    cardType: methodData?.type ? String(methodData.type) : null,
+    last4: card?.last4 ? String(card.last4) : null,
+    title: card?.last4 ? `•••• ${String(card.last4)}` : "Банковская карта",
+  };
+}
+
+async function syncDefaultPaymentMethod(userId: number) {
+  const methods = await prismaAny.paymentMethod.findMany({
+    where: { userId, active: true },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+  });
+  if (!methods.length) return;
+  if (methods.some((item: any) => item.isDefault)) return;
+  await prismaAny.paymentMethod.update({
+    where: { id: methods[0].id },
+    data: { isDefault: true },
+  });
+}
+
+async function upsertPaymentMethodForUser(userId: number, paymentMethodData: any, preferDefault = false) {
+  if (!paymentMethodData?.id) return null;
+  const presentation = getPaymentMethodPresentation(paymentMethodData);
+  const existing = await prismaAny.paymentMethod.findUnique({
+    where: { providerMethodId: String(paymentMethodData.id) },
+  });
+  const shouldBeDefault =
+    preferDefault ||
+    !(await prismaAny.paymentMethod.findFirst({
+      where: { userId, active: true, isDefault: true },
+      select: { id: true },
+    }));
+
+  if (shouldBeDefault) {
+    await prismaAny.paymentMethod.updateMany({
+      where: { userId, id: { not: existing?.id || "" } },
+      data: { isDefault: false },
+    });
+  }
+
+  const saved = existing
+    ? await prismaAny.paymentMethod.update({
+        where: { id: existing.id },
+        data: {
+          userId,
+          cardBrand: presentation.cardBrand,
+          cardType: presentation.cardType,
+          last4: presentation.last4,
+          title: presentation.title,
+          active: true,
+          detachedAt: null,
+          isDefault: shouldBeDefault ? true : existing.isDefault,
+        },
+      })
+    : await prismaAny.paymentMethod.create({
+        data: {
+          userId,
+          providerMethodId: String(paymentMethodData.id),
+          cardBrand: presentation.cardBrand,
+          cardType: presentation.cardType,
+          last4: presentation.last4,
+          title: presentation.title,
+          active: true,
+          isDefault: shouldBeDefault,
+        },
+      });
+
+  await syncDefaultPaymentMethod(userId);
+  return saved;
+}
+
+async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
+  const method = paymentData?.payment_method?.saved
+    ? await upsertPaymentMethodForUser(userId, paymentData.payment_method, true)
+    : null;
+
+  const paidAt = paymentData?.paid_at ? new Date(paymentData.paid_at) : null;
+  const amountValue = String(paymentData?.amount?.value || "0.00");
+  const existing = await prismaAny.payment.findUnique({
+    where: { providerPaymentId: String(paymentData.id) },
+  });
+
+  const payload = {
+    userId,
+    paymentMethodId: method?.id || existing?.paymentMethodId || null,
+    kind: paymentData?.metadata?.kind ? String(paymentData.metadata.kind) : existing?.kind || "subscription",
+    providerMethodId: paymentData?.payment_method?.id ? String(paymentData.payment_method.id) : null,
+    amountValue,
+    currency: String(paymentData?.amount?.currency || "RUB"),
+    status: String(paymentData?.status || "pending"),
+    description: paymentData?.description ? String(paymentData.description) : null,
+    planId: paymentData?.metadata?.planId ? String(paymentData.metadata.planId) : null,
+    planName: paymentData?.metadata?.planName ? String(paymentData.metadata.planName) : null,
+    months: paymentData?.metadata?.months ? parseInt(String(paymentData.metadata.months), 10) || null : null,
+    paymentMethodTitle: method?.title || existing?.paymentMethodTitle || null,
+    paidAt,
+  };
+
+  const payment = existing
+    ? await prismaAny.payment.update({
+        where: { id: existing.id },
+        data: payload,
+      })
+    : await prismaAny.payment.create({
+        data: {
+          providerPaymentId: String(paymentData.id),
+          provider: "yookassa",
+          ...payload,
+        },
+      });
+
+  return { payment, paymentMethod: method };
 }
 
 function getSlotCapacity(slot: any) {
@@ -856,6 +1034,327 @@ app.get("/me", async (req, reply) => {
   }
 
   return { ok: true, user: result.payload };
+});
+
+app.get("/billing/payment-methods", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const methods = await prismaAny.paymentMethod.findMany({
+    where: { userId: dbUser.id, active: true },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+  });
+
+  return { ok: true, methods: methods.map((item: any) => serializePaymentMethod(item)) };
+});
+
+app.get("/billing/payments", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const payments = await prismaAny.payment.findMany({
+    where: { userId: dbUser.id, status: "succeeded", kind: { not: "card_setup" } },
+    orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+  });
+
+  return { ok: true, payments: payments.map((item: any) => serializePayment(item)) };
+});
+
+app.post("/billing/payment-methods/:id/default", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const method = await prismaAny.paymentMethod.findUnique({ where: { id } });
+  if (!method || method.userId !== dbUser.id || !method.active) {
+    return reply.code(404).send({ message: "Payment method not found" });
+  }
+
+  await prisma.$transaction([
+    prismaAny.paymentMethod.updateMany({
+      where: { userId: dbUser.id, id: { not: id } },
+      data: { isDefault: false },
+    }),
+    prismaAny.paymentMethod.update({
+      where: { id },
+      data: { isDefault: true },
+    }),
+  ]);
+
+  const methods = await prismaAny.paymentMethod.findMany({
+    where: { userId: dbUser.id, active: true },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+  });
+
+  return { ok: true, methods: methods.map((item: any) => serializePaymentMethod(item)) };
+});
+
+app.delete("/billing/payment-methods/:id", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const id = String((req.params as any)?.id || "");
+  if (!id) return reply.code(400).send({ message: "id required" });
+
+  const method = await prismaAny.paymentMethod.findUnique({ where: { id } });
+  if (!method || method.userId !== dbUser.id || !method.active) {
+    return reply.code(404).send({ message: "Payment method not found" });
+  }
+
+  await prismaAny.paymentMethod.update({
+    where: { id },
+    data: {
+      active: false,
+      isDefault: false,
+      detachedAt: new Date(),
+    },
+  });
+  await syncDefaultPaymentMethod(dbUser.id);
+
+  const methods = await prismaAny.paymentMethod.findMany({
+    where: { userId: dbUser.id, active: true },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }],
+  });
+
+  return { ok: true, methods: methods.map((item: any) => serializePaymentMethod(item)) };
+});
+
+app.post("/billing/yookassa/payment", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const amountValue = parseAmountToKopecString(body?.amount);
+  const planId = String(body?.planId || "").trim();
+  const planName = String(body?.planName || "").trim();
+  const months = parseInt(String(body?.months || ""), 10);
+
+  if (!amountValue || Number(amountValue) <= 0) {
+    return reply.code(400).send({ message: "amount invalid" });
+  }
+  if (!planId || !planName || !Number.isFinite(months) || months <= 0) {
+    return reply.code(400).send({ message: "plan invalid" });
+  }
+
+  try {
+    const payment = await yookassaRequest(
+      "/payments",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          amount: { value: amountValue, currency: "RUB" },
+          capture: true,
+          save_payment_method: true,
+          confirmation: {
+            type: "embedded",
+            locale: "ru_RU",
+            return_url: YOOKASSA_RETURN_URL,
+          },
+          description: `Подписка ${planName} на ${months} мес.`,
+          metadata: {
+            userId: String(dbUser.id),
+            tgUserId: String(dbUser.tgUserId),
+            kind: "subscription",
+            planId,
+            planName,
+            months: String(months),
+          },
+        }),
+      },
+      crypto.randomUUID()
+    );
+
+    await syncPaymentFromYooKassa(dbUser.id, payment);
+
+    return {
+      ok: true,
+      paymentId: String(payment.id),
+      confirmationToken: payment?.confirmation?.confirmation_token || null,
+      status: String(payment.status || "pending"),
+    };
+  } catch (err: any) {
+    req.log.error({ err }, "YooKassa payment create failed");
+    return reply.code(err?.status || 500).send({
+      message: err?.payload?.description || err?.message || "Payment create failed",
+    });
+  }
+});
+
+app.post("/billing/yookassa/setup-card", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  try {
+    const payment = await yookassaRequest(
+      "/payments",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          amount: { value: "1.00", currency: "RUB" },
+          capture: true,
+          save_payment_method: true,
+          confirmation: {
+            type: "embedded",
+            locale: "ru_RU",
+            return_url: YOOKASSA_RETURN_URL,
+          },
+          description: "Привязка банковской карты",
+          metadata: {
+            userId: String(dbUser.id),
+            tgUserId: String(dbUser.tgUserId),
+            kind: "card_setup",
+          },
+        }),
+      },
+      crypto.randomUUID()
+    );
+
+    await syncPaymentFromYooKassa(dbUser.id, payment);
+
+    return {
+      ok: true,
+      paymentId: String(payment.id),
+      confirmationToken: payment?.confirmation?.confirmation_token || null,
+      status: String(payment.status || "pending"),
+    };
+  } catch (err: any) {
+    req.log.error({ err }, "YooKassa setup card failed");
+    return reply.code(err?.status || 500).send({
+      message: err?.payload?.description || err?.message || "Setup card failed",
+    });
+  }
+});
+
+app.post("/billing/yookassa/charge-saved", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const amountValue = parseAmountToKopecString(body?.amount);
+  const planId = String(body?.planId || "").trim();
+  const planName = String(body?.planName || "").trim();
+  const months = parseInt(String(body?.months || ""), 10);
+  const requestedMethodId = String(body?.paymentMethodId || "").trim();
+
+  if (!amountValue || Number(amountValue) <= 0) {
+    return reply.code(400).send({ message: "amount invalid" });
+  }
+  if (!planId || !planName || !Number.isFinite(months) || months <= 0) {
+    return reply.code(400).send({ message: "plan invalid" });
+  }
+
+  const method =
+    (requestedMethodId
+      ? await prismaAny.paymentMethod.findUnique({ where: { id: requestedMethodId } })
+      : await prismaAny.paymentMethod.findFirst({
+          where: { userId: dbUser.id, active: true, isDefault: true },
+          orderBy: { updatedAt: "desc" },
+        })) ||
+    null;
+
+  if (!method || method.userId !== dbUser.id || !method.active) {
+    return reply.code(404).send({ message: "Payment method not found" });
+  }
+
+  try {
+    const payment = await yookassaRequest(
+      "/payments",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          amount: { value: amountValue, currency: "RUB" },
+          capture: true,
+          payment_method_id: method.providerMethodId,
+          description: `Подписка ${planName} на ${months} мес.`,
+          metadata: {
+            userId: String(dbUser.id),
+            tgUserId: String(dbUser.tgUserId),
+            kind: "subscription",
+            planId,
+            planName,
+            months: String(months),
+          },
+        }),
+      },
+      crypto.randomUUID()
+    );
+
+    const synced = await syncPaymentFromYooKassa(dbUser.id, payment);
+    return {
+      ok: true,
+      payment: serializePayment(synced.payment),
+      paymentMethod: synced.paymentMethod ? serializePaymentMethod(synced.paymentMethod) : serializePaymentMethod(method),
+    };
+  } catch (err: any) {
+    req.log.error({ err }, "YooKassa recurring payment failed");
+    return reply.code(err?.status || 500).send({
+      message: err?.payload?.description || err?.message || "Recurring payment failed",
+    });
+  }
+});
+
+app.get("/billing/payments/:paymentId/status", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const paymentId = String((req.params as any)?.paymentId || "");
+  if (!paymentId) return reply.code(400).send({ message: "paymentId required" });
+
+  const existing = await prismaAny.payment.findUnique({
+    where: { providerPaymentId: paymentId },
+  });
+  if (existing && existing.userId !== dbUser.id) {
+    return reply.code(404).send({ message: "Payment not found" });
+  }
+
+  try {
+    const payment = await yookassaRequest(`/payments/${paymentId}`, { method: "GET" });
+    const resolvedUserId =
+      existing?.userId ||
+      (payment?.metadata?.userId ? parseInt(String(payment.metadata.userId), 10) : dbUser.id);
+    if (!resolvedUserId || Number.isNaN(resolvedUserId) || resolvedUserId !== dbUser.id) {
+      return reply.code(404).send({ message: "Payment not found" });
+    }
+
+    const synced = await syncPaymentFromYooKassa(resolvedUserId, payment);
+    return {
+      ok: true,
+      payment: serializePayment(synced.payment),
+      paymentMethod: synced.paymentMethod ? serializePaymentMethod(synced.paymentMethod) : null,
+    };
+  } catch (err: any) {
+    req.log.error({ err }, "YooKassa payment status failed");
+    return reply.code(err?.status || 500).send({
+      message: err?.payload?.description || err?.message || "Payment status failed",
+    });
+  }
+});
+
+app.post("/billing/yookassa/webhook", async (req, reply) => {
+  const body = req.body as any;
+  const paymentId = String(body?.object?.id || "");
+  if (!paymentId) return reply.code(400).send({ message: "payment id missing" });
+
+  try {
+    const payment = await yookassaRequest(`/payments/${paymentId}`, { method: "GET" });
+    const existing = await prismaAny.payment.findUnique({
+      where: { providerPaymentId: paymentId },
+    });
+    const userId = existing?.userId || parseInt(String(payment?.metadata?.userId || ""), 10);
+    if (!userId || Number.isNaN(userId)) {
+      return reply.code(400).send({ message: "user id missing in payment metadata" });
+    }
+
+    await syncPaymentFromYooKassa(userId, payment);
+    return { ok: true };
+  } catch (err: any) {
+    req.log.error({ err }, "YooKassa webhook failed");
+    return reply.code(err?.status || 500).send({
+      message: err?.payload?.description || err?.message || "Webhook processing failed",
+    });
+  }
 });
 
 // Return profile from DB (includes role)

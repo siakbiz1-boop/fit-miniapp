@@ -250,6 +250,27 @@ type SessionItem = {
   }[];
 };
 
+type PaymentMethodItem = {
+  id: string;
+  providerMethodId?: string;
+  cardBrand?: string | null;
+  cardType?: string | null;
+  last4?: string | null;
+  title?: string | null;
+  active?: boolean;
+  isDefault?: boolean;
+};
+
+type PaymentRecord = {
+  id: string;
+  amountValue: string;
+  currency?: string;
+  status: string;
+  paidAt?: string | null;
+  createdAt?: string;
+  paymentMethodTitle?: string | null;
+};
+
 
 type NotesListItem = {
   id: string;
@@ -2118,6 +2139,14 @@ function TrainerHome({
   const [promoCode, setPromoCode] = useState("");
   const [promoStatus, setPromoStatus] = useState<"idle" | "success" | "error">("idle");
   const [promoAppliedTotal, setPromoAppliedTotal] = useState<number | null>(null);
+  const [paymentWidgetToken, setPaymentWidgetToken] = useState<string | null>(null);
+  const [paymentWidgetId, setPaymentWidgetId] = useState<string | null>(null);
+  const [paymentWidgetOpen, setPaymentWidgetOpen] = useState(false);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<PaymentMethodItem[]>([]);
+  const paymentWidgetContainerRef = useRef<HTMLDivElement | null>(null);
+  const paymentPollRef = useRef<number | null>(null);
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
@@ -2232,6 +2261,102 @@ function TrainerHome({
       window.scrollTo({ top: 0, behavior: "auto" });
     }
   }, [prepayOpen]);
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/billing/payment-methods`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await res.json()) as { methods?: PaymentMethodItem[] };
+        if (!cancelled) setSavedPaymentMethods(Array.isArray(data.methods) ? data.methods : []);
+      } catch {
+        if (!cancelled) setSavedPaymentMethods([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, apiBase, paymentWidgetOpen]);
+  useEffect(() => {
+    if (!paymentWidgetOpen || !paymentWidgetToken || !paymentWidgetContainerRef.current) return;
+    let cancelled = false;
+    const mount = async () => {
+      try {
+        await loadYooKassaWidgetScript();
+        if (cancelled || !paymentWidgetContainerRef.current) return;
+        paymentWidgetContainerRef.current.innerHTML = "";
+        const WidgetCtor = (window as any).YooMoneyCheckoutWidget;
+        if (!WidgetCtor) throw new Error("YooKassa widget unavailable");
+        const widget = new WidgetCtor({
+          confirmation_token: paymentWidgetToken,
+          error_callback: () => {
+            setPaymentError(tr("Не удалось открыть форму оплаты.", "Failed to open payment form."));
+          },
+        });
+        widget.render(paymentWidgetContainerRef.current.id);
+      } catch {
+        setPaymentError(tr("Не удалось загрузить форму оплаты.", "Failed to load payment form."));
+      }
+    };
+    mount();
+    return () => {
+      cancelled = true;
+      if (paymentWidgetContainerRef.current) paymentWidgetContainerRef.current.innerHTML = "";
+    };
+  }, [paymentWidgetOpen, paymentWidgetToken, tr]);
+  useEffect(() => {
+    if (!paymentWidgetId || !paymentWidgetOpen || !token) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`${apiBase}/billing/payments/${paymentWidgetId}/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { payment?: PaymentRecord };
+        const status = data.payment?.status || "";
+        if (status === "succeeded") {
+          if (paymentPollRef.current) {
+            window.clearInterval(paymentPollRef.current);
+            paymentPollRef.current = null;
+          }
+          setPaymentWidgetOpen(false);
+          setPaymentWidgetToken(null);
+          setPaymentWidgetId(null);
+          setPaymentSubmitting(false);
+          setPaymentError(null);
+          try {
+            const methodsRes = await fetch(`${apiBase}/billing/payment-methods`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const methodsData = (await methodsRes.json()) as { methods?: PaymentMethodItem[] };
+            setSavedPaymentMethods(Array.isArray(methodsData.methods) ? methodsData.methods : []);
+          } catch {
+            // ignore
+          }
+          alert(tr("Оплата прошла успешно. Карта сохранена.", "Payment succeeded. Card has been saved."));
+        } else if (status === "canceled") {
+          if (paymentPollRef.current) {
+            window.clearInterval(paymentPollRef.current);
+            paymentPollRef.current = null;
+          }
+          setPaymentSubmitting(false);
+          setPaymentError(tr("Платёж был отменён.", "Payment was cancelled."));
+        }
+      } catch {
+        // ignore temporary polling errors
+      }
+    };
+    poll();
+    paymentPollRef.current = window.setInterval(poll, 3000);
+    return () => {
+      if (paymentPollRef.current) {
+        window.clearInterval(paymentPollRef.current);
+        paymentPollRef.current = null;
+      }
+    };
+  }, [paymentWidgetId, paymentWidgetOpen, token, apiBase, tr]);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const doneSessions = allSessions.filter((s) => sessionEndTime(s).getTime() <= now.getTime());
@@ -2295,6 +2420,7 @@ function TrainerHome({
     },
   };
   const activeTariffPeriodMeta = tariffPeriodMeta[tariffPeriod];
+  const defaultPaymentMethod = savedPaymentMethods.find((item) => item.isDefault) || savedPaymentMethods[0] || null;
   const tariffPlans = [
     {
       id: "free",
@@ -3248,15 +3374,125 @@ function TrainerHome({
             <div style={styles.prepayTotal}>{formatMoney(prepayTotal)}</div>
           </div>
         </div>
-        <button type="button" style={styles.prepayPayBtn}>
-          {tr("Оплатить", "Pay")}
+        <button
+          type="button"
+          style={{
+            ...styles.prepayPayBtn,
+            ...(paymentSubmitting ? styles.prepayPayBtnDisabled : null),
+          }}
+          disabled={paymentSubmitting}
+          onClick={async () => {
+            if (!token) {
+              setPaymentError(tr("Не удалось авторизовать оплату.", "Failed to authorize payment."));
+              return;
+            }
+            setPaymentSubmitting(true);
+            setPaymentError(null);
+            try {
+              const res = await fetch(`${apiBase}/billing/yookassa/payment`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                  amount: prepayTotal,
+                  planId: prepayPlan.id,
+                  planName: prepayPlan.name,
+                  months: prepayPlan.months,
+                }),
+              });
+              const data = (await res.json()) as {
+                ok?: boolean;
+                paymentId?: string;
+                confirmationToken?: string | null;
+                message?: string;
+              };
+              if (!res.ok || !data.ok || !data.paymentId || !data.confirmationToken) {
+                throw new Error(data.message || "payment init failed");
+              }
+              setPaymentWidgetId(data.paymentId);
+              setPaymentWidgetToken(data.confirmationToken);
+              setPaymentWidgetOpen(true);
+            } catch (err: any) {
+              setPaymentSubmitting(false);
+              setPaymentError(
+                err?.message || tr("Не удалось создать платёж.", "Failed to create payment.")
+              );
+            }
+          }}
+        >
+          {paymentSubmitting ? tr("Открываем форму оплаты…", "Opening payment form...") : tr("Оплатить", "Pay")}
         </button>
+        {defaultPaymentMethod ? (
+          <button
+            type="button"
+            style={{
+              ...styles.prepaySavedCardBtn,
+              ...(paymentSubmitting ? styles.prepayPayBtnDisabled : null),
+            }}
+            disabled={paymentSubmitting}
+            onClick={async () => {
+              if (!token) return;
+              setPaymentSubmitting(true);
+              setPaymentError(null);
+              try {
+                const res = await fetch(`${apiBase}/billing/yookassa/charge-saved`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({
+                    amount: prepayTotal,
+                    planId: prepayPlan.id,
+                    planName: prepayPlan.name,
+                    months: prepayPlan.months,
+                    paymentMethodId: defaultPaymentMethod.id,
+                  }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data?.ok) {
+                  throw new Error(data?.message || "saved card payment failed");
+                }
+                setPaymentSubmitting(false);
+                alert(tr("Оплата сохранённой картой прошла успешно.", "Saved card payment succeeded."));
+              } catch (err: any) {
+                setPaymentSubmitting(false);
+                setPaymentError(err?.message || tr("Не удалось списать оплату с карты.", "Failed to charge saved card."));
+              }
+            }}
+          >
+            {tr("Оплатить картой", "Pay with card")} {formatPaymentMethodMask(defaultPaymentMethod, tr)}
+          </button>
+        ) : null}
+        {paymentError ? <div style={styles.promoError}>{paymentError}</div> : null}
         <div style={styles.prepayNote}>
           {tr(
             "Нажимая кнопку «Оплатить», я подтверждаю согласие на условия оплаты.",
             "By clicking Pay, I confirm acceptance of the payment terms."
           )}
         </div>
+        {paymentWidgetOpen ? (
+          <div style={styles.paymentWidgetOverlay}>
+            <div style={styles.paymentWidgetModal}>
+              <div style={styles.paymentWidgetHeader}>
+                <div style={styles.paymentWidgetTitle}>{tr("Оплата картой", "Card payment")}</div>
+                <button
+                  type="button"
+                  style={styles.paymentWidgetClose}
+                  onClick={() => {
+                    setPaymentWidgetOpen(false);
+                    setPaymentSubmitting(false);
+                    setPaymentWidgetToken(null);
+                    setPaymentWidgetId(null);
+                  }}
+                >
+                  {tr("Закрыть", "Close")}
+                </button>
+              </div>
+              <div
+                id="yookassa-payment-form"
+                ref={paymentWidgetContainerRef}
+                style={styles.paymentWidgetContainer}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -10846,10 +11082,10 @@ function TrainerSettings(props: {
     );
   }
   if (screen === "paymentHistory") {
-    return <PaymentHistoryScreen onBack={() => setScreen("main")} />;
+    return <PaymentHistoryScreen onBack={() => setScreen("main")} token={token} apiBase={apiBase} />;
   }
   if (screen === "paymentMethods") {
-    return <PaymentMethodsScreen onBack={() => setScreen("main")} />;
+    return <PaymentMethodsScreen onBack={() => setScreen("main")} token={token} apiBase={apiBase} />;
   }
 
   return (
@@ -11247,10 +11483,31 @@ function LanguageScreen(props: {
 
 function PaymentHistoryScreen(props: {
   onBack: () => void;
+  token?: string;
+  apiBase?: string;
 }) {
-  const { onBack } = props;
+  const { onBack, token, apiBase } = props;
   const tr = useTr();
-  const paymentHistory: Array<{ id: string; date: string; amount: string }> = [];
+  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([]);
+
+  useEffect(() => {
+    if (!token || !apiBase) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/billing/payments`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await res.json()) as { payments?: PaymentRecord[] };
+        if (!cancelled) setPaymentHistory(Array.isArray(data.payments) ? data.payments : []);
+      } catch {
+        if (!cancelled) setPaymentHistory([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, apiBase]);
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
@@ -11266,8 +11523,8 @@ function PaymentHistoryScreen(props: {
         {paymentHistory.length ? (
           paymentHistory.map((item) => (
             <div key={item.id} style={styles.paymentHistoryCard}>
-              <div style={styles.paymentHistoryDate}>{item.date}</div>
-              <div style={styles.paymentHistoryAmount}>- {item.amount}</div>
+              <div style={styles.paymentHistoryDate}>{formatPaymentHistoryDate(item.paidAt || item.createdAt)}</div>
+              <div style={styles.paymentHistoryAmount}>- {formatMoney(Number(item.amountValue || 0))}</div>
             </div>
           ))
         ) : (
@@ -11282,21 +11539,123 @@ function PaymentHistoryScreen(props: {
 
 function PaymentMethodsScreen(props: {
   onBack: () => void;
+  token?: string;
+  apiBase?: string;
 }) {
-  const { onBack } = props;
+  const { onBack, token, apiBase } = props;
   const tr = useTr();
   const [editMode, setEditMode] = useState(false);
-  const [cards, setCards] = useState<Array<{ id: string; brand: string; masked: string }>>([
-    { id: cryptoId(), brand: tr("Банковская карта", "Bank card"), masked: "•••• 2800" },
-  ]);
-  const [activeCardId, setActiveCardId] = useState<string | null>(cards[0]?.id ?? null);
+  const [cards, setCards] = useState<PaymentMethodItem[]>([]);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [setupPaymentId, setSetupPaymentId] = useState<string | null>(null);
+  const [setupToken, setSetupToken] = useState<string | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const widgetContainerRef = useRef<HTMLDivElement | null>(null);
+  const setupPollRef = useRef<number | null>(null);
 
-  const removeCard = (id: string) => {
-    setCards((prev) => {
-      const next = prev.filter((item) => item.id !== id);
-      setActiveCardId((current) => (current === id ? next[0]?.id ?? null : current));
-      return next;
-    });
+  useEffect(() => {
+    if (!token || !apiBase) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/billing/payment-methods`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await res.json()) as { methods?: PaymentMethodItem[] };
+        const next = Array.isArray(data.methods) ? data.methods : [];
+        if (!cancelled) {
+          setCards(next);
+          setActiveCardId(next.find((item) => item.isDefault)?.id ?? next[0]?.id ?? null);
+        }
+      } catch {
+        if (!cancelled) {
+          setCards([]);
+          setActiveCardId(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, apiBase]);
+
+  useEffect(() => {
+    if (!setupOpen || !setupToken || !widgetContainerRef.current) return;
+    let cancelled = false;
+    const mount = async () => {
+      try {
+        await loadYooKassaWidgetScript();
+        if (cancelled || !widgetContainerRef.current) return;
+        widgetContainerRef.current.innerHTML = "";
+        const WidgetCtor = (window as any).YooMoneyCheckoutWidget;
+        if (!WidgetCtor) throw new Error("YooKassa widget unavailable");
+        const widget = new WidgetCtor({
+          confirmation_token: setupToken,
+          error_callback: () => setSetupError(tr("Не удалось открыть форму оплаты.", "Failed to open payment form.")),
+        });
+        widget.render(widgetContainerRef.current.id);
+      } catch {
+        setSetupError(tr("Не удалось загрузить форму оплаты.", "Failed to load payment form."));
+      }
+    };
+    mount();
+    return () => {
+      cancelled = true;
+      if (widgetContainerRef.current) widgetContainerRef.current.innerHTML = "";
+    };
+  }, [setupOpen, setupToken, tr]);
+
+  useEffect(() => {
+    if (!setupOpen || !setupPaymentId || !token || !apiBase) return;
+    const poll = async () => {
+      try {
+        const res = await fetch(`${apiBase}/billing/payments/${setupPaymentId}/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { payment?: PaymentRecord; paymentMethod?: PaymentMethodItem | null };
+        if (data.payment?.status === "succeeded") {
+          const methodsRes = await fetch(`${apiBase}/billing/payment-methods`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const methodsData = (await methodsRes.json()) as { methods?: PaymentMethodItem[] };
+          const next = Array.isArray(methodsData.methods) ? methodsData.methods : [];
+          setCards(next);
+          setActiveCardId(next.find((item) => item.isDefault)?.id ?? next[0]?.id ?? null);
+          setSetupOpen(false);
+          setSetupPaymentId(null);
+          setSetupToken(null);
+          setSetupError(null);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    poll();
+    setupPollRef.current = window.setInterval(poll, 3000);
+    return () => {
+      if (setupPollRef.current) {
+        window.clearInterval(setupPollRef.current);
+        setupPollRef.current = null;
+      }
+    };
+  }, [setupOpen, setupPaymentId, token, apiBase]);
+
+  const removeCard = async (id: string) => {
+    if (!token || !apiBase) return;
+    try {
+      const res = await fetch(`${apiBase}/billing/payment-methods/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await res.json()) as { methods?: PaymentMethodItem[] };
+      const next = Array.isArray(data.methods) ? data.methods : [];
+      setCards(next);
+      setActiveCardId(next.find((item) => item.isDefault)?.id ?? next[0]?.id ?? null);
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -11324,8 +11683,8 @@ function PaymentMethodsScreen(props: {
                   <IconCard />
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={styles.paymentMethodBrand}>{item.brand}</div>
-                  <div style={styles.paymentMethodMasked}>{item.masked}</div>
+                  <div style={styles.paymentMethodBrand}>{tr("Банковская карта", "Bank card")}</div>
+                  <div style={styles.paymentMethodMasked}>{formatPaymentMethodMask(item, tr)}</div>
                 </div>
               </div>
               {editMode ? (
@@ -11340,7 +11699,21 @@ function PaymentMethodsScreen(props: {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setActiveCardId(item.id)}
+                  onClick={async () => {
+                    if (!token || !apiBase) return;
+                    try {
+                      const res = await fetch(`${apiBase}/billing/payment-methods/${item.id}/default`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      const data = (await res.json()) as { methods?: PaymentMethodItem[] };
+                      const next = Array.isArray(data.methods) ? data.methods : [];
+                      setCards(next);
+                      setActiveCardId(next.find((method) => method.isDefault)?.id ?? item.id);
+                    } catch {
+                      // ignore
+                    }
+                  }}
                   style={{
                     ...styles.paymentMethodStatus,
                     ...(activeCardId === item.id ? styles.paymentMethodStatusActive : styles.paymentMethodStatusIdle),
@@ -11356,7 +11729,25 @@ function PaymentMethodsScreen(props: {
 
         <button
           type="button"
-          onClick={() => alert(tr("Интеграцию с банком подключим позже", "Bank integration will be added later."))}
+          onClick={async () => {
+            if (!token || !apiBase) return;
+            setSetupError(null);
+            try {
+              const res = await fetch(`${apiBase}/billing/yookassa/setup-card`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const data = (await res.json()) as { ok?: boolean; paymentId?: string; confirmationToken?: string | null; message?: string };
+              if (!res.ok || !data.ok || !data.paymentId || !data.confirmationToken) {
+                throw new Error(data.message || "setup failed");
+              }
+              setSetupPaymentId(data.paymentId);
+              setSetupToken(data.confirmationToken);
+              setSetupOpen(true);
+            } catch (err: any) {
+              setSetupError(err?.message || tr("Не удалось начать привязку карты.", "Failed to start card setup."));
+            }
+          }}
           style={styles.paymentMethodAddBtn}
         >
           <div style={styles.paymentMethodAddIcon}>
@@ -11366,7 +11757,29 @@ function PaymentMethodsScreen(props: {
             {cards.length ? tr("Добавить карту", "Add card") : tr("Добавить банковскую карту", "Add bank card")}
           </div>
         </button>
+        {setupError ? <div style={styles.promoError}>{setupError}</div> : null}
       </div>
+      {setupOpen ? (
+        <div style={styles.paymentWidgetOverlay}>
+          <div style={styles.paymentWidgetModal}>
+            <div style={styles.paymentWidgetHeader}>
+              <div style={styles.paymentWidgetTitle}>{tr("Добавить карту", "Add card")}</div>
+              <button
+                type="button"
+                style={styles.paymentWidgetClose}
+                onClick={() => {
+                  setSetupOpen(false);
+                  setSetupPaymentId(null);
+                  setSetupToken(null);
+                }}
+              >
+                {tr("Закрыть", "Close")}
+              </button>
+            </div>
+            <div id="yookassa-setup-card-form" ref={widgetContainerRef} style={styles.paymentWidgetContainer} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -12421,6 +12834,38 @@ function cryptoId() {
 
 function localExerciseId() {
   return `local_${cryptoId()}`;
+}
+
+function formatPaymentMethodMask(method: PaymentMethodItem, tr: (ru: string, en: string) => string) {
+  if (method.title && method.title.trim()) return method.title.trim();
+  if (method.last4) return `•••• ${method.last4}`;
+  return tr("Банковская карта", "Bank card");
+}
+
+function formatPaymentHistoryDate(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return formatDateShort(date);
+}
+
+function loadYooKassaWidgetScript() {
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector('script[data-yookassa-widget="true"]') as HTMLScriptElement | null;
+    if (existing) {
+      if ((window as any).YooMoneyCheckoutWidget) resolve();
+      else existing.addEventListener("load", () => resolve(), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://yookassa.ru/checkout-widget/v1/checkout-widget.js";
+    script.async = true;
+    script.dataset.yookassaWidget = "true";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load YooKassa widget"));
+    document.head.appendChild(script);
+  });
 }
 
 function startOfDay(d: Date) {
@@ -16656,11 +17101,73 @@ const styles: Record<string, any> = {
     cursor: "pointer",
     boxShadow: "var(--accent-shadow)",
   },
+  prepayPayBtnDisabled: {
+    opacity: 0.7,
+    cursor: "wait",
+  },
+  prepaySavedCardBtn: {
+    marginTop: 10,
+    width: "100%",
+    height: 48,
+    borderRadius: 999,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    color: "var(--text-primary)",
+    fontSize: 15,
+    fontWeight: "var(--font-medium)",
+    cursor: "pointer",
+    boxShadow: "var(--glass-card-shadow)",
+  },
   prepayNote: {
     marginTop: 10,
     fontSize: 11,
     color: "var(--muted)",
     lineHeight: 1.35,
+  },
+  paymentWidgetOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(8, 15, 28, 0.56)",
+    display: "flex",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    padding: 16,
+    zIndex: 90,
+  },
+  paymentWidgetModal: {
+    width: "100%",
+    maxWidth: 520,
+    borderRadius: 28,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "0 24px 48px rgba(0, 0, 0, 0.28)",
+    padding: 18,
+  },
+  paymentWidgetHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
+  paymentWidgetTitle: {
+    fontSize: 18,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+  },
+  paymentWidgetClose: {
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    color: "var(--text-primary)",
+    borderRadius: 999,
+    padding: "8px 12px",
+    fontSize: 13,
+    fontWeight: "var(--font-medium)",
+    cursor: "pointer",
+    boxShadow: "var(--glass-card-shadow)",
+  },
+  paymentWidgetContainer: {
+    minHeight: 420,
   },
   promoRow: {
     display: "flex",
