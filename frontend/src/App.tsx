@@ -11330,7 +11330,7 @@ function PaymentMethodsScreen(props: {
                   style={styles.paymentMethodDeleteBtn}
                   aria-label={tr("Удалить карту", "Remove card")}
                 >
-                  -
+                  <IconTrash size={20} strokeWidth={2.2} />
                 </button>
               ) : (
                 <div style={styles.paymentMethodStatus}>
