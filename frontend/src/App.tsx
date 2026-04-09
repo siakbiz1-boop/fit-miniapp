@@ -11305,7 +11305,7 @@ function PaymentMethodsScreen(props: {
         <div style={styles.paymentMethodsTitle}>{tr("Способы оплаты", "Payment methods")}</div>
         <div style={styles.paymentMethodsHeaderRight}>
           <button type="button" onClick={() => setEditMode((prev) => !prev)} style={styles.paymentMethodsEditBtn}>
-            {editMode ? tr("Готово", "Done") : tr("Изменить", "Edit")}
+            {editMode ? tr("Готово", "Done") : tr("Изм.", "Edit")}
           </button>
         </div>
       </div>
@@ -11339,11 +11339,7 @@ function PaymentMethodsScreen(props: {
               )}
             </div>
           ))
-        ) : (
-          <div style={styles.paymentHistoryEmpty}>
-            {tr("Пока не привязана ни одна банковская карта.", "No bank cards linked yet.")}
-          </div>
-        )}
+        ) : null}
 
         <button
           type="button"
@@ -11354,9 +11350,7 @@ function PaymentMethodsScreen(props: {
             <IconCard />
           </div>
           <div style={styles.paymentMethodAddText}>
-            {cards.length
-              ? tr("Добавить карту", "Add card")
-              : tr("Привязать банковскую карту", "Link bank card")}
+            {cards.length ? tr("Добавить карту", "Add card") : tr("Добавить банковскую карту", "Add bank card")}
           </div>
         </button>
       </div>
@@ -14719,37 +14713,38 @@ const styles: Record<string, any> = {
     lineHeight: 1.45,
   },
   paymentMethodsHeader: {
+    position: "relative",
     minHeight: 44,
     marginBottom: 28,
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
+    justifyContent: "center",
   },
   paymentMethodsTitle: {
     fontSize: 18,
     fontWeight: "var(--font-strong)",
     color: "var(--text-primary)",
     letterSpacing: -0.3,
-    textAlign: "left",
-    flex: 1,
-    minWidth: 0,
-    paddingLeft: 48,
+    textAlign: "center",
+    padding: "0 72px",
   },
   paymentMethodsHeaderRight: {
+    position: "absolute",
+    right: 0,
+    top: 0,
     display: "flex",
     justifyContent: "flex-end",
     flex: "0 0 auto",
   },
   paymentMethodsEditBtn: {
-    height: 36,
+    height: 32,
     border: "1px solid var(--glass-card-border)",
     background: "var(--glass-card-bg)",
     color: "var(--accent)",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "var(--font-medium)",
     cursor: "pointer",
-    padding: "0 14px",
+    padding: "0 12px",
     borderRadius: 999,
     boxShadow: "var(--glass-card-shadow)",
   },
