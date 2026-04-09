@@ -51,7 +51,15 @@ type ProfileResponse = {
 
 type Tab = "home" | "schedule" | "clients" | "settings";
 type ClientTab = "home" | "schedule" | "book" | "settings";
-type SettingsScreen = "main" | "personal" | "theme" | "booking" | "cancellation" | "reminders" | "language";
+type SettingsScreen =
+  | "main"
+  | "personal"
+  | "theme"
+  | "booking"
+  | "cancellation"
+  | "reminders"
+  | "language"
+  | "paymentHistory";
 type ClientsScreen = "list" | "add" | "detail";
 type TariffPeriod = "month" | "quarter" | "year";
 type UiText = {
@@ -10836,6 +10844,9 @@ function TrainerSettings(props: {
       />
     );
   }
+  if (screen === "paymentHistory") {
+    return <PaymentHistoryScreen onBack={() => setScreen("main")} />;
+  }
 
   return (
     <div style={{ ...styles.pageContainer, ...styles.settingsPage }}>
@@ -10909,7 +10920,7 @@ function TrainerSettings(props: {
             <SettingsRowGlass
               icon={<IconHistory />}
               title={t.settingsPaymentHistory}
-              onClick={() => alert(tr("Скоро добавим историю оплат", "Payment history will be added later."))}
+              onClick={() => setScreen("paymentHistory")}
               isLast
             />
           </div>
@@ -11225,6 +11236,41 @@ function LanguageScreen(props: {
             {t.languageEn}
           </span>
         </button>
+      </div>
+    </div>
+  );
+}
+
+function PaymentHistoryScreen(props: {
+  onBack: () => void;
+}) {
+  const { onBack } = props;
+  const tr = useTr();
+  const paymentHistory: Array<{ id: string; date: string; amount: string }> = [];
+
+  return (
+    <div style={{ ...styles.pageContainer, ...styles.bookingPage }}>
+      <div style={styles.bookingHeader}>
+        {typeof WebApp?.BackButton?.show === "function" ? null : (
+          <button onClick={onBack} style={styles.backBtnInline} aria-label="back">
+            <IconArrowLeft />
+          </button>
+        )}
+        <div style={styles.bookingTitle}>{tr("История оплат", "Payment history")}</div>
+      </div>
+      <div style={styles.paymentHistoryList}>
+        {paymentHistory.length ? (
+          paymentHistory.map((item) => (
+            <div key={item.id} style={styles.paymentHistoryCard}>
+              <div style={styles.paymentHistoryDate}>{item.date}</div>
+              <div style={styles.paymentHistoryAmount}>- {item.amount}</div>
+            </div>
+          ))
+        ) : (
+          <div style={styles.paymentHistoryEmpty}>
+            {tr("Пока нет проведённых оплат.", "No completed payments yet.")}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -14543,6 +14589,46 @@ const styles: Record<string, any> = {
   remindersLabelActive: {
     color: "var(--reminder-text-active)",
     textShadow: "var(--reminder-text-shadow)",
+  },
+  paymentHistoryList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+    marginTop: 10,
+  },
+  paymentHistoryCard: {
+    borderRadius: 24,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "18px 20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  paymentHistoryDate: {
+    fontSize: 18,
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-primary)",
+    letterSpacing: -0.2,
+  },
+  paymentHistoryAmount: {
+    fontSize: 18,
+    fontWeight: "var(--font-strong)",
+    color: "var(--text-primary)",
+    letterSpacing: -0.2,
+    whiteSpace: "nowrap",
+  },
+  paymentHistoryEmpty: {
+    borderRadius: 24,
+    border: "1px solid var(--glass-card-border)",
+    background: "var(--glass-card-bg)",
+    boxShadow: "var(--glass-card-shadow)",
+    padding: "20px 18px",
+    fontSize: 16,
+    color: "var(--text-secondary)",
+    lineHeight: 1.45,
   },
   homeIntroWork: {
     gap: 16,
