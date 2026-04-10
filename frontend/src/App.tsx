@@ -2422,6 +2422,21 @@ function TrainerHome({
   };
   const activeTariffPeriodMeta = tariffPeriodMeta[tariffPeriod];
   const defaultPaymentMethod = savedPaymentMethods.find((item) => item.isDefault) || savedPaymentMethods[0] || null;
+
+  const requestReceiptEmail = () => {
+    const prompted = window.prompt(
+      tr("Введите email для получения чека", "Enter email for the receipt"),
+      paymentEmail
+    );
+    const value = String(prompted || "").trim();
+    if (!isValidEmail(value)) {
+      setPaymentError(tr("Введите корректный email для чека.", "Enter a valid receipt email."));
+      return null;
+    }
+    setPaymentEmail(value);
+    setPaymentError(null);
+    return value;
+  };
   const tariffPlans = [
     {
       id: "free",
@@ -3374,20 +3389,6 @@ function TrainerHome({
             <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
             <div style={styles.prepayTotal}>{formatMoney(prepayTotal)}</div>
           </div>
-          <div style={styles.prepayRow}>
-            <div style={styles.prepayLabel}>{tr("Email для чека", "Receipt email")}</div>
-          </div>
-          <input
-            value={paymentEmail}
-            onChange={(e) => {
-              setPaymentEmail(e.target.value);
-              if (paymentError) setPaymentError(null);
-            }}
-            placeholder={tr("Введите email", "Enter email")}
-            inputMode="email"
-            autoComplete="email"
-            style={{ ...styles.promoInput, width: "100%" }}
-          />
         </div>
         <button
           type="button"
@@ -3401,8 +3402,8 @@ function TrainerHome({
               setPaymentError(tr("Не удалось авторизовать оплату.", "Failed to authorize payment."));
               return;
             }
-            if (!isValidEmail(paymentEmail)) {
-              setPaymentError(tr("Введите корректный email для чека.", "Enter a valid receipt email."));
+            const receiptEmail = requestReceiptEmail();
+            if (!receiptEmail) {
               return;
             }
             setPaymentSubmitting(true);
@@ -3416,7 +3417,7 @@ function TrainerHome({
                   planId: prepayPlan.id,
                   planName: prepayPlan.name,
                   months: prepayPlan.months,
-                  email: paymentEmail.trim(),
+                  email: receiptEmail,
                 }),
               });
               const data = (await res.json()) as {
@@ -3451,8 +3452,8 @@ function TrainerHome({
             disabled={paymentSubmitting}
             onClick={async () => {
               if (!token) return;
-              if (!isValidEmail(paymentEmail)) {
-                setPaymentError(tr("Введите корректный email для чека.", "Enter a valid receipt email."));
+              const receiptEmail = requestReceiptEmail();
+              if (!receiptEmail) {
                 return;
               }
               setPaymentSubmitting(true);
@@ -3467,7 +3468,7 @@ function TrainerHome({
                     planName: prepayPlan.name,
                     months: prepayPlan.months,
                     paymentMethodId: defaultPaymentMethod.id,
-                    email: paymentEmail.trim(),
+                    email: receiptEmail,
                   }),
                 });
                 const data = await res.json();
@@ -11576,6 +11577,7 @@ function PaymentMethodsScreen(props: {
   const [setupToken, setSetupToken] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+  const [setupEmail, setSetupEmail] = useState("");
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const setupPollRef = useRef<number | null>(null);
 
@@ -11758,13 +11760,15 @@ function PaymentMethodsScreen(props: {
             if (!token || !apiBase) return;
             setSetupError(null);
             const emailPrompt = window.prompt(
-              tr("Введите email для получения чека", "Enter email for the receipt")
+              tr("Введите email для получения чека", "Enter email for the receipt"),
+              setupEmail
             );
             const receiptEmail = String(emailPrompt || "").trim();
             if (!isValidEmail(receiptEmail)) {
               setSetupError(tr("Введите корректный email для чека.", "Enter a valid receipt email."));
               return;
             }
+            setSetupEmail(receiptEmail);
             try {
               const res = await fetch(`${apiBase}/billing/yookassa/setup-card`, {
                 method: "POST",
@@ -17170,16 +17174,21 @@ const styles: Record<string, any> = {
     alignItems: "flex-end",
     justifyContent: "center",
     padding: 16,
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
     zIndex: 90,
   },
   paymentWidgetModal: {
     width: "100%",
     maxWidth: 520,
+    maxHeight: "calc(100vh - 32px)",
     borderRadius: 28,
     border: "1px solid var(--glass-card-border)",
     background: "var(--glass-card-bg)",
     boxShadow: "0 24px 48px rgba(0, 0, 0, 0.28)",
     padding: 18,
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
   },
   paymentWidgetHeader: {
     display: "flex",
@@ -17206,6 +17215,7 @@ const styles: Record<string, any> = {
   },
   paymentWidgetContainer: {
     minHeight: 420,
+    overflowY: "visible",
   },
   promoRow: {
     display: "flex",
