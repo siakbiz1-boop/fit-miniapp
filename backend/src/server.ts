@@ -259,6 +259,14 @@ function serializePayment(payment: any) {
   };
 }
 
+function serializeBillingSubscription(subscription: any) {
+  if (!subscription) return subscription;
+  return {
+    ...subscription,
+    userId: subscription.userId?.toString?.() ?? subscription.userId,
+  };
+}
+
 function addMonthsClamped(date: Date, months: number) {
   const out = new Date(date);
   const day = out.getDate();
@@ -267,6 +275,24 @@ function addMonthsClamped(date: Date, months: number) {
   const lastDay = new Date(out.getFullYear(), out.getMonth() + 1, 0).getDate();
   out.setDate(Math.min(day, lastDay));
   return out;
+}
+
+function addDays(date: Date, days: number) {
+  const out = new Date(date);
+  out.setDate(out.getDate() + days);
+  return out;
+}
+
+async function isIntroOfferEligible(userId: number) {
+  const existingSucceeded = await prismaAny.payment.findFirst({
+    where: {
+      userId,
+      status: "succeeded",
+      kind: { in: ["subscription", "subscription_intro"] },
+    },
+    select: { id: true },
+  });
+  return !existingSucceeded;
 }
 
 function ensureYooKassaConfigured() {
@@ -455,7 +481,7 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
 
   if (
     payment.status === "succeeded" &&
-    payment.kind === "subscription" &&
+    (payment.kind === "subscription" || payment.kind === "subscription_intro") &&
     payment.planId &&
     payment.planName &&
     payment.months &&
@@ -465,6 +491,55 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
     const billing = await prismaAny.billingSubscription.findUnique({
       where: { userId },
     });
+    const introOffer = String(paymentData?.metadata?.introOffer || "") === "true";
+    const regularAmountValue =
+      parseAmountToKopecString(paymentData?.metadata?.regularAmountValue) ||
+      billing?.amountValue ||
+      payment.amountValue;
+
+    if (introOffer) {
+      await prismaAny.billingSubscription.upsert({
+        where: { userId },
+        update: {
+          paymentMethodId: payment.paymentMethodId,
+          planId: payment.planId,
+          planName: payment.planName,
+          months: payment.months,
+          amountValue: regularAmountValue,
+          currency: payment.currency || "RUB",
+          status: "trialing",
+          receiptEmail: paymentData?.metadata?.receiptEmail
+            ? String(paymentData.metadata.receiptEmail)
+            : billing?.receiptEmail || null,
+          currentPeriodStart: paidAt,
+          nextBillingAt: addDays(paidAt, 7),
+          lastPaidAt: paidAt,
+          lastAttemptAt: paidAt,
+          retryCount: 0,
+        },
+        create: {
+          userId,
+          paymentMethodId: payment.paymentMethodId,
+          provider: "yookassa",
+          planId: payment.planId,
+          planName: payment.planName,
+          months: payment.months,
+          amountValue: regularAmountValue,
+          currency: payment.currency || "RUB",
+          status: "trialing",
+          receiptEmail: paymentData?.metadata?.receiptEmail
+            ? String(paymentData.metadata.receiptEmail)
+            : null,
+          startedAt: paidAt,
+          currentPeriodStart: paidAt,
+          nextBillingAt: addDays(paidAt, 7),
+          lastPaidAt: paidAt,
+          lastAttemptAt: paidAt,
+        },
+      });
+      return { payment, paymentMethod: method };
+    }
+
     const shouldAdvanceExistingPeriod =
       billing?.nextBillingAt &&
       paidAt.getTime() >= billing.nextBillingAt.getTime() - 36 * 60 * 60 * 1000;
@@ -583,7 +658,7 @@ async function chargeBillingSubscription(subscriptionId: string, now = new Date(
 async function tickBillingSubscriptions(now = new Date()) {
   const dueSubscriptions = await prismaAny.billingSubscription.findMany({
     where: {
-      status: { in: ["active", "past_due"] },
+      status: { in: ["active", "trialing", "past_due"] },
       nextBillingAt: { lte: now },
     },
     select: { id: true },
@@ -1243,6 +1318,24 @@ app.get("/billing/payments", async (req, reply) => {
   return { ok: true, payments: payments.map((item: any) => serializePayment(item)) };
 });
 
+app.get("/billing/subscription", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const [subscription, introOfferEligible] = await Promise.all([
+    prismaAny.billingSubscription.findUnique({
+      where: { userId: dbUser.id },
+    }),
+    isIntroOfferEligible(dbUser.id),
+  ]);
+
+  return {
+    ok: true,
+    introOfferEligible,
+    subscription: subscription ? serializeBillingSubscription(subscription) : null,
+  };
+});
+
 app.post("/billing/payment-methods/:id/default", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
@@ -1310,12 +1403,17 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
 
   const body = req.body as any;
   const amountValue = parseAmountToKopecString(body?.amount);
+  const regularAmountValue = parseAmountToKopecString(body?.regularAmount ?? body?.amount);
   const planId = String(body?.planId || "").trim();
   const planName = String(body?.planName || "").trim();
   const months = parseInt(String(body?.months || ""), 10);
+  const introOfferRequested = Boolean(body?.introOffer);
 
   if (!amountValue || Number(amountValue) <= 0) {
     return reply.code(400).send({ message: "amount invalid" });
+  }
+  if (!regularAmountValue || Number(regularAmountValue) <= 0) {
+    return reply.code(400).send({ message: "regular amount invalid" });
   }
   if (!planId || !planName || !Number.isFinite(months) || months <= 0) {
     return reply.code(400).send({ message: "plan invalid" });
@@ -1323,16 +1421,21 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
 
   try {
     const receiptEmail = normalizeReceiptEmail(body?.email);
-    const description = `Подписка ${planName} на ${months} мес.`;
+    const introOfferEligible = introOfferRequested ? await isIntroOfferEligible(dbUser.id) : false;
+    const isIntroOffer = introOfferRequested && introOfferEligible;
+    const chargeAmountValue = isIntroOffer ? "7.00" : amountValue;
+    const description = isIntroOffer
+      ? `Пробный период 7 дней за 7 ₽, далее подписка ${planName} на ${months} мес.`
+      : `Подписка ${planName} на ${months} мес.`;
     const payment = await yookassaRequest(
       "/payments",
       {
         method: "POST",
         body: JSON.stringify({
-          amount: { value: amountValue, currency: "RUB" },
+          amount: { value: chargeAmountValue, currency: "RUB" },
           capture: true,
           save_payment_method: true,
-          receipt: buildYooKassaReceipt(amountValue, description, receiptEmail),
+          receipt: buildYooKassaReceipt(chargeAmountValue, description, receiptEmail),
           confirmation: {
             type: "embedded",
             locale: "ru_RU",
@@ -1342,11 +1445,13 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
           metadata: {
             userId: String(dbUser.id),
             tgUserId: String(dbUser.tgUserId),
-            kind: "subscription",
+            kind: isIntroOffer ? "subscription_intro" : "subscription",
             planId,
             planName,
             months: String(months),
             receiptEmail,
+            introOffer: isIntroOffer ? "true" : "false",
+            regularAmountValue,
           },
         }),
       },
@@ -1423,13 +1528,18 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
 
   const body = req.body as any;
   const amountValue = parseAmountToKopecString(body?.amount);
+  const regularAmountValue = parseAmountToKopecString(body?.regularAmount ?? body?.amount);
   const planId = String(body?.planId || "").trim();
   const planName = String(body?.planName || "").trim();
   const months = parseInt(String(body?.months || ""), 10);
   const requestedMethodId = String(body?.paymentMethodId || "").trim();
+  const introOfferRequested = Boolean(body?.introOffer);
 
   if (!amountValue || Number(amountValue) <= 0) {
     return reply.code(400).send({ message: "amount invalid" });
+  }
+  if (!regularAmountValue || Number(regularAmountValue) <= 0) {
+    return reply.code(400).send({ message: "regular amount invalid" });
   }
   if (!planId || !planName || !Number.isFinite(months) || months <= 0) {
     return reply.code(400).send({ message: "plan invalid" });
@@ -1450,25 +1560,32 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
 
   try {
     const receiptEmail = normalizeReceiptEmail(body?.email);
-    const description = `Подписка ${planName} на ${months} мес.`;
+    const introOfferEligible = introOfferRequested ? await isIntroOfferEligible(dbUser.id) : false;
+    const isIntroOffer = introOfferRequested && introOfferEligible;
+    const chargeAmountValue = isIntroOffer ? "7.00" : amountValue;
+    const description = isIntroOffer
+      ? `Пробный период 7 дней за 7 ₽, далее подписка ${planName} на ${months} мес.`
+      : `Подписка ${planName} на ${months} мес.`;
     const payment = await yookassaRequest(
       "/payments",
       {
         method: "POST",
         body: JSON.stringify({
-          amount: { value: amountValue, currency: "RUB" },
+          amount: { value: chargeAmountValue, currency: "RUB" },
           capture: true,
           payment_method_id: method.providerMethodId,
-          receipt: buildYooKassaReceipt(amountValue, description, receiptEmail),
+          receipt: buildYooKassaReceipt(chargeAmountValue, description, receiptEmail),
           description,
           metadata: {
             userId: String(dbUser.id),
             tgUserId: String(dbUser.tgUserId),
-            kind: "subscription",
+            kind: isIntroOffer ? "subscription_intro" : "subscription",
             planId,
             planName,
             months: String(months),
             receiptEmail,
+            introOffer: isIntroOffer ? "true" : "false",
+            regularAmountValue,
           },
         }),
       },

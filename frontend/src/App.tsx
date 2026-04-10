@@ -271,6 +271,18 @@ type PaymentRecord = {
   paymentMethodTitle?: string | null;
 };
 
+type BillingSubscriptionItem = {
+  id: string;
+  planId: string;
+  planName: string;
+  months: number;
+  amountValue: string;
+  currency?: string;
+  status: string;
+  nextBillingAt?: string;
+  lastPaidAt?: string | null;
+};
+
 
 type NotesListItem = {
   id: string;
@@ -2133,8 +2145,11 @@ function TrainerHome({
     id: string;
     name: string;
     total: number;
+    regularTotal: number;
+    firstCharge: number;
     months: number;
     periodLabel: string;
+    introOffer: boolean;
   } | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoStatus, setPromoStatus] = useState<"idle" | "success" | "error">("idle");
@@ -2146,6 +2161,8 @@ function TrainerHome({
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<PaymentMethodItem[]>([]);
+  const [billingSubscription, setBillingSubscription] = useState<BillingSubscriptionItem | null>(null);
+  const [introOfferEligible, setIntroOfferEligible] = useState(false);
   const paymentWidgetContainerRef = useRef<HTMLDivElement | null>(null);
   const paymentPollRef = useRef<number | null>(null);
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
@@ -2281,6 +2298,33 @@ function TrainerHome({
     };
   }, [token, apiBase, paymentWidgetOpen]);
   useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/billing/subscription`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await res.json()) as {
+          introOfferEligible?: boolean;
+          subscription?: BillingSubscriptionItem | null;
+        };
+        if (!cancelled) {
+          setIntroOfferEligible(Boolean(data.introOfferEligible));
+          setBillingSubscription(data.subscription || null);
+        }
+      } catch {
+        if (!cancelled) {
+          setIntroOfferEligible(false);
+          setBillingSubscription(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, apiBase, paymentWidgetOpen]);
+  useEffect(() => {
     if (!paymentWidgetOpen || !paymentWidgetToken || !paymentWidgetContainerRef.current) return;
     let cancelled = false;
     const mount = async () => {
@@ -2334,6 +2378,15 @@ function TrainerHome({
             });
             const methodsData = (await methodsRes.json()) as { methods?: PaymentMethodItem[] };
             setSavedPaymentMethods(Array.isArray(methodsData.methods) ? methodsData.methods : []);
+            const billingRes = await fetch(`${apiBase}/billing/subscription`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const billingData = (await billingRes.json()) as {
+              introOfferEligible?: boolean;
+              subscription?: BillingSubscriptionItem | null;
+            };
+            setIntroOfferEligible(Boolean(billingData.introOfferEligible));
+            setBillingSubscription(billingData.subscription || null);
           } catch {
             // ignore
           }
@@ -2375,20 +2428,22 @@ function TrainerHome({
     const end = sessionEndTime(s);
     return end.getTime() <= now.getTime() && end.getTime() >= weekStart.getTime() && end.getTime() <= weekEnd.getTime();
   }).length;
-  const subscriptionNextBilling = tr("Неопределена", "Not set");
-  const subscriptionEndsAt = "01.03.2026";
-  const rawSubscriptionStatusInfo = getSubscriptionStatus(subscriptionEndsAt, now);
-  const subscriptionStatusInfo =
-    rawSubscriptionStatusInfo.label === tr("Нет подписки", "No subscription")
-      ? rawSubscriptionStatusInfo
-      : {
-          ...rawSubscriptionStatusInfo,
-          label: tr(
-            `Подписка: ${rawSubscriptionStatusInfo.label.toLowerCase()}`,
-            `Subscription: ${rawSubscriptionStatusInfo.label.toLowerCase()}`
-          ),
-        };
-  const subscriptionPlanName = tr("Ultimate", "Ultimate");
+  const subscriptionNextBilling = billingSubscription?.nextBillingAt
+    ? formatDateShort(new Date(billingSubscription.nextBillingAt))
+    : tr("Неопределена", "Not set");
+  const subscriptionStatusInfo = (() => {
+    if (!billingSubscription) {
+      return { label: tr("Нет подписки", "No subscription"), color: "var(--muted)" };
+    }
+    if (billingSubscription.status === "trialing") {
+      return { label: tr("Пробный период", "Trial period"), color: "var(--primary)" };
+    }
+    if (billingSubscription.status === "past_due") {
+      return { label: tr("Ошибка списания", "Charge failed"), color: "#d95f5f" };
+    }
+    return { label: tr("Активна", "Active"), color: "#1f9d6a" };
+  })();
+  const subscriptionPlanName = billingSubscription?.planName || "—";
   const subscriptionConnectedClients = clients.filter((c) => !c.archived).length;
   const subscriptionClientLimitLabel = "∞";
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
@@ -2423,6 +2478,10 @@ function TrainerHome({
   };
   const activeTariffPeriodMeta = tariffPeriodMeta[tariffPeriod];
   const defaultPaymentMethod = savedPaymentMethods.find((item) => item.isDefault) || savedPaymentMethods[0] || null;
+  const introOfferPrice = 7;
+  const introOfferDays = 7;
+  const getTariffFirstCharge = (plan: { id: string; name: string; priceMonthly: number; priceByPeriod?: Partial<Record<TariffPeriod, number>> }) =>
+    introOfferEligible && plan.id !== "free" ? introOfferPrice : getTariffTotal(plan);
 
   const dismissKeyboard = () => {
     const active = document.activeElement as HTMLElement | null;
@@ -2498,13 +2557,18 @@ function TrainerHome({
   }) => plan.strikeByPeriod?.[tariffPeriod] ?? plan.strikeMonthly * activeTariffPeriodMeta.months;
   const openPrepay = (plan: { id: string; name: string; priceMonthly: number; priceByPeriod?: Partial<Record<TariffPeriod, number>> }) => {
     if (plan.id === "free") return;
-    const total = getTariffTotal(plan);
+    const regularTotal = getTariffTotal(plan);
+    const introOffer = introOfferEligible;
+    const firstCharge = introOffer ? introOfferPrice : regularTotal;
     setPrepayPlan({
       id: plan.id,
       name: plan.name,
-      total,
+      total: firstCharge,
+      regularTotal,
+      firstCharge,
       months: activeTariffPeriodMeta.months,
       periodLabel: activeTariffPeriodMeta.label,
+      introOffer,
     });
     setPromoCode("");
     setPromoStatus("idle");
@@ -3309,8 +3373,10 @@ function TrainerHome({
   }
 
   if (prepayOpen && prepayPlan) {
-    const prepayTotal = promoAppliedTotal ?? prepayPlan.total;
-    const nextChargeLabel = formatDateShort(addMonthsClamped(new Date(), prepayPlan.months));
+    const prepayTotal = prepayPlan.introOffer ? prepayPlan.firstCharge : promoAppliedTotal ?? prepayPlan.total;
+    const nextChargeLabel = formatDateShort(
+      prepayPlan.introOffer ? addDays(new Date(), introOfferDays) : addMonthsClamped(new Date(), prepayPlan.months)
+    );
     return (
       <div style={{ ...styles.pageContainer, ...styles.prepayPage }}>
         <div style={styles.prepayTitle}>{tr("Оплата подписки", "Subscription payment")}</div>
@@ -3320,7 +3386,9 @@ function TrainerHome({
               <div style={styles.prepayLabel}>{tr("Стоимость подписки", "Subscription price")}</div>
               <div style={styles.prepaySubLabel}>{prepayPlan.name}</div>
             </div>
-            <div style={styles.prepayValue}>{formatMoney(prepayPlan.total)}</div>
+            <div style={styles.prepayValue}>
+              {prepayPlan.introOffer ? formatMoney(prepayPlan.regularTotal) : formatMoney(prepayPlan.regularTotal)}
+            </div>
           </div>
           <div style={styles.prepayRow}>
             <div>
@@ -3328,6 +3396,14 @@ function TrainerHome({
               <div style={styles.prepaySubLabel}>
                 {tr("Следующее списание", "Next charge")} {nextChargeLabel}
               </div>
+              {prepayPlan.introOffer ? (
+                <div style={styles.prepaySubLabel}>
+                  {tr(
+                    `Первые ${introOfferDays} дней за ${introOfferPrice} ₽, далее ${formatMoney(prepayPlan.regularTotal)}`,
+                    `First ${introOfferDays} days for ${introOfferPrice} RUB, then ${formatMoney(prepayPlan.regularTotal)}`
+                  )}
+                </div>
+              ) : null}
             </div>
             <div style={styles.prepayValue}>
               {prepayPlan.months} {tr("месяц", "month")}
@@ -3347,11 +3423,14 @@ function TrainerHome({
               }}
               placeholder={tr("Введите промокод", "Enter promo code")}
               style={styles.promoInput}
+              disabled={prepayPlan.introOffer}
             />
             <button
               type="button"
               style={styles.promoApplyBtn}
+              disabled={prepayPlan.introOffer}
               onClick={async () => {
+                if (prepayPlan.introOffer) return;
                 const code = promoCode.trim().toUpperCase();
                 if (!code || !token) {
                   setPromoStatus("error");
@@ -3391,6 +3470,11 @@ function TrainerHome({
               {tr("Применить", "Apply")}
             </button>
           </div>
+          {prepayPlan.introOffer ? (
+            <div style={styles.promoSuccess}>
+              {tr("Пробный период 7 дней за 7 ₽ не суммируется с промокодами.", "The 7-day intro offer cannot be combined with promo codes.")}
+            </div>
+          ) : null}
           {promoStatus === "error" ? (
             <div style={styles.promoError}>{tr("Промокод не существует", "Promo code not found")}</div>
           ) : promoStatus === "success" ? (
@@ -3425,10 +3509,12 @@ function TrainerHome({
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify({
                   amount: prepayTotal,
+                  regularAmount: prepayPlan.regularTotal,
                   planId: prepayPlan.id,
                   planName: prepayPlan.name,
                   months: prepayPlan.months,
                   email: receiptEmail,
+                  introOffer: prepayPlan.introOffer,
                 }),
               });
               const data = (await res.json()) as {
@@ -3474,17 +3560,39 @@ function TrainerHome({
                   method: "POST",
                   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                   body: JSON.stringify({
-                    amount: prepayTotal,
-                    planId: prepayPlan.id,
-                    planName: prepayPlan.name,
-                    months: prepayPlan.months,
-                    paymentMethodId: defaultPaymentMethod.id,
-                    email: receiptEmail,
-                  }),
-                });
+                  amount: prepayTotal,
+                  regularAmount: prepayPlan.regularTotal,
+                  planId: prepayPlan.id,
+                  planName: prepayPlan.name,
+                  months: prepayPlan.months,
+                  paymentMethodId: defaultPaymentMethod.id,
+                  email: receiptEmail,
+                  introOffer: prepayPlan.introOffer,
+                }),
+              });
                 const data = await res.json();
                 if (!res.ok || !data?.ok) {
                   throw new Error(data?.message || "saved card payment failed");
+                }
+                try {
+                  const [methodsRes, billingRes] = await Promise.all([
+                    fetch(`${apiBase}/billing/payment-methods`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    fetch(`${apiBase}/billing/subscription`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                  ]);
+                  const methodsData = (await methodsRes.json()) as { methods?: PaymentMethodItem[] };
+                  const billingData = (await billingRes.json()) as {
+                    introOfferEligible?: boolean;
+                    subscription?: BillingSubscriptionItem | null;
+                  };
+                  setSavedPaymentMethods(Array.isArray(methodsData.methods) ? methodsData.methods : []);
+                  setIntroOfferEligible(Boolean(billingData.introOfferEligible));
+                  setBillingSubscription(billingData.subscription || null);
+                } catch {
+                  // ignore
                 }
                 setPaymentSubmitting(false);
                 alert(tr("Оплата сохранённой картой прошла успешно.", "Saved card payment succeeded."));
@@ -4108,8 +4216,10 @@ function TrainerHome({
             <div style={styles.tariffScroller}>
               {tariffPlans.map((plan) => {
                 const total = getTariffTotal(plan);
+                const firstCharge = getTariffFirstCharge(plan);
                 const strikeTotal = getTariffStrikeTotal(plan);
                 const isSelected = plan.id === "ultimate";
+                const showIntroOffer = introOfferEligible && plan.id !== "free";
                 return (
                   <div key={plan.id} style={styles.tariffCard}>
                     <div style={{ ...styles.tariffBadge, background: plan.badgeColor, color: plan.badgeText }}>
@@ -4137,7 +4247,16 @@ function TrainerHome({
                       }}
                       onClick={() => openPrepay(plan)}
                     >
-                      {isSelected ? tr("Выбран", "Selected") : tr("Выбрать", "Choose")}
+                      <div>{isSelected ? tr("Выбран", "Selected") : tr("Выбрать", "Choose")}</div>
+                      {showIntroOffer ? (
+                        <div style={styles.tariffChooseHint}>
+                          {tr(`Первые ${introOfferDays} дней за ${introOfferPrice} ₽`, `First ${introOfferDays} days for ${introOfferPrice} RUB`)}
+                        </div>
+                      ) : firstCharge !== total ? (
+                        <div style={styles.tariffChooseHint}>
+                          {tr(`Сейчас ${formatMoney(firstCharge)}`, `Now ${formatMoney(firstCharge)}`)}
+                        </div>
+                      ) : null}
                     </button>
                   </div>
                 );
@@ -16700,6 +16819,12 @@ const styles: Record<string, any> = {
     background: "var(--glass-btn-bg)",
     fontWeight: 700,
     cursor: "pointer",
+  },
+  tariffChooseHint: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: 600,
+    opacity: 0.72,
   },
 
   iconBtn: {
