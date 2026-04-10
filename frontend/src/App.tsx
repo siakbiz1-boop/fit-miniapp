@@ -2322,6 +2322,7 @@ function TrainerHome({
             window.clearInterval(paymentPollRef.current);
             paymentPollRef.current = null;
           }
+          dismissKeyboard();
           setPaymentWidgetOpen(false);
           setPaymentWidgetToken(null);
           setPaymentWidgetId(null);
@@ -2423,7 +2424,16 @@ function TrainerHome({
   const activeTariffPeriodMeta = tariffPeriodMeta[tariffPeriod];
   const defaultPaymentMethod = savedPaymentMethods.find((item) => item.isDefault) || savedPaymentMethods[0] || null;
 
+  const dismissKeyboard = () => {
+    const active = document.activeElement as HTMLElement | null;
+    active?.blur?.();
+    window.setTimeout(() => {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    }, 0);
+  };
+
   const requestReceiptEmail = () => {
+    dismissKeyboard();
     const prompted = window.prompt(
       tr("Введите email для получения чека", "Enter email for the receipt"),
       paymentEmail
@@ -3502,6 +3512,7 @@ function TrainerHome({
                   type="button"
                   style={styles.paymentWidgetClose}
                   onClick={() => {
+                    dismissKeyboard();
                     setPaymentWidgetOpen(false);
                     setPaymentSubmitting(false);
                     setPaymentWidgetToken(null);
@@ -11581,6 +11592,14 @@ function PaymentMethodsScreen(props: {
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const setupPollRef = useRef<number | null>(null);
 
+  const dismissKeyboard = () => {
+    const active = document.activeElement as HTMLElement | null;
+    active?.blur?.();
+    window.setTimeout(() => {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    }, 0);
+  };
+
   useEffect(() => {
     if (!token || !apiBase) return;
     let cancelled = false;
@@ -11650,6 +11669,7 @@ function PaymentMethodsScreen(props: {
           const next = Array.isArray(methodsData.methods) ? methodsData.methods : [];
           setCards(next);
           setActiveCardId(next.find((item) => item.isDefault)?.id ?? next[0]?.id ?? null);
+          dismissKeyboard();
           setSetupOpen(false);
           setSetupPaymentId(null);
           setSetupToken(null);
@@ -11759,6 +11779,7 @@ function PaymentMethodsScreen(props: {
           onClick={async () => {
             if (!token || !apiBase) return;
             setSetupError(null);
+            dismissKeyboard();
             const emailPrompt = window.prompt(
               tr("Введите email для получения чека", "Enter email for the receipt"),
               setupEmail
@@ -11806,6 +11827,7 @@ function PaymentMethodsScreen(props: {
                 type="button"
                 style={styles.paymentWidgetClose}
                 onClick={() => {
+                  dismissKeyboard();
                   setSetupOpen(false);
                   setSetupPaymentId(null);
                   setSetupToken(null);
