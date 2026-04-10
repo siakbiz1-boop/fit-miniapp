@@ -259,6 +259,16 @@ function serializePayment(payment: any) {
   };
 }
 
+function addMonthsClamped(date: Date, months: number) {
+  const out = new Date(date);
+  const day = out.getDate();
+  out.setDate(1);
+  out.setMonth(out.getMonth() + months);
+  const lastDay = new Date(out.getFullYear(), out.getMonth() + 1, 0).getDate();
+  out.setDate(Math.min(day, lastDay));
+  return out;
+}
+
 function ensureYooKassaConfigured() {
   if (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY) {
     throw new Error("YOOKASSA_SHOP_ID and YOOKASSA_SECRET_KEY are required");
@@ -443,7 +453,149 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
         },
       });
 
+  if (
+    payment.status === "succeeded" &&
+    payment.kind === "subscription" &&
+    payment.planId &&
+    payment.planName &&
+    payment.months &&
+    payment.paymentMethodId
+  ) {
+    const paidAt = payment.paidAt || new Date();
+    const billing = await prismaAny.billingSubscription.findUnique({
+      where: { userId },
+    });
+    const shouldAdvanceExistingPeriod =
+      billing?.nextBillingAt &&
+      paidAt.getTime() >= billing.nextBillingAt.getTime() - 36 * 60 * 60 * 1000;
+    const currentPeriodStart = shouldAdvanceExistingPeriod ? billing.nextBillingAt : paidAt;
+    await prismaAny.billingSubscription.upsert({
+      where: { userId },
+      update: {
+        paymentMethodId: payment.paymentMethodId,
+        planId: payment.planId,
+        planName: payment.planName,
+        months: payment.months,
+        amountValue: payment.amountValue,
+        currency: payment.currency || "RUB",
+        status: "active",
+        receiptEmail: paymentData?.metadata?.receiptEmail
+          ? String(paymentData.metadata.receiptEmail)
+          : billing?.receiptEmail || null,
+        currentPeriodStart,
+        nextBillingAt: addMonthsClamped(currentPeriodStart, payment.months),
+        lastPaidAt: paidAt,
+        lastAttemptAt: paidAt,
+        retryCount: 0,
+      },
+      create: {
+        userId,
+        paymentMethodId: payment.paymentMethodId,
+        provider: "yookassa",
+        planId: payment.planId,
+        planName: payment.planName,
+        months: payment.months,
+        amountValue: payment.amountValue,
+        currency: payment.currency || "RUB",
+        status: "active",
+        receiptEmail: paymentData?.metadata?.receiptEmail
+          ? String(paymentData.metadata.receiptEmail)
+          : null,
+        startedAt: paidAt,
+        currentPeriodStart: paidAt,
+        nextBillingAt: addMonthsClamped(paidAt, payment.months),
+        lastPaidAt: paidAt,
+        lastAttemptAt: paidAt,
+      },
+    });
+  }
+
   return { payment, paymentMethod: method };
+}
+
+async function chargeBillingSubscription(subscriptionId: string, now = new Date()) {
+  const subscription = await prismaAny.billingSubscription.findUnique({
+    where: { id: subscriptionId },
+    include: { paymentMethod: true, user: true },
+  });
+  if (!subscription) return;
+  if (subscription.status === "canceled") return;
+  if (subscription.nextBillingAt.getTime() > now.getTime()) return;
+  if (subscription.lastAttemptAt && now.getTime() - subscription.lastAttemptAt.getTime() < 24 * 60 * 60 * 1000) {
+    return;
+  }
+  if (!subscription.paymentMethod || !subscription.paymentMethod.active) {
+    await prismaAny.billingSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: "past_due",
+        lastAttemptAt: now,
+        retryCount: { increment: 1 },
+      },
+    });
+    return;
+  }
+
+  try {
+    const description = `Подписка ${subscription.planName} на ${subscription.months} мес.`;
+    const paymentData = await yookassaRequest(
+      "/payments",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          amount: { value: subscription.amountValue, currency: subscription.currency || "RUB" },
+          capture: true,
+          payment_method_id: subscription.paymentMethod.providerMethodId,
+          receipt: buildYooKassaReceipt(
+            subscription.amountValue,
+            description,
+            subscription.receiptEmail || ""
+          ),
+          description,
+          metadata: {
+            userId: String(subscription.userId),
+            tgUserId: String(subscription.user.tgUserId),
+            kind: "subscription",
+            planId: subscription.planId,
+            planName: subscription.planName,
+            months: String(subscription.months),
+            receiptEmail: subscription.receiptEmail || "",
+          },
+        }),
+      },
+      crypto.randomUUID()
+    );
+
+    await syncPaymentFromYooKassa(subscription.userId, paymentData);
+  } catch (err) {
+    await prismaAny.billingSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: "past_due",
+        lastAttemptAt: now,
+        retryCount: { increment: 1 },
+      },
+    });
+    throw err;
+  }
+}
+
+async function tickBillingSubscriptions(now = new Date()) {
+  const dueSubscriptions = await prismaAny.billingSubscription.findMany({
+    where: {
+      status: { in: ["active", "past_due"] },
+      nextBillingAt: { lte: now },
+    },
+    select: { id: true },
+  });
+
+  for (const item of dueSubscriptions) {
+    try {
+      await chargeBillingSubscription(item.id, now);
+    } catch (err) {
+      app.log.error({ err, subscriptionId: item.id }, "Billing subscription charge failed");
+    }
+  }
 }
 
 function getSlotCapacity(slot: any) {
@@ -1194,6 +1346,7 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
             planId,
             planName,
             months: String(months),
+            receiptEmail,
           },
         }),
       },
@@ -1315,6 +1468,7 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
             planId,
             planName,
             months: String(months),
+            receiptEmail,
           },
         }),
       },
@@ -3885,4 +4039,5 @@ app.log.info(`Server running on http://localhost:${PORT}`);
 // Background reminders
 setInterval(() => {
   tickReminders().catch((err) => app.log.error({ err }, "Reminder tick failed"));
+  tickBillingSubscriptions().catch((err) => app.log.error({ err }, "Billing tick failed"));
 }, 60 * 1000);

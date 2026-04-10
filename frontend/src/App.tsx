@@ -3310,6 +3310,7 @@ function TrainerHome({
 
   if (prepayOpen && prepayPlan) {
     const prepayTotal = promoAppliedTotal ?? prepayPlan.total;
+    const nextChargeLabel = formatDateShort(addMonthsClamped(new Date(), prepayPlan.months));
     return (
       <div style={{ ...styles.pageContainer, ...styles.prepayPage }}>
         <div style={styles.prepayTitle}>{tr("Оплата подписки", "Subscription payment")}</div>
@@ -3325,7 +3326,7 @@ function TrainerHome({
             <div>
               <div style={styles.prepayLabel}>{tr("Срок подписки", "Subscription term")}</div>
               <div style={styles.prepaySubLabel}>
-                {tr("Начало", "Start")} {formatDateShort(new Date())}
+                {tr("Следующее списание", "Next charge")} {nextChargeLabel}
               </div>
             </div>
             <div style={styles.prepayValue}>
@@ -12964,6 +12965,16 @@ function startOfMonth(d: Date) {
 
 function endOfMonthExclusive(d: Date) {
   return new Date(d.getFullYear(), d.getMonth() + 1, 1);
+}
+
+function addMonthsClamped(date: Date, months: number) {
+  const out = new Date(date);
+  const day = out.getDate();
+  out.setDate(1);
+  out.setMonth(out.getMonth() + months);
+  const lastDay = new Date(out.getFullYear(), out.getMonth() + 1, 0).getDate();
+  out.setDate(Math.min(day, lastDay));
+  return out;
 }
 
 function formatDateShort(d: Date) {

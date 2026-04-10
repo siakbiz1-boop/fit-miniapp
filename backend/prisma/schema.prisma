@@ -45,6 +45,7 @@ model User {
   trainerProfile TrainerProfile?
   paymentMethods PaymentMethod[]
   payments       Payment[]
+  billingSubscription BillingSubscription?
 }
 
 model PaymentMethod {
@@ -64,6 +65,7 @@ model PaymentMethod {
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments Payment[]
+  billingSubscriptions BillingSubscription[]
 
   @@index([userId, active])
 }
@@ -92,6 +94,34 @@ model Payment {
   paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
+  @@index([paymentMethodId])
+}
+
+model BillingSubscription {
+  id               String   @id @default(cuid())
+  userId           Int      @unique
+  paymentMethodId  String?
+  provider         String   @default("yookassa")
+  planId           String
+  planName         String
+  months           Int
+  amountValue      String
+  currency         String   @default("RUB")
+  status           String   @default("active")
+  receiptEmail     String?
+  startedAt        DateTime @default(now())
+  currentPeriodStart DateTime @default(now())
+  nextBillingAt    DateTime
+  lastPaidAt       DateTime?
+  lastAttemptAt    DateTime?
+  retryCount       Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextBillingAt])
   @@index([paymentMethodId])
 }
 
