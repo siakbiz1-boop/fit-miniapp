@@ -298,6 +298,37 @@ function parseAmountToKopecString(amount: any) {
   return value.toFixed(2);
 }
 
+function normalizeReceiptEmail(email: any) {
+  const value = String(email || "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    const err = new Error("Valid email is required");
+    (err as any).status = 400;
+    throw err;
+  }
+  return value;
+}
+
+function buildYooKassaReceipt(amountValue: string, description: string, email: string) {
+  return {
+    customer: {
+      email: normalizeReceiptEmail(email),
+    },
+    items: [
+      {
+        description,
+        quantity: "1.00",
+        amount: {
+          value: amountValue,
+          currency: "RUB",
+        },
+        vat_code: 1,
+        payment_mode: "full_payment",
+        payment_subject: "service",
+      },
+    ],
+  };
+}
+
 function getPaymentMethodPresentation(methodData: any) {
   const card = methodData?.card || null;
   return {
@@ -1139,6 +1170,8 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
   }
 
   try {
+    const receiptEmail = normalizeReceiptEmail(body?.email);
+    const description = `Подписка ${planName} на ${months} мес.`;
     const payment = await yookassaRequest(
       "/payments",
       {
@@ -1147,12 +1180,13 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
           amount: { value: amountValue, currency: "RUB" },
           capture: true,
           save_payment_method: true,
+          receipt: buildYooKassaReceipt(amountValue, description, receiptEmail),
           confirmation: {
             type: "embedded",
             locale: "ru_RU",
             return_url: YOOKASSA_RETURN_URL,
           },
-          description: `Подписка ${planName} на ${months} мес.`,
+          description,
           metadata: {
             userId: String(dbUser.id),
             tgUserId: String(dbUser.tgUserId),
@@ -1187,6 +1221,8 @@ app.post("/billing/yookassa/setup-card", async (req, reply) => {
   if (!dbUser) return;
 
   try {
+    const description = "Привязка банковской карты";
+    const receiptEmail = normalizeReceiptEmail((req.body as any)?.email);
     const payment = await yookassaRequest(
       "/payments",
       {
@@ -1195,12 +1231,13 @@ app.post("/billing/yookassa/setup-card", async (req, reply) => {
           amount: { value: "1.00", currency: "RUB" },
           capture: true,
           save_payment_method: true,
+          receipt: buildYooKassaReceipt("1.00", description, receiptEmail),
           confirmation: {
             type: "embedded",
             locale: "ru_RU",
             return_url: YOOKASSA_RETURN_URL,
           },
-          description: "Привязка банковской карты",
+          description,
           metadata: {
             userId: String(dbUser.id),
             tgUserId: String(dbUser.tgUserId),
@@ -1259,6 +1296,8 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
   }
 
   try {
+    const receiptEmail = normalizeReceiptEmail(body?.email);
+    const description = `Подписка ${planName} на ${months} мес.`;
     const payment = await yookassaRequest(
       "/payments",
       {
@@ -1267,7 +1306,8 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
           amount: { value: amountValue, currency: "RUB" },
           capture: true,
           payment_method_id: method.providerMethodId,
-          description: `Подписка ${planName} на ${months} мес.`,
+          receipt: buildYooKassaReceipt(amountValue, description, receiptEmail),
+          description,
           metadata: {
             userId: String(dbUser.id),
             tgUserId: String(dbUser.tgUserId),

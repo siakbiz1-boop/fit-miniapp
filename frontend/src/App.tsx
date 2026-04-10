@@ -2139,6 +2139,7 @@ function TrainerHome({
   const [promoCode, setPromoCode] = useState("");
   const [promoStatus, setPromoStatus] = useState<"idle" | "success" | "error">("idle");
   const [promoAppliedTotal, setPromoAppliedTotal] = useState<number | null>(null);
+  const [paymentEmail, setPaymentEmail] = useState("");
   const [paymentWidgetToken, setPaymentWidgetToken] = useState<string | null>(null);
   const [paymentWidgetId, setPaymentWidgetId] = useState<string | null>(null);
   const [paymentWidgetOpen, setPaymentWidgetOpen] = useState(false);
@@ -3373,6 +3374,20 @@ function TrainerHome({
             <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
             <div style={styles.prepayTotal}>{formatMoney(prepayTotal)}</div>
           </div>
+          <div style={styles.prepayRow}>
+            <div style={styles.prepayLabel}>{tr("Email для чека", "Receipt email")}</div>
+          </div>
+          <input
+            value={paymentEmail}
+            onChange={(e) => {
+              setPaymentEmail(e.target.value);
+              if (paymentError) setPaymentError(null);
+            }}
+            placeholder={tr("Введите email", "Enter email")}
+            inputMode="email"
+            autoComplete="email"
+            style={{ ...styles.promoInput, width: "100%" }}
+          />
         </div>
         <button
           type="button"
@@ -3386,6 +3401,10 @@ function TrainerHome({
               setPaymentError(tr("Не удалось авторизовать оплату.", "Failed to authorize payment."));
               return;
             }
+            if (!isValidEmail(paymentEmail)) {
+              setPaymentError(tr("Введите корректный email для чека.", "Enter a valid receipt email."));
+              return;
+            }
             setPaymentSubmitting(true);
             setPaymentError(null);
             try {
@@ -3397,6 +3416,7 @@ function TrainerHome({
                   planId: prepayPlan.id,
                   planName: prepayPlan.name,
                   months: prepayPlan.months,
+                  email: paymentEmail.trim(),
                 }),
               });
               const data = (await res.json()) as {
@@ -3431,6 +3451,10 @@ function TrainerHome({
             disabled={paymentSubmitting}
             onClick={async () => {
               if (!token) return;
+              if (!isValidEmail(paymentEmail)) {
+                setPaymentError(tr("Введите корректный email для чека.", "Enter a valid receipt email."));
+                return;
+              }
               setPaymentSubmitting(true);
               setPaymentError(null);
               try {
@@ -3443,6 +3467,7 @@ function TrainerHome({
                     planName: prepayPlan.name,
                     months: prepayPlan.months,
                     paymentMethodId: defaultPaymentMethod.id,
+                    email: paymentEmail.trim(),
                   }),
                 });
                 const data = await res.json();
@@ -11732,10 +11757,19 @@ function PaymentMethodsScreen(props: {
           onClick={async () => {
             if (!token || !apiBase) return;
             setSetupError(null);
+            const emailPrompt = window.prompt(
+              tr("Введите email для получения чека", "Enter email for the receipt")
+            );
+            const receiptEmail = String(emailPrompt || "").trim();
+            if (!isValidEmail(receiptEmail)) {
+              setSetupError(tr("Введите корректный email для чека.", "Enter a valid receipt email."));
+              return;
+            }
             try {
               const res = await fetch(`${apiBase}/billing/yookassa/setup-card`, {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ email: receiptEmail }),
               });
               const data = (await res.json()) as { ok?: boolean; paymentId?: string; confirmationToken?: string | null; message?: string };
               if (!res.ok || !data.ok || !data.paymentId || !data.confirmationToken) {
@@ -12847,6 +12881,10 @@ function formatPaymentHistoryDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return formatDateShort(date);
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
 }
 
 function loadYooKassaWidgetScript() {
