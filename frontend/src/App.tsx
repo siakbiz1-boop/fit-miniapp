@@ -2142,6 +2142,8 @@ function TrainerHome({
   const notesItemInputRef = useRef<HTMLInputElement | null>(null);
   const [scheduleStoriesOpen, setScheduleStoriesOpen] = useState(false);
   const [scheduleStoryIndex, setScheduleStoryIndex] = useState(0);
+  const [scheduleStoryProgress, setScheduleStoryProgress] = useState(0);
+  const [scheduleStoryPaused, setScheduleStoryPaused] = useState(false);
   const [prepayOpen, setPrepayOpen] = useState(false);
   const [prepayPlan, setPrepayPlan] = useState<{
     id: string;
@@ -2167,6 +2169,9 @@ function TrainerHome({
   const [introOfferEligible, setIntroOfferEligible] = useState(false);
   const paymentWidgetContainerRef = useRef<HTMLDivElement | null>(null);
   const paymentPollRef = useRef<number | null>(null);
+  const storyPressStartedAtRef = useRef<number | null>(null);
+  const storyPressXRef = useRef<number | null>(null);
+  const storyProgressStartedAtRef = useRef<number | null>(null);
   const swipeStateRef = useRef<{ id: string | null; startX: number; dragging: boolean }>({
     id: null,
     startX: 0,
@@ -2281,6 +2286,40 @@ function TrainerHome({
       window.scrollTo({ top: 0, behavior: "auto" });
     }
   }, [prepayOpen]);
+  useEffect(() => {
+    if (!scheduleStoriesOpen) {
+      setScheduleStoryProgress(0);
+      storyProgressStartedAtRef.current = null;
+      return;
+    }
+    storyProgressStartedAtRef.current = Date.now();
+    setScheduleStoryProgress(0);
+  }, [scheduleStoriesOpen, scheduleStoryIndex]);
+  useEffect(() => {
+    if (!scheduleStoriesOpen || scheduleStoryPaused) return;
+    const durationMs = 10000;
+    const tick = window.setInterval(() => {
+      const startedAt = storyProgressStartedAtRef.current;
+      if (!startedAt) return;
+      const nextProgress = Math.max(0, Math.min(1, (Date.now() - startedAt) / durationMs));
+      setScheduleStoryProgress(nextProgress);
+      if (nextProgress >= 1) {
+        window.clearInterval(tick);
+        goToNextScheduleStory();
+      }
+    }, 100);
+    return () => window.clearInterval(tick);
+  }, [scheduleStoriesOpen, scheduleStoryPaused, scheduleStoryIndex]);
+  useEffect(() => {
+    if (!scheduleStoryPaused) {
+      storyPressStartedAtRef.current = null;
+      storyPressXRef.current = null;
+    }
+  }, [scheduleStoryPaused]);
+  useEffect(() => {
+    if (!scheduleStoriesOpen || scheduleStoryPaused) return;
+    storyProgressStartedAtRef.current = Date.now() - scheduleStoryProgress * 10000;
+  }, [scheduleStoriesOpen, scheduleStoryPaused]);
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -2619,6 +2658,27 @@ function TrainerHome({
         </div>
       </div>
     );
+  };
+  const closeScheduleStories = () => {
+    setScheduleStoriesOpen(false);
+    setScheduleStoryPaused(false);
+    setScheduleStoryProgress(0);
+  };
+  const goToNextScheduleStory = () => {
+    setScheduleStoryPaused(false);
+    setScheduleStoryProgress(0);
+    setScheduleStoryIndex((prev) => {
+      if (prev >= scheduleStories.length - 1) {
+        window.setTimeout(() => closeScheduleStories(), 0);
+        return prev;
+      }
+      return prev + 1;
+    });
+  };
+  const goToPrevScheduleStory = () => {
+    setScheduleStoryPaused(false);
+    setScheduleStoryProgress(0);
+    setScheduleStoryIndex((prev) => Math.max(0, prev - 1));
   };
 
   const requestReceiptEmail = () => {
@@ -4407,7 +4467,45 @@ function TrainerHome({
           </>
         ) : null}
         {scheduleStoriesOpen ? (
-          <div style={styles.storyTutorialOverlay}>
+          <div
+            style={styles.storyTutorialOverlay}
+            onPointerDown={(event) => {
+              const target = event.target as HTMLElement | null;
+              if (target?.closest?.("[data-story-close='true']")) return;
+              storyPressStartedAtRef.current = Date.now();
+              storyPressXRef.current = event.clientX;
+              setScheduleStoryPaused(true);
+            }}
+            onPointerUp={(event) => {
+              const target = event.target as HTMLElement | null;
+              if (target?.closest?.("[data-story-close='true']")) return;
+              const startedAt = storyPressStartedAtRef.current;
+              const pressDuration = startedAt ? Date.now() - startedAt : 0;
+              const pressX = storyPressXRef.current ?? event.clientX;
+              storyPressStartedAtRef.current = null;
+              storyPressXRef.current = null;
+              setScheduleStoryPaused(false);
+              if (pressDuration > 220) return;
+              const bounds = event.currentTarget.getBoundingClientRect();
+              const midpoint = bounds.left + bounds.width / 2;
+              if (pressX < midpoint) {
+                goToPrevScheduleStory();
+              } else {
+                goToNextScheduleStory();
+              }
+            }}
+            onPointerCancel={() => {
+              storyPressStartedAtRef.current = null;
+              storyPressXRef.current = null;
+              setScheduleStoryPaused(false);
+            }}
+            onPointerLeave={() => {
+              if (!scheduleStoryPaused) return;
+              storyPressStartedAtRef.current = null;
+              storyPressXRef.current = null;
+              setScheduleStoryPaused(false);
+            }}
+          >
             <div style={styles.storyTutorialShell}>
               <div style={styles.storyTutorialProgress}>
                 {scheduleStories.map((story, idx) => (
@@ -4415,7 +4513,12 @@ function TrainerHome({
                     <div
                       style={{
                         ...styles.storyTutorialProgressFill,
-                        opacity: idx <= scheduleStoryIndex ? 1 : 0,
+                        width:
+                          idx < scheduleStoryIndex
+                            ? "100%"
+                            : idx === scheduleStoryIndex
+                              ? `${Math.max(0, Math.min(100, scheduleStoryProgress * 100))}%`
+                              : "0%",
                       }}
                     />
                   </div>
@@ -4423,8 +4526,9 @@ function TrainerHome({
               </div>
               <button
                 type="button"
+                data-story-close="true"
                 style={styles.storyTutorialClose}
-                onClick={() => setScheduleStoriesOpen(false)}
+                onClick={() => closeScheduleStories()}
               >
                 {tr("Закрыть", "Close")}
               </button>
@@ -4452,26 +4556,6 @@ function TrainerHome({
                   {scheduleStoryIndex + 1} / {scheduleStories.length}
                 </div>
               </div>
-              <button
-                type="button"
-                aria-label={tr("Предыдущая история", "Previous story")}
-                style={{ ...styles.storyTutorialNavZone, ...styles.storyTutorialNavLeft }}
-                onClick={() => setScheduleStoryIndex((prev) => Math.max(0, prev - 1))}
-              />
-              <button
-                type="button"
-                aria-label={tr("Следующая история", "Next story")}
-                style={{ ...styles.storyTutorialNavZone, ...styles.storyTutorialNavRight }}
-                onClick={() => {
-                  setScheduleStoryIndex((prev) => {
-                    if (prev >= scheduleStories.length - 1) {
-                      setScheduleStoriesOpen(false);
-                      return prev;
-                    }
-                    return prev + 1;
-                  });
-                }}
-              />
             </div>
           </div>
         ) : null}
@@ -16192,6 +16276,9 @@ const styles: Record<string, any> = {
       "radial-gradient(circle at top, rgba(124, 173, 255, 0.18), transparent 36%), linear-gradient(180deg, rgba(246, 250, 255, 0.98), rgba(235, 244, 255, 0.98))",
     backdropFilter: "blur(14px)",
     padding: "18px 16px 24px",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+    touchAction: "pan-y",
   },
   storyTutorialShell: {
     position: "relative",
