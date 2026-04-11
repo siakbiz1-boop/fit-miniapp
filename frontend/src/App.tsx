@@ -3986,23 +3986,13 @@ function TrainerHome({
                     setScheduleStoriesOpen(true);
                   }}
                 >
-                  <div style={styles.homeNextEmptyTop}>
+                  <div style={styles.homeNextEmptyRow}>
                     <div style={styles.homeNextEmptyOrb}>
                       <div style={styles.homeNextEmptyOrbInner} />
                     </div>
-                    <div style={styles.homeNextEmptyBadge}>
-                      {tr("Быстрый старт", "Quick start")}
+                    <div style={styles.homeNextEmptyTitle}>
+                      {tr("Как записать клиента", "How to schedule a client")}
                     </div>
-                  </div>
-                  <div style={styles.homeNextEmptyTitle}>
-                    {tr("Как записать клиента", "How to schedule a client")}
-                  </div>
-                  <div style={styles.homeNextEmptyHint}>
-                    {tr("4 коротких шага прямо в интерфейсе", "4 quick steps right inside the app")}
-                  </div>
-                  <div style={styles.homeNextEmptyCta}>
-                    <span>{tr("Открыть сторис", "Open stories")}</span>
-                    <span style={styles.homeNextEmptyArrow}>›</span>
                   </div>
                 </button>
               )}
@@ -16243,35 +16233,33 @@ const styles: Record<string, any> = {
   },
   homeNextEmpty: {
     width: "100%",
-    padding: "16px 18px 18px",
-    borderRadius: 24,
+    padding: "14px 16px",
+    borderRadius: 22,
     border: "1px solid rgba(164, 191, 232, 0.46)",
     background:
       "radial-gradient(circle at top left, rgba(126, 155, 255, 0.18), transparent 32%), linear-gradient(135deg, rgba(248, 251, 255, 0.98), rgba(235, 244, 255, 0.94))",
     boxShadow: "0 18px 40px rgba(133, 168, 223, 0.12)",
-    color: "var(--text-secondary)",
-    fontSize: 14,
     textAlign: "left",
     cursor: "pointer",
     display: "flex",
-    flexDirection: "column",
-    gap: 8,
+    alignItems: "center",
   },
-  homeNextEmptyTop: {
+  homeNextEmptyRow: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: 12,
+    width: "100%",
   },
   homeNextEmptyOrb: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     background: "linear-gradient(135deg, rgba(121, 148, 255, 0.9), rgba(102, 210, 233, 0.78))",
     boxShadow: "0 16px 28px rgba(106, 155, 225, 0.22)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   homeNextEmptyOrbInner: {
     width: 18,
@@ -16279,50 +16267,13 @@ const styles: Record<string, any> = {
     borderRadius: "50%",
     border: "4px solid rgba(255,255,255,0.96)",
   },
-  homeNextEmptyBadge: {
-    borderRadius: 999,
-    padding: "8px 12px",
-    background: "rgba(255,255,255,0.78)",
-    border: "1px solid rgba(164, 191, 232, 0.4)",
-    color: "var(--text-primary)",
-    fontSize: 12,
-    fontWeight: 800,
-    letterSpacing: 0.2,
-  },
   homeNextEmptyTitle: {
-    fontSize: 24,
-    lineHeight: 1.02,
-    letterSpacing: -0.8,
-    fontWeight: 900,
-    color: "var(--text-primary)",
-  },
-  homeNextEmptyHint: {
-    fontSize: 14,
-    lineHeight: 1.35,
-    color: "var(--text-secondary)",
-  },
-  homeNextEmptyCta: {
-    marginTop: 4,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    alignSelf: "flex-start",
-    minWidth: 176,
-    padding: "10px 14px",
-    borderRadius: 999,
-    background: "rgba(255,255,255,0.86)",
-    border: "1px solid rgba(164, 191, 232, 0.42)",
-    color: "var(--text-primary)",
-    fontSize: 14,
-    fontWeight: 800,
-    boxShadow: "0 10px 24px rgba(133, 168, 223, 0.12)",
-  },
-  homeNextEmptyArrow: {
     fontSize: 22,
-    lineHeight: 1,
-    color: "var(--primary)",
-    marginTop: -1,
+    lineHeight: 1.05,
+    letterSpacing: -0.6,
+    fontWeight: 850,
+    color: "var(--text-primary)",
+    flex: 1,
   },
   homeNextContactRow: {
     marginTop: 10,
