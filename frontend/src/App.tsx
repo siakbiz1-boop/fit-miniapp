@@ -432,7 +432,8 @@ export default function App() {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const pendingFocusRef = useRef<HTMLElement | null>(null);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
-  const isKeyboardVisible = keyboardInset > 0 || keyboardOpen;
+  const KEYBOARD_OPEN_THRESHOLD = 120;
+  const isKeyboardVisible = keyboardInset > KEYBOARD_OPEN_THRESHOLD || keyboardOpen;
   const hideBottomNav = keyboardOpen;
 
   const scrollAreaStyle = {
@@ -1205,14 +1206,15 @@ export default function App() {
     if (!vv) return;
     const onResize = () => {
       const inset = Math.max(0, window.innerHeight - vv.height);
-      setKeyboardInset(inset);
-      setKeyboardOpen(inset > 0);
+      const effectiveInset = inset > KEYBOARD_OPEN_THRESHOLD ? inset : 0;
+      setKeyboardInset(effectiveInset);
+      setKeyboardOpen(effectiveInset > 0);
       try {
-        document.documentElement.style.setProperty("--keyboard-inset", `${inset}px`);
+        document.documentElement.style.setProperty("--keyboard-inset", `${effectiveInset}px`);
       } catch {
         // ignore
       }
-      if (inset > 0 && pendingFocusRef.current) {
+      if (effectiveInset > 0 && pendingFocusRef.current) {
         const target = pendingFocusRef.current;
         pendingFocusRef.current = null;
         requestAnimationFrame(() => {
