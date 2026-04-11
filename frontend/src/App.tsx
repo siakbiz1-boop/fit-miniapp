@@ -2352,6 +2352,10 @@ function TrainerHome({
     };
   }, [paymentWidgetOpen, paymentWidgetToken, tr]);
   useEffect(() => {
+    if (paymentWidgetOpen) return;
+    window.setTimeout(() => forceDismissVirtualKeyboard(), 0);
+  }, [paymentWidgetOpen]);
+  useEffect(() => {
     if (!paymentWidgetId || !paymentWidgetOpen || !token) return;
     const poll = async () => {
       try {
@@ -2366,7 +2370,7 @@ function TrainerHome({
             window.clearInterval(paymentPollRef.current);
             paymentPollRef.current = null;
           }
-          dismissKeyboard();
+          forceDismissVirtualKeyboard();
           setPaymentWidgetOpen(false);
           setPaymentWidgetToken(null);
           setPaymentWidgetId(null);
@@ -2483,16 +2487,8 @@ function TrainerHome({
   const getTariffFirstCharge = (plan: { id: string; name: string; priceMonthly: number; priceByPeriod?: Partial<Record<TariffPeriod, number>> }) =>
     introOfferEligible && plan.id !== "free" ? introOfferPrice : getTariffTotal(plan);
 
-  const dismissKeyboard = () => {
-    const active = document.activeElement as HTMLElement | null;
-    active?.blur?.();
-    window.setTimeout(() => {
-      (document.activeElement as HTMLElement | null)?.blur?.();
-    }, 0);
-  };
-
   const requestReceiptEmail = () => {
-    dismissKeyboard();
+    forceDismissVirtualKeyboard();
     const prompted = window.prompt(
       tr("Введите email для получения чека", "Enter email for the receipt"),
       paymentEmail
@@ -3621,7 +3617,7 @@ function TrainerHome({
                   type="button"
                   style={styles.paymentWidgetClose}
                   onClick={() => {
-                    dismissKeyboard();
+                    forceDismissVirtualKeyboard();
                     setPaymentWidgetOpen(false);
                     setPaymentSubmitting(false);
                     setPaymentWidgetToken(null);
@@ -11712,14 +11708,6 @@ function PaymentMethodsScreen(props: {
   const widgetContainerRef = useRef<HTMLDivElement | null>(null);
   const setupPollRef = useRef<number | null>(null);
 
-  const dismissKeyboard = () => {
-    const active = document.activeElement as HTMLElement | null;
-    active?.blur?.();
-    window.setTimeout(() => {
-      (document.activeElement as HTMLElement | null)?.blur?.();
-    }, 0);
-  };
-
   useEffect(() => {
     if (!token || !apiBase) return;
     let cancelled = false;
@@ -11771,6 +11759,10 @@ function PaymentMethodsScreen(props: {
       if (widgetContainerRef.current) widgetContainerRef.current.innerHTML = "";
     };
   }, [setupOpen, setupToken, tr]);
+  useEffect(() => {
+    if (setupOpen) return;
+    window.setTimeout(() => forceDismissVirtualKeyboard(), 0);
+  }, [setupOpen]);
 
   useEffect(() => {
     if (!setupOpen || !setupPaymentId || !token || !apiBase) return;
@@ -11789,7 +11781,7 @@ function PaymentMethodsScreen(props: {
           const next = Array.isArray(methodsData.methods) ? methodsData.methods : [];
           setCards(next);
           setActiveCardId(next.find((item) => item.isDefault)?.id ?? next[0]?.id ?? null);
-          dismissKeyboard();
+          forceDismissVirtualKeyboard();
           setSetupOpen(false);
           setSetupPaymentId(null);
           setSetupToken(null);
@@ -11899,7 +11891,7 @@ function PaymentMethodsScreen(props: {
           onClick={async () => {
             if (!token || !apiBase) return;
             setSetupError(null);
-            dismissKeyboard();
+            forceDismissVirtualKeyboard();
             const emailPrompt = window.prompt(
               tr("Введите email для получения чека", "Enter email for the receipt"),
               setupEmail
@@ -11947,7 +11939,7 @@ function PaymentMethodsScreen(props: {
                 type="button"
                 style={styles.paymentWidgetClose}
                 onClick={() => {
-                  dismissKeyboard();
+                  forceDismissVirtualKeyboard();
                   setSetupOpen(false);
                   setSetupPaymentId(null);
                   setSetupToken(null);
@@ -13020,6 +13012,38 @@ function formatPaymentMethodMask(method: PaymentMethodItem, tr: (ru: string, en:
   if (method.title && method.title.trim()) return method.title.trim();
   if (method.last4) return `•••• ${method.last4}`;
   return tr("Банковская карта", "Bank card");
+}
+
+function forceDismissVirtualKeyboard() {
+  const active = document.activeElement as HTMLElement | null;
+  active?.blur?.();
+
+  const sink = document.createElement("input");
+  sink.type = "text";
+  sink.readOnly = true;
+  sink.value = "";
+  sink.tabIndex = -1;
+  sink.setAttribute("aria-hidden", "true");
+  sink.style.position = "fixed";
+  sink.style.opacity = "0";
+  sink.style.pointerEvents = "none";
+  sink.style.top = "0";
+  sink.style.left = "0";
+  sink.style.width = "1px";
+  sink.style.height = "1px";
+  document.body.appendChild(sink);
+
+  try {
+    sink.focus({ preventScroll: true });
+  } catch {
+    sink.focus();
+  }
+  sink.blur();
+
+  window.setTimeout(() => {
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    sink.remove();
+  }, 60);
 }
 
 function formatPaymentHistoryDate(value?: string | null) {
