@@ -306,6 +306,7 @@ model PromoCode {
   planName       String
   months         Int
   grantsFree     Boolean  @default(true)
+  discountPercent Int     @default(100)
   usedByTgUserId BigInt?
   usedAt         DateTime?
   createdAt      DateTime @default(now())

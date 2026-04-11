@@ -334,6 +334,13 @@ function parseAmountToKopecString(amount: any) {
   return value.toFixed(2);
 }
 
+function applyPercentDiscount(amountValue: string, discountPercent: number) {
+  const base = Number(amountValue);
+  const normalizedDiscount = Math.max(0, Math.min(100, Math.round(Number(discountPercent) || 0)));
+  if (!Number.isFinite(base) || base < 0) return null;
+  return Math.max(0, base * (1 - normalizedDiscount / 100)).toFixed(2);
+}
+
 function normalizeReceiptEmail(email: any) {
   const value = String(email || "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
@@ -439,6 +446,108 @@ async function upsertPaymentMethodForUser(userId: number, paymentMethodData: any
   return saved;
 }
 
+async function getPromoCodeForCheckout(params: {
+  code: string;
+  planId: string;
+  planName: string;
+  months: number;
+}) {
+  const code = normalizePromoCode(params.code);
+  if (!code) return null;
+  const promo = await prismaAny.promoCode.findUnique({ where: { code } });
+  if (!promo) {
+    const err = new Error("promo not found");
+    (err as any).status = 404;
+    throw err;
+  }
+  if (promo.usedAt) {
+    const err = new Error("promo already used");
+    (err as any).status = 409;
+    throw err;
+  }
+  if (promo.planId !== params.planId || promo.planName !== params.planName || promo.months !== params.months) {
+    const err = new Error("promo does not match plan");
+    (err as any).status = 400;
+    throw err;
+  }
+  const discountPercent = Math.max(
+    0,
+    Math.min(100, promo.grantsFree ? 100 : Math.round(Number((promo as any).discountPercent) || 0))
+  );
+  return { promo, discountPercent, isFullDiscount: discountPercent >= 100 };
+}
+
+async function consumePromoCode(promoId: string, tgUserId: bigint) {
+  await prismaAny.promoCode.updateMany({
+    where: { id: promoId, usedAt: null },
+    data: { usedAt: new Date(), usedByTgUserId: tgUserId },
+  });
+}
+
+async function activatePromoBillingSubscription(params: {
+  userId: number;
+  tgUserId: bigint;
+  planId: string;
+  planName: string;
+  months: number;
+  regularAmountValue: string;
+  promoId: string;
+  currency?: string;
+}) {
+  const paidAt = new Date();
+  await consumePromoCode(params.promoId, params.tgUserId);
+  await prismaAny.payment.create({
+    data: {
+      userId: params.userId,
+      provider: "promo",
+      providerPaymentId: `promo_${params.promoId}_${paidAt.getTime()}`,
+      kind: "subscription",
+      amountValue: "0.00",
+      currency: params.currency || "RUB",
+      status: "succeeded",
+      description: `Подписка ${params.planName} на ${params.months} мес. по промокоду`,
+      planId: params.planId,
+      planName: params.planName,
+      months: params.months,
+      paymentMethodTitle: "promo",
+      paidAt,
+    },
+  });
+  await prismaAny.billingSubscription.upsert({
+    where: { userId: params.userId },
+    update: {
+      paymentMethodId: null,
+      provider: "promo",
+      planId: params.planId,
+      planName: params.planName,
+      months: params.months,
+      amountValue: params.regularAmountValue,
+      currency: params.currency || "RUB",
+      status: "active",
+      currentPeriodStart: paidAt,
+      nextBillingAt: addMonthsClamped(paidAt, params.months),
+      lastPaidAt: paidAt,
+      lastAttemptAt: paidAt,
+      retryCount: 0,
+    },
+    create: {
+      userId: params.userId,
+      provider: "promo",
+      planId: params.planId,
+      planName: params.planName,
+      months: params.months,
+      amountValue: params.regularAmountValue,
+      currency: params.currency || "RUB",
+      status: "active",
+      startedAt: paidAt,
+      currentPeriodStart: paidAt,
+      nextBillingAt: addMonthsClamped(paidAt, params.months),
+      lastPaidAt: paidAt,
+      lastAttemptAt: paidAt,
+    },
+  });
+}
+
 async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
   const method = paymentData?.payment_method?.saved
     ? await upsertPaymentMethodForUser(userId, paymentData.payment_method, true)
@@ -487,6 +596,9 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
     payment.months &&
     payment.paymentMethodId
   ) {
+    if (paymentData?.metadata?.promoId) {
+      await consumePromoCode(String(paymentData.metadata.promoId), BigInt(String(paymentData?.metadata?.tgUserId || "0")));
+    }
     const paidAt = payment.paidAt || new Date();
     const billing = await prismaAny.billingSubscription.findUnique({
       where: { userId },
@@ -1408,10 +1520,8 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
   const planName = String(body?.planName || "").trim();
   const months = parseInt(String(body?.months || ""), 10);
   const introOfferRequested = Boolean(body?.introOffer);
+  const promoCode = normalizePromoCode(body?.promoCode || "");
 
-  if (!amountValue || Number(amountValue) <= 0) {
-    return reply.code(400).send({ message: "amount invalid" });
-  }
   if (!regularAmountValue || Number(regularAmountValue) <= 0) {
     return reply.code(400).send({ message: "regular amount invalid" });
   }
@@ -1420,10 +1530,35 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
   }
 
   try {
-    const receiptEmail = normalizeReceiptEmail(body?.email);
     const introOfferEligible = introOfferRequested ? await isIntroOfferEligible(dbUser.id) : false;
     const isIntroOffer = introOfferRequested && introOfferEligible;
-    const chargeAmountValue = isIntroOffer ? "7.00" : amountValue;
+    const promoInfo = !isIntroOffer && promoCode
+      ? await getPromoCodeForCheckout({ code: promoCode, planId, planName, months })
+      : null;
+    const chargeAmountValue = isIntroOffer
+      ? "7.00"
+      : promoInfo
+        ? applyPercentDiscount(regularAmountValue, promoInfo.discountPercent)
+        : amountValue;
+    if (!chargeAmountValue) {
+      return reply.code(400).send({ message: "amount invalid" });
+    }
+    if (promoInfo?.isFullDiscount) {
+      await activatePromoBillingSubscription({
+        userId: dbUser.id,
+        tgUserId: dbUser.tgUserId,
+        planId,
+        planName,
+        months,
+        regularAmountValue,
+        promoId: promoInfo.promo.id,
+      });
+      return { ok: true, directActivate: true, status: "succeeded" };
+    }
+    if (Number(chargeAmountValue) <= 0) {
+      return reply.code(400).send({ message: "amount invalid" });
+    }
+    const receiptEmail = normalizeReceiptEmail(body?.email);
     const description = isIntroOffer
       ? `Пробный период 7 дней за 7 ₽, далее подписка ${planName} на ${months} мес.`
       : `Подписка ${planName} на ${months} мес.`;
@@ -1452,6 +1587,9 @@ app.post("/billing/yookassa/payment", async (req, reply) => {
             receiptEmail,
             introOffer: isIntroOffer ? "true" : "false",
             regularAmountValue,
+            promoId: promoInfo?.promo.id || "",
+            promoCode: promoInfo?.promo.code || "",
+            discountPercent: promoInfo ? String(promoInfo.discountPercent) : "",
           },
         }),
       },
@@ -1534,10 +1672,8 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
   const months = parseInt(String(body?.months || ""), 10);
   const requestedMethodId = String(body?.paymentMethodId || "").trim();
   const introOfferRequested = Boolean(body?.introOffer);
+  const promoCode = normalizePromoCode(body?.promoCode || "");
 
-  if (!amountValue || Number(amountValue) <= 0) {
-    return reply.code(400).send({ message: "amount invalid" });
-  }
   if (!regularAmountValue || Number(regularAmountValue) <= 0) {
     return reply.code(400).send({ message: "regular amount invalid" });
   }
@@ -1559,10 +1695,20 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
   }
 
   try {
-    const receiptEmail = normalizeReceiptEmail(body?.email);
     const introOfferEligible = introOfferRequested ? await isIntroOfferEligible(dbUser.id) : false;
     const isIntroOffer = introOfferRequested && introOfferEligible;
-    const chargeAmountValue = isIntroOffer ? "7.00" : amountValue;
+    const promoInfo = !isIntroOffer && promoCode
+      ? await getPromoCodeForCheckout({ code: promoCode, planId, planName, months })
+      : null;
+    const chargeAmountValue = isIntroOffer
+      ? "7.00"
+      : promoInfo
+        ? applyPercentDiscount(regularAmountValue, promoInfo.discountPercent)
+        : amountValue;
+    if (!chargeAmountValue || Number(chargeAmountValue) <= 0) {
+      return reply.code(400).send({ message: "amount invalid" });
+    }
+    const receiptEmail = normalizeReceiptEmail(body?.email);
     const description = isIntroOffer
       ? `Пробный период 7 дней за 7 ₽, далее подписка ${planName} на ${months} мес.`
       : `Подписка ${planName} на ${months} мес.`;
@@ -1586,6 +1732,9 @@ app.post("/billing/yookassa/charge-saved", async (req, reply) => {
             receiptEmail,
             introOffer: isIntroOffer ? "true" : "false",
             regularAmountValue,
+            promoId: promoInfo?.promo.id || "",
+            promoCode: promoInfo?.promo.code || "",
+            discountPercent: promoInfo ? String(promoInfo.discountPercent) : "",
           },
         }),
       },
@@ -2668,7 +2817,7 @@ app.get("/admin/stats", async (req, reply) => {
   };
 });
 
-// Apply promo code (one-time, free plan)
+// Apply promo code for checkout preview
 app.post("/promo/apply", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
@@ -2684,21 +2833,18 @@ app.post("/promo/apply", async (req, reply) => {
     return reply.code(400).send({ message: "planId/planName/months required" });
   }
 
-  const promo = await prismaAny.promoCode.findUnique({ where: { code } });
-  if (!promo) return reply.code(404).send({ message: "promo not found" });
-  if (promo.usedAt) return reply.code(409).send({ message: "promo already used" });
-  if (promo.planId !== planId || promo.planName !== planName || promo.months !== months) {
-    return reply.code(400).send({ message: "promo does not match plan" });
+  try {
+    const promoInfo = await getPromoCodeForCheckout({ code, planId, planName, months });
+    if (!promoInfo) return reply.code(404).send({ message: "promo not found" });
+    return {
+      ok: true,
+      total: promoInfo.isFullDiscount ? 0 : null,
+      discountPercent: promoInfo.discountPercent,
+      isFullDiscount: promoInfo.isFullDiscount,
+    };
+  } catch (err: any) {
+    return reply.code(err?.status || 400).send({ message: err?.message || "promo invalid" });
   }
-
-  const now = new Date();
-  const result = await prismaAny.promoCode.updateMany({
-    where: { code, usedAt: null, planId, planName, months },
-    data: { usedAt: now, usedByTgUserId: dbUser.tgUserId },
-  });
-  if (!result.count) return reply.code(409).send({ message: "promo already used" });
-
-  return { ok: true, total: 0 };
 });
 
 app.post("/clients/activate", async (req, reply) => {

@@ -2160,6 +2160,7 @@ function TrainerHome({
   const [promoCode, setPromoCode] = useState("");
   const [promoStatus, setPromoStatus] = useState<"idle" | "success" | "error">("idle");
   const [promoAppliedTotal, setPromoAppliedTotal] = useState<number | null>(null);
+  const [promoDiscountPercent, setPromoDiscountPercent] = useState<number | null>(null);
   const [paymentEmail, setPaymentEmail] = useState("");
   const [paymentWidgetToken, setPaymentWidgetToken] = useState<string | null>(null);
   const [paymentWidgetId, setPaymentWidgetId] = useState<string | null>(null);
@@ -2765,6 +2766,7 @@ function TrainerHome({
     setPromoCode("");
     setPromoStatus("idle");
     setPromoAppliedTotal(null);
+    setPromoDiscountPercent(null);
     setPrepayOpen(true);
   };
 
@@ -3566,6 +3568,7 @@ function TrainerHome({
 
   if (prepayOpen && prepayPlan) {
     const prepayTotal = prepayPlan.introOffer ? prepayPlan.firstCharge : promoAppliedTotal ?? prepayPlan.total;
+    const isPromoFullyFree = !prepayPlan.introOffer && prepayTotal <= 0;
     const nextChargeLabel = formatDateShort(
       prepayPlan.introOffer ? addDays(new Date(), introOfferDays) : addMonthsClamped(new Date(), prepayPlan.months)
     );
@@ -3612,6 +3615,7 @@ function TrainerHome({
                 setPromoCode(e.target.value);
                 setPromoStatus("idle");
                 setPromoAppliedTotal(null);
+                setPromoDiscountPercent(null);
               }}
               placeholder={tr("Введите промокод", "Enter promo code")}
               style={styles.promoInput}
@@ -3645,17 +3649,35 @@ function TrainerHome({
                     setPromoAppliedTotal(null);
                     return;
                   }
-                  const data = (await res.json()) as { ok?: boolean; total?: number };
+                  const data = (await res.json()) as {
+                    ok?: boolean;
+                    total?: number | null;
+                    discountPercent?: number;
+                    isFullDiscount?: boolean;
+                  };
                   if (data?.ok) {
                     setPromoStatus("success");
-                    setPromoAppliedTotal(typeof data.total === "number" ? data.total : 0);
+                    const discountPercent =
+                      typeof data.discountPercent === "number" ? data.discountPercent : null;
+                    setPromoDiscountPercent(discountPercent);
+                    if (typeof data.total === "number") {
+                      setPromoAppliedTotal(data.total);
+                    } else if (discountPercent !== null) {
+                      setPromoAppliedTotal(
+                        Math.max(0, Number((prepayPlan.regularTotal * (1 - discountPercent / 100)).toFixed(2)))
+                      );
+                    } else {
+                      setPromoAppliedTotal(null);
+                    }
                   } else {
                     setPromoStatus("error");
                     setPromoAppliedTotal(null);
+                    setPromoDiscountPercent(null);
                   }
                 } catch {
                   setPromoStatus("error");
                   setPromoAppliedTotal(null);
+                  setPromoDiscountPercent(null);
                 }
               }}
             >
@@ -3670,7 +3692,19 @@ function TrainerHome({
           {promoStatus === "error" ? (
             <div style={styles.promoError}>{tr("Промокод не существует", "Promo code not found")}</div>
           ) : promoStatus === "success" ? (
-            <div style={styles.promoSuccess}>{tr("Промокод успешно применён", "Promo code applied")}</div>
+            <div style={styles.promoSuccess}>
+              {promoAppliedTotal === 0
+                ? tr(
+                    "Промокод даёт 100% скидку. Тариф подключится сразу, без привязки карты.",
+                    "This promo gives a 100% discount. The plan will activate immediately without a saved card."
+                  )
+                : promoDiscountPercent
+                  ? tr(
+                      `Скидка ${promoDiscountPercent}% применяется только к первой оплате. Далее будет полная стоимость.`,
+                      `A ${promoDiscountPercent}% discount applies only to the first payment. Later charges use the full price.`
+                    )
+                  : tr("Промокод успешно применён", "Promo code applied")}
+            </div>
           ) : null}
           <div style={styles.prepayRow}>
             <div style={styles.prepayLabel}>{tr("Итого к оплате", "Total")}</div>
@@ -3689,13 +3723,14 @@ function TrainerHome({
               setPaymentError(tr("Не удалось авторизовать оплату.", "Failed to authorize payment."));
               return;
             }
-            const receiptEmail = requestReceiptEmail();
-            if (!receiptEmail) {
-              return;
-            }
             setPaymentSubmitting(true);
             setPaymentError(null);
             try {
+              const receiptEmail = isPromoFullyFree ? null : requestReceiptEmail();
+              if (!isPromoFullyFree && !receiptEmail) {
+                setPaymentSubmitting(false);
+                return;
+              }
               const res = await fetch(`${apiBase}/billing/yookassa/payment`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -3707,15 +3742,52 @@ function TrainerHome({
                   months: prepayPlan.months,
                   email: receiptEmail,
                   introOffer: prepayPlan.introOffer,
+                  promoCode: promoStatus === "success" ? promoCode.trim().toUpperCase() : "",
                 }),
               });
               const data = (await res.json()) as {
                 ok?: boolean;
                 paymentId?: string;
                 confirmationToken?: string | null;
+                directActivate?: boolean;
                 message?: string;
               };
-              if (!res.ok || !data.ok || !data.paymentId || !data.confirmationToken) {
+              if (!res.ok || !data.ok) {
+                throw new Error(data.message || "payment init failed");
+              }
+              if (data.directActivate) {
+                try {
+                  const [methodsRes, billingRes] = await Promise.all([
+                    fetch(`${apiBase}/billing/payment-methods`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    fetch(`${apiBase}/billing/subscription`, {
+                      headers: { Authorization: `Bearer ${token}` },
+                    }),
+                  ]);
+                  const methodsData = (await methodsRes.json()) as { methods?: PaymentMethodItem[] };
+                  const billingData = (await billingRes.json()) as {
+                    introOfferEligible?: boolean;
+                    subscription?: BillingSubscriptionItem | null;
+                  };
+                  setSavedPaymentMethods(Array.isArray(methodsData.methods) ? methodsData.methods : []);
+                  setIntroOfferEligible(Boolean(billingData.introOfferEligible));
+                  setBillingSubscription(billingData.subscription || null);
+                } catch {
+                  // ignore
+                }
+                setPaymentSubmitting(false);
+                setPaymentError(null);
+                setPrepayOpen(false);
+                alert(
+                  tr(
+                    "Тариф успешно подключён по промокоду. Для следующего продления позже понадобится карта.",
+                    "The plan has been activated with the promo code. A card will be needed later for renewal."
+                  )
+                );
+                return;
+              }
+              if (!data.paymentId || !data.confirmationToken) {
                 throw new Error(data.message || "payment init failed");
               }
               setPaymentWidgetId(data.paymentId);
@@ -3729,9 +3801,13 @@ function TrainerHome({
             }
           }}
         >
-          {paymentSubmitting ? tr("Открываем форму оплаты…", "Opening payment form...") : tr("Оплатить", "Pay")}
+          {paymentSubmitting
+            ? tr("Открываем форму оплаты…", "Opening payment form...")
+            : isPromoFullyFree
+              ? tr("Подключить", "Activate")
+              : tr("Оплатить", "Pay")}
         </button>
-        {defaultPaymentMethod ? (
+        {defaultPaymentMethod && !isPromoFullyFree ? (
           <button
             type="button"
             style={{
@@ -3760,6 +3836,7 @@ function TrainerHome({
                   paymentMethodId: defaultPaymentMethod.id,
                   email: receiptEmail,
                   introOffer: prepayPlan.introOffer,
+                  promoCode: promoStatus === "success" ? promoCode.trim().toUpperCase() : "",
                 }),
               });
                 const data = await res.json();
