@@ -2140,6 +2140,8 @@ function TrainerHome({
   const notesInputRef = useRef<HTMLInputElement | null>(null);
   const notesEditInputRef = useRef<HTMLInputElement | null>(null);
   const notesItemInputRef = useRef<HTMLInputElement | null>(null);
+  const [scheduleStoriesOpen, setScheduleStoriesOpen] = useState(false);
+  const [scheduleStoryIndex, setScheduleStoryIndex] = useState(0);
   const [prepayOpen, setPrepayOpen] = useState(false);
   const [prepayPlan, setPrepayPlan] = useState<{
     id: string;
@@ -2486,6 +2488,138 @@ function TrainerHome({
   const introOfferDays = 7;
   const getTariffFirstCharge = (plan: { id: string; name: string; priceMonthly: number; priceByPeriod?: Partial<Record<TariffPeriod, number>> }) =>
     introOfferEligible && plan.id !== "free" ? introOfferPrice : getTariffTotal(plan);
+  const scheduleStories = useMemo(
+    () => [
+      {
+        step: "01",
+        visual: "clients",
+        eyebrow: tr("Клиент", "Client"),
+        title: tr("Открой вкладку\n«Клиенты»", "Open the\nClients tab"),
+        body: tr("Добавь нового клиента или выбери уже подключённого.", "Add a new client or pick an existing one."),
+        accent: tr("Сначала нужен клиент", "Start with a client"),
+      },
+      {
+        step: "02",
+        visual: "schedule",
+        eyebrow: tr("Расписание", "Schedule"),
+        title: tr("Перейди\nв расписание", "Switch to\nthe schedule"),
+        body: tr("Выбери день и свободное время для тренировки.", "Choose a day and a free time slot."),
+        accent: tr("Найди пустое окно", "Find a free slot"),
+      },
+      {
+        step: "03",
+        visual: "plus",
+        eyebrow: tr("Добавить", "Add"),
+        title: tr("Нажми\nна кнопку «+»", "Tap the\nplus button"),
+        body: tr("Откроется форма создания новой тренировки.", "This opens the new session form."),
+        accent: tr("Главное действие снизу", "Main action at the bottom"),
+      },
+      {
+        step: "04",
+        visual: "form",
+        eyebrow: tr("Детали", "Details"),
+        title: tr("Укажи\nдату и время", "Set the\ndate and time"),
+        body: tr("Выбери клиента, формат занятия и длительность.", "Pick the client, session type, and duration."),
+        accent: tr("Минимум полей", "Just a few fields"),
+      },
+      {
+        step: "05",
+        visual: "done",
+        eyebrow: tr("Готово", "Done"),
+        title: tr("Сохрани\nтренировку", "Save the\nsession"),
+        body: tr("Занятие сразу появится на главной и в расписании.", "It will appear on the home screen and in the schedule."),
+        accent: tr("Тап справа дальше", "Tap right to continue"),
+      },
+    ],
+    [tr]
+  );
+  const renderScheduleStoryVisual = (visual: string) => {
+    if (visual === "clients") {
+      return (
+        <div style={styles.storySceneStack}>
+          <div style={styles.storySceneHeaderBar} />
+          <div style={styles.storyClientCardLarge}>
+            <div style={styles.storyAvatarLarge} />
+            <div style={styles.storyClientLines}>
+              <div style={styles.storyLineStrong} />
+              <div style={styles.storyLineSoft} />
+            </div>
+          </div>
+          <div style={styles.storyClientList}>
+            <div style={styles.storyClientRow}>
+              <div style={styles.storyAvatarSmall} />
+              <div style={styles.storyLineFill} />
+            </div>
+            <div style={styles.storyClientRow}>
+              <div style={styles.storyAvatarSmall} />
+              <div style={styles.storyLineFillSoft} />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    if (visual === "schedule") {
+      return (
+        <div style={styles.storySceneStack}>
+          <div style={styles.storyCalendarHeader}>
+            <div style={styles.storyLineStrongShort} />
+            <div style={styles.storyLineSoftShort} />
+          </div>
+          <div style={styles.storyCalendarGrid}>
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <div
+                key={idx}
+                style={{
+                  ...styles.storyCalendarSlot,
+                  ...(idx === 2 || idx === 5 ? styles.storyCalendarSlotBusy : null),
+                }}
+              />
+            ))}
+          </div>
+          <div style={styles.storyTimelineBar} />
+        </div>
+      );
+    }
+    if (visual === "plus") {
+      return (
+        <div style={styles.storyPlusWrap}>
+          <div style={styles.storyPlusHalo} />
+          <div style={styles.storyPlusButton}>+</div>
+          <div style={styles.storyPlusCaption}>{tr("Добавить тренировку", "Add session")}</div>
+        </div>
+      );
+    }
+    if (visual === "form") {
+      return (
+        <div style={styles.storySceneStack}>
+          <div style={styles.storyFormSheet}>
+            <div style={styles.storyFormField} />
+            <div style={styles.storyFormField} />
+            <div style={styles.storyFormFieldShort} />
+            <div style={styles.storyFormPills}>
+              <div style={styles.storyFormPillActive} />
+              <div style={styles.storyFormPill} />
+            </div>
+            <div style={styles.storyFormSubmit} />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={styles.storySceneStack}>
+        <div style={styles.storyDoneCard}>
+          <div style={styles.storyDoneCheck}>✓</div>
+          <div style={styles.storyDoneTitle}>{tr("Тренировка создана", "Session created")}</div>
+          <div style={styles.storyDoneMeta}>{tr("Сегодня • 19:00", "Today • 7:00 PM")}</div>
+        </div>
+        <div style={styles.storyDonePreview}>
+          <div style={styles.storyDonePreviewBar} />
+          <div style={styles.storyDonePreviewLine} />
+          <div style={styles.storyDonePreviewLineSoft} />
+        </div>
+      </div>
+    );
+  };
 
   const requestReceiptEmail = () => {
     forceDismissVirtualKeyboard();
@@ -3781,9 +3915,21 @@ function TrainerHome({
                   })()}
                 </>
               ) : (
-                <div style={styles.homeNextEmpty}>
-                  {tr("У вас пока нет запланированных занятий", "You don't have any scheduled sessions yet")}
-                </div>
+                <button
+                  type="button"
+                  style={styles.homeNextEmpty}
+                  onClick={() => {
+                    setScheduleStoryIndex(0);
+                    setScheduleStoriesOpen(true);
+                  }}
+                >
+                  <div style={styles.homeNextEmptyTitle}>
+                    {tr("У вас пока нет запланированных занятий", "You don't have any scheduled sessions yet")}
+                  </div>
+                  <div style={styles.homeNextEmptyHint}>
+                    {tr("Нажмите, чтобы посмотреть как быстро записать клиента", "Tap to see how to schedule a client quickly")}
+                  </div>
+                </button>
               )}
             </div>
             <div style={styles.homeStatsBlock}>
@@ -4259,6 +4405,75 @@ function TrainerHome({
               })}
             </div>
           </>
+        ) : null}
+        {scheduleStoriesOpen ? (
+          <div style={styles.storyTutorialOverlay}>
+            <div style={styles.storyTutorialShell}>
+              <div style={styles.storyTutorialProgress}>
+                {scheduleStories.map((story, idx) => (
+                  <div key={story.step} style={styles.storyTutorialProgressTrack}>
+                    <div
+                      style={{
+                        ...styles.storyTutorialProgressFill,
+                        opacity: idx <= scheduleStoryIndex ? 1 : 0,
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                style={styles.storyTutorialClose}
+                onClick={() => setScheduleStoriesOpen(false)}
+              >
+                {tr("Закрыть", "Close")}
+              </button>
+              <div style={styles.storyTutorialCard}>
+                <div style={styles.storyTutorialBadge}>{scheduleStories[scheduleStoryIndex].eyebrow}</div>
+                <div style={styles.storyTutorialTitle}>
+                  {scheduleStories[scheduleStoryIndex].title.split("\n").map((line) => (
+                    <div key={line}>{line}</div>
+                  ))}
+                </div>
+                <div style={styles.storyTutorialBody}>{scheduleStories[scheduleStoryIndex].body}</div>
+                <div style={styles.storyTutorialIllustration}>
+                  <div style={styles.storyTutorialPhone}>
+                    <div style={styles.storyTutorialPhoneTop}>
+                      <span style={styles.storyTutorialStep}>{scheduleStories[scheduleStoryIndex].step}</span>
+                      <span style={styles.storyTutorialAccent}>{scheduleStories[scheduleStoryIndex].accent}</span>
+                    </div>
+                    <div style={styles.storyTutorialPhoneBody}>
+                      {renderScheduleStoryVisual(scheduleStories[scheduleStoryIndex].visual)}
+                    </div>
+                  </div>
+                  <div style={styles.storyTutorialGlow} />
+                </div>
+                <div style={styles.storyTutorialFoot}>
+                  {scheduleStoryIndex + 1} / {scheduleStories.length}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label={tr("Предыдущая история", "Previous story")}
+                style={{ ...styles.storyTutorialNavZone, ...styles.storyTutorialNavLeft }}
+                onClick={() => setScheduleStoryIndex((prev) => Math.max(0, prev - 1))}
+              />
+              <button
+                type="button"
+                aria-label={tr("Следующая история", "Next story")}
+                style={{ ...styles.storyTutorialNavZone, ...styles.storyTutorialNavRight }}
+                onClick={() => {
+                  setScheduleStoryIndex((prev) => {
+                    if (prev >= scheduleStories.length - 1) {
+                      setScheduleStoriesOpen(false);
+                      return prev;
+                    }
+                    return prev + 1;
+                  });
+                }}
+              />
+            </div>
+          </div>
         ) : null}
       </div>
     </div>
@@ -15928,11 +16143,26 @@ const styles: Record<string, any> = {
     color: "var(--text-secondary)",
   },
   homeNextEmpty: {
-    padding: "10px 12px",
+    width: "100%",
+    padding: "14px 16px",
     borderRadius: 14,
     border: "1px dashed var(--glass-card-border)",
+    background: "linear-gradient(135deg, rgba(116, 143, 255, 0.07), rgba(98, 205, 238, 0.09))",
     color: "var(--text-secondary)",
     fontSize: 14,
+    textAlign: "left",
+    cursor: "pointer",
+  },
+  homeNextEmptyTitle: {
+    fontSize: 15,
+    fontWeight: "var(--font-medium)",
+    color: "var(--text-primary)",
+  },
+  homeNextEmptyHint: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 1.35,
+    color: "var(--text-secondary)",
   },
   homeNextContactRow: {
     marginTop: 10,
@@ -15953,6 +16183,417 @@ const styles: Record<string, any> = {
     fontSize: 14,
     fontWeight: "var(--font-strong)",
     cursor: "pointer",
+  },
+  storyTutorialOverlay: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 120,
+    background:
+      "radial-gradient(circle at top, rgba(124, 173, 255, 0.18), transparent 36%), linear-gradient(180deg, rgba(246, 250, 255, 0.98), rgba(235, 244, 255, 0.98))",
+    backdropFilter: "blur(14px)",
+    padding: "18px 16px 24px",
+  },
+  storyTutorialShell: {
+    position: "relative",
+    width: "100%",
+    height: "100%",
+    maxWidth: 520,
+    margin: "0 auto",
+    display: "flex",
+    flexDirection: "column",
+  },
+  storyTutorialProgress: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 6,
+    marginTop: 8,
+    zIndex: 4,
+  },
+  storyTutorialProgressTrack: {
+    height: 4,
+    borderRadius: 999,
+    background: "rgba(17, 24, 39, 0.09)",
+    overflow: "hidden",
+  },
+  storyTutorialProgressFill: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 999,
+    background: "var(--accent-grad)",
+    transition: "opacity 160ms ease",
+  },
+  storyTutorialClose: {
+    alignSelf: "flex-end",
+    marginTop: 12,
+    border: "1px solid var(--glass-pill-border)",
+    background: "rgba(255, 255, 255, 0.82)",
+    color: "var(--text-primary)",
+    borderRadius: 999,
+    padding: "8px 14px",
+    fontSize: 13,
+    fontWeight: "var(--font-medium)",
+    cursor: "pointer",
+    zIndex: 5,
+  },
+  storyTutorialCard: {
+    position: "relative",
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    padding: "22px 8px 4px",
+    zIndex: 4,
+  },
+  storyTutorialBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    padding: "8px 14px",
+    background: "rgba(96, 133, 255, 0.14)",
+    color: "var(--primary)",
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  storyTutorialTitle: {
+    marginTop: 18,
+    fontSize: 42,
+    lineHeight: 0.98,
+    letterSpacing: -1.8,
+    fontWeight: 900,
+    color: "var(--text-primary)",
+  },
+  storyTutorialBody: {
+    marginTop: 16,
+    maxWidth: 320,
+    fontSize: 18,
+    lineHeight: 1.35,
+    color: "var(--text-secondary)",
+  },
+  storyTutorialIllustration: {
+    position: "relative",
+    flex: 1,
+    minHeight: 280,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  storyTutorialGlow: {
+    position: "absolute",
+    width: 260,
+    height: 260,
+    borderRadius: "50%",
+    background: "radial-gradient(circle, rgba(120, 170, 255, 0.32), rgba(120, 170, 255, 0))",
+    filter: "blur(8px)",
+  },
+  storyTutorialPhone: {
+    position: "relative",
+    width: 260,
+    height: 420,
+    borderRadius: 34,
+    border: "1px solid rgba(132, 171, 224, 0.55)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(233, 243, 255, 0.92))",
+    boxShadow: "0 22px 50px rgba(86, 133, 196, 0.18)",
+    padding: 16,
+    overflow: "hidden",
+    zIndex: 1,
+  },
+  storyTutorialPhoneTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  storyTutorialStep: {
+    width: 40,
+    height: 40,
+    borderRadius: 16,
+    background: "var(--accent-grad)",
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 800,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "var(--accent-shadow)",
+  },
+  storyTutorialAccent: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--text-secondary)",
+  },
+  storyTutorialPhoneBody: {
+    marginTop: 24,
+    height: "100%",
+  },
+  storySceneStack: {
+    display: "grid",
+    gap: 12,
+    height: "100%",
+    alignContent: "start",
+  },
+  storySceneHeaderBar: {
+    width: "42%",
+    height: 14,
+    borderRadius: 999,
+    background: "rgba(190, 213, 243, 0.75)",
+  },
+  storyClientCardLarge: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 24,
+    background: "linear-gradient(135deg, rgba(121, 148, 255, 0.92), rgba(102, 210, 233, 0.82))",
+    boxShadow: "0 18px 34px rgba(106, 155, 225, 0.22)",
+  },
+  storyAvatarLarge: {
+    width: 56,
+    height: 56,
+    borderRadius: "50%",
+    background: "rgba(255,255,255,0.82)",
+  },
+  storyClientLines: {
+    flex: 1,
+    display: "grid",
+    gap: 8,
+  },
+  storyLineStrong: {
+    height: 14,
+    width: "66%",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.96)",
+  },
+  storyLineSoft: {
+    height: 10,
+    width: "46%",
+    borderRadius: 999,
+    background: "rgba(255,255,255,0.66)",
+  },
+  storyClientList: {
+    display: "grid",
+    gap: 10,
+  },
+  storyClientRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "10px 12px",
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.84)",
+    border: "1px solid rgba(132, 171, 224, 0.35)",
+  },
+  storyAvatarSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: "50%",
+    background: "rgba(144, 176, 230, 0.55)",
+  },
+  storyLineFill: {
+    height: 10,
+    flex: 1,
+    borderRadius: 999,
+    background: "rgba(151, 174, 218, 0.58)",
+  },
+  storyLineFillSoft: {
+    height: 10,
+    width: "72%",
+    borderRadius: 999,
+    background: "rgba(196, 213, 238, 0.86)",
+  },
+  storyCalendarHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  storyLineStrongShort: {
+    width: 82,
+    height: 14,
+    borderRadius: 999,
+    background: "rgba(151, 174, 218, 0.6)",
+  },
+  storyLineSoftShort: {
+    width: 48,
+    height: 10,
+    borderRadius: 999,
+    background: "rgba(196, 213, 238, 0.86)",
+  },
+  storyCalendarGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 10,
+  },
+  storyCalendarSlot: {
+    height: 58,
+    borderRadius: 18,
+    border: "1px dashed rgba(142, 170, 214, 0.55)",
+    background: "rgba(255,255,255,0.74)",
+  },
+  storyCalendarSlotBusy: {
+    border: "1px solid rgba(110, 135, 220, 0.44)",
+    background: "linear-gradient(135deg, rgba(121, 148, 255, 0.22), rgba(102, 210, 233, 0.18))",
+  },
+  storyTimelineBar: {
+    height: 18,
+    borderRadius: 999,
+    background: "linear-gradient(90deg, rgba(121, 148, 255, 0.76), rgba(102, 210, 233, 0.62))",
+    width: "62%",
+    justifySelf: "center",
+  },
+  storyPlusWrap: {
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    position: "relative",
+  },
+  storyPlusHalo: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    borderRadius: "50%",
+    background: "radial-gradient(circle, rgba(120, 170, 255, 0.3), rgba(120, 170, 255, 0))",
+  },
+  storyPlusButton: {
+    width: 122,
+    height: 122,
+    borderRadius: "50%",
+    background: "var(--accent-grad)",
+    color: "#fff",
+    fontSize: 72,
+    lineHeight: "122px",
+    textAlign: "center",
+    boxShadow: "var(--accent-shadow)",
+    zIndex: 1,
+  },
+  storyPlusCaption: {
+    fontSize: 15,
+    fontWeight: 700,
+    color: "var(--text-secondary)",
+    zIndex: 1,
+  },
+  storyFormSheet: {
+    display: "grid",
+    gap: 12,
+    padding: 14,
+    borderRadius: 24,
+    background: "rgba(255,255,255,0.84)",
+    border: "1px solid rgba(132, 171, 224, 0.35)",
+    boxShadow: "0 18px 34px rgba(106, 155, 225, 0.12)",
+  },
+  storyFormField: {
+    height: 48,
+    borderRadius: 16,
+    background: "rgba(214, 227, 247, 0.9)",
+  },
+  storyFormFieldShort: {
+    height: 48,
+    width: "58%",
+    borderRadius: 16,
+    background: "rgba(214, 227, 247, 0.9)",
+  },
+  storyFormPills: {
+    display: "flex",
+    gap: 10,
+  },
+  storyFormPill: {
+    width: 70,
+    height: 36,
+    borderRadius: 999,
+    background: "rgba(214, 227, 247, 0.9)",
+  },
+  storyFormPillActive: {
+    width: 86,
+    height: 36,
+    borderRadius: 999,
+    background: "var(--accent-grad)",
+    boxShadow: "var(--accent-shadow)",
+  },
+  storyFormSubmit: {
+    marginTop: 4,
+    height: 50,
+    borderRadius: 18,
+    background: "linear-gradient(135deg, rgba(121, 148, 255, 0.92), rgba(102, 210, 233, 0.82))",
+  },
+  storyDoneCard: {
+    display: "grid",
+    justifyItems: "center",
+    gap: 10,
+    padding: "20px 18px",
+    borderRadius: 26,
+    background: "linear-gradient(135deg, rgba(121, 148, 255, 0.92), rgba(102, 210, 233, 0.82))",
+    color: "#fff",
+    boxShadow: "0 18px 34px rgba(106, 155, 225, 0.22)",
+  },
+  storyDoneCheck: {
+    width: 56,
+    height: 56,
+    borderRadius: "50%",
+    background: "rgba(255,255,255,0.9)",
+    color: "#5b80ff",
+    fontSize: 30,
+    fontWeight: 900,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  storyDoneTitle: {
+    fontSize: 18,
+    fontWeight: 800,
+  },
+  storyDoneMeta: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.84)",
+  },
+  storyDonePreview: {
+    display: "grid",
+    gap: 10,
+    padding: 14,
+    borderRadius: 22,
+    background: "rgba(255,255,255,0.82)",
+    border: "1px solid rgba(132, 171, 224, 0.35)",
+  },
+  storyDonePreviewBar: {
+    height: 42,
+    borderRadius: 16,
+    background: "rgba(212, 226, 247, 0.9)",
+  },
+  storyDonePreviewLine: {
+    height: 12,
+    width: "72%",
+    borderRadius: 999,
+    background: "rgba(151, 174, 218, 0.58)",
+  },
+  storyDonePreviewLineSoft: {
+    height: 12,
+    width: "48%",
+    borderRadius: 999,
+    background: "rgba(196, 213, 238, 0.86)",
+  },
+  storyTutorialFoot: {
+    alignSelf: "center",
+    marginTop: 18,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--text-secondary)",
+  },
+  storyTutorialNavZone: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: "42%",
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    zIndex: 2,
+  },
+  storyTutorialNavLeft: {
+    left: 0,
+  },
+  storyTutorialNavRight: {
+    right: 0,
   },
   homeTodayBlock: {
     marginTop: 10,
