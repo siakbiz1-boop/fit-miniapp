@@ -3991,7 +3991,7 @@ function TrainerHome({
                       <div style={styles.homeNextEmptyOrbInner} />
                     </div>
                     <div style={styles.homeNextEmptyTitle}>
-                      {tr("Как записать клиента", "How to schedule a client")}
+                      {tr("Как создать тренировку", "How to create a workout")}
                     </div>
                   </div>
                 </button>
@@ -15532,18 +15532,23 @@ const styles: Record<string, any> = {
   },
   homeWorkPage: {
     background: "var(--trainer-bg-home)",
+    minHeight: "100dvh",
   },
   schedulePage: {
     background: "var(--trainer-bg-schedule)",
+    minHeight: "100dvh",
   },
   clientsPage: {
     background: "var(--trainer-bg-clients)",
+    minHeight: "100dvh",
   },
   addClientPage: {
     background: "var(--trainer-bg-add-client)",
+    minHeight: "100dvh",
   },
   settingsPage: {
     background: "var(--trainer-bg-settings)",
+    minHeight: "100dvh",
   },
   bookingPage: {
     minHeight: "100vh",
@@ -16268,12 +16273,13 @@ const styles: Record<string, any> = {
     border: "4px solid rgba(255,255,255,0.96)",
   },
   homeNextEmptyTitle: {
-    fontSize: 22,
-    lineHeight: 1.05,
-    letterSpacing: -0.6,
-    fontWeight: 850,
+    fontSize: 17,
+    lineHeight: 1,
+    letterSpacing: -0.2,
+    fontWeight: 800,
     color: "var(--text-primary)",
     flex: 1,
+    whiteSpace: "nowrap",
   },
   homeNextContactRow: {
     marginTop: 10,
