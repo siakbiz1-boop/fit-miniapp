@@ -2411,7 +2411,7 @@ function TrainerHome({
     mount();
     return () => {
       cancelled = true;
-      if (paymentWidgetContainerRef.current) paymentWidgetContainerRef.current.innerHTML = "";
+      clearEmbeddedWidgetContainer(paymentWidgetContainerRef.current);
     };
   }, [paymentWidgetOpen, paymentWidgetToken, tr]);
   useEffect(() => {
@@ -2742,6 +2742,7 @@ function TrainerHome({
     return value;
   };
   const closePaymentWidget = () => {
+    clearEmbeddedWidgetContainer(paymentWidgetContainerRef.current);
     forceDismissVirtualKeyboard();
     setPaymentWidgetOpen(false);
     setPaymentWidgetToken(null);
@@ -2749,6 +2750,7 @@ function TrainerHome({
     setPaymentSubmitting(false);
     window.setTimeout(() => forceDismissVirtualKeyboard(), 0);
     window.setTimeout(() => forceDismissVirtualKeyboard(), 120);
+    window.setTimeout(() => forceDismissVirtualKeyboard(), 260);
   };
   const refreshBillingState = async () => {
     if (!token) return;
@@ -12371,7 +12373,7 @@ function PaymentMethodsScreen(props: {
     mount();
     return () => {
       cancelled = true;
-      if (widgetContainerRef.current) widgetContainerRef.current.innerHTML = "";
+      clearEmbeddedWidgetContainer(widgetContainerRef.current);
     };
   }, [setupOpen, setupToken, tr]);
   useEffect(() => {
@@ -12396,6 +12398,7 @@ function PaymentMethodsScreen(props: {
           const next = Array.isArray(methodsData.methods) ? methodsData.methods : [];
           setCards(next);
           setActiveCardId(next.find((item) => item.isDefault)?.id ?? next[0]?.id ?? null);
+          clearEmbeddedWidgetContainer(widgetContainerRef.current);
           forceDismissVirtualKeyboard();
           setSetupOpen(false);
           setSetupPaymentId(null);
@@ -12554,10 +12557,13 @@ function PaymentMethodsScreen(props: {
                 type="button"
                 style={styles.paymentWidgetClose}
                 onClick={() => {
+                  clearEmbeddedWidgetContainer(widgetContainerRef.current);
                   forceDismissVirtualKeyboard();
                   setSetupOpen(false);
                   setSetupPaymentId(null);
                   setSetupToken(null);
+                  window.setTimeout(() => forceDismissVirtualKeyboard(), 0);
+                  window.setTimeout(() => forceDismissVirtualKeyboard(), 120);
                 }}
               >
                 {tr("Закрыть", "Close")}
@@ -13629,9 +13635,21 @@ function formatPaymentMethodMask(method: PaymentMethodItem, tr: (ru: string, en:
   return tr("Банковская карта", "Bank card");
 }
 
+function clearEmbeddedWidgetContainer(container: HTMLDivElement | null) {
+  if (!container) return;
+  const active = document.activeElement as HTMLElement | null;
+  if (active && container.contains(active)) {
+    active.blur?.();
+  }
+  const iframe = container.querySelector("iframe") as HTMLIFrameElement | null;
+  iframe?.blur?.();
+  container.innerHTML = "";
+}
+
 function forceDismissVirtualKeyboard() {
   const active = document.activeElement as HTMLElement | null;
   active?.blur?.();
+  if (active instanceof HTMLIFrameElement) active.blur();
 
   const sink = document.createElement("input");
   sink.type = "text";
@@ -13655,8 +13673,14 @@ function forceDismissVirtualKeyboard() {
   }
   sink.blur();
 
-  window.setTimeout(() => {
+  const dismiss = () => {
     (document.activeElement as HTMLElement | null)?.blur?.();
+    window.scrollTo({ top: 0, behavior: "auto" });
+  };
+  window.requestAnimationFrame(dismiss);
+  window.setTimeout(dismiss, 40);
+  window.setTimeout(() => {
+    dismiss();
     sink.remove();
   }, 60);
 }
