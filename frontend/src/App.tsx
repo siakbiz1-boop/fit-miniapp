@@ -14468,6 +14468,31 @@ function GlobalStyles() {
         --bottom-nav-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 244, 246, 0.98));
         --bottom-nav-border: rgba(200, 210, 220, 0.6);
         --bottom-nav-shadow: 0 -18px 36px rgba(15, 23, 42, 0.12);
+        --story-trigger-bg: radial-gradient(circle at top left, rgba(126, 155, 255, 0.18), transparent 32%),
+          linear-gradient(135deg, rgba(248, 251, 255, 0.98), rgba(235, 244, 255, 0.94));
+        --story-trigger-border: rgba(164, 191, 232, 0.46);
+        --story-trigger-shadow: 0 18px 40px rgba(133, 168, 223, 0.12);
+        --story-overlay-bg: radial-gradient(circle at top, rgba(124, 173, 255, 0.18), transparent 36%),
+          linear-gradient(180deg, rgba(246, 250, 255, 0.98), rgba(235, 244, 255, 0.98));
+        --story-progress-track: rgba(17, 24, 39, 0.09);
+        --story-close-bg: rgba(255, 255, 255, 0.82);
+        --story-badge-bg: rgba(96, 133, 255, 0.14);
+        --story-badge-text: #1677ff;
+        --story-glow: radial-gradient(circle, rgba(120, 170, 255, 0.32), rgba(120, 170, 255, 0));
+        --story-phone-bg: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(233, 243, 255, 0.92));
+        --story-phone-border: rgba(132, 171, 224, 0.55);
+        --story-phone-shadow: 0 22px 50px rgba(86, 133, 196, 0.18);
+        --story-surface-bg: rgba(255,255,255,0.84);
+        --story-surface-border: rgba(132, 171, 224, 0.35);
+        --story-surface-shadow: 0 18px 34px rgba(106, 155, 225, 0.12);
+        --story-soft-block: rgba(214, 227, 247, 0.9);
+        --story-soft-line: rgba(151, 174, 218, 0.58);
+        --story-soft-line-2: rgba(196, 213, 238, 0.86);
+        --story-header-line: rgba(190, 213, 243, 0.75);
+        --story-slot-bg: rgba(255,255,255,0.74);
+        --story-slot-border: rgba(142, 170, 214, 0.55);
+        --story-slot-busy-bg: linear-gradient(135deg, rgba(121, 148, 255, 0.22), rgba(102, 210, 233, 0.18));
+        --story-slot-busy-border: rgba(110, 135, 220, 0.44);
         --glass-menu-bg: linear-gradient(140deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.65) 45%, rgba(255, 255, 255, 0.5) 100%);
         --glass-menu-border: rgba(255, 255, 255, 0.7);
         --glass-menu-btn-bg: rgba(255, 255, 255, 0.62);
@@ -14654,6 +14679,31 @@ function GlobalStyles() {
         --bottom-nav-bg: linear-gradient(180deg, rgba(28, 34, 44, 0.98), rgba(18, 22, 30, 0.98));
         --bottom-nav-border: rgba(70, 85, 110, 0.6);
         --bottom-nav-shadow: 0 -18px 36px rgba(0, 0, 0, 0.45);
+        --story-trigger-bg: radial-gradient(circle at top left, rgba(98, 142, 228, 0.2), transparent 34%),
+          linear-gradient(135deg, rgba(40, 52, 74, 0.96), rgba(26, 36, 54, 0.98));
+        --story-trigger-border: rgba(108, 140, 198, 0.34);
+        --story-trigger-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+        --story-overlay-bg: radial-gradient(circle at top, rgba(86, 132, 215, 0.22), transparent 34%),
+          linear-gradient(180deg, rgba(24, 32, 46, 0.985), rgba(15, 21, 31, 0.99));
+        --story-progress-track: rgba(196, 210, 235, 0.14);
+        --story-close-bg: rgba(34, 44, 62, 0.92);
+        --story-badge-bg: rgba(93, 123, 255, 0.24);
+        --story-badge-text: #dfe9ff;
+        --story-glow: radial-gradient(circle, rgba(73, 112, 193, 0.3), rgba(73, 112, 193, 0));
+        --story-phone-bg: linear-gradient(180deg, rgba(31, 42, 60, 0.98), rgba(20, 28, 41, 0.96));
+        --story-phone-border: rgba(95, 122, 168, 0.5);
+        --story-phone-shadow: 0 24px 54px rgba(0, 0, 0, 0.48);
+        --story-surface-bg: linear-gradient(180deg, rgba(37, 49, 69, 0.92), rgba(29, 39, 56, 0.94));
+        --story-surface-border: rgba(104, 132, 180, 0.34);
+        --story-surface-shadow: 0 18px 34px rgba(0, 0, 0, 0.34);
+        --story-soft-block: rgba(64, 82, 114, 0.88);
+        --story-soft-line: rgba(134, 159, 205, 0.5);
+        --story-soft-line-2: rgba(112, 136, 178, 0.74);
+        --story-header-line: rgba(114, 137, 176, 0.5);
+        --story-slot-bg: rgba(31, 42, 60, 0.9);
+        --story-slot-border: rgba(102, 128, 172, 0.5);
+        --story-slot-busy-bg: linear-gradient(135deg, rgba(93, 123, 255, 0.34), rgba(91, 183, 255, 0.24));
+        --story-slot-busy-border: rgba(122, 152, 226, 0.55);
         --glass-menu-bg: linear-gradient(140deg, rgba(30, 40, 56, 0.9) 0%, rgba(24, 32, 46, 0.8) 45%, rgba(20, 28, 40, 0.75) 100%);
         --glass-menu-border: rgba(120, 150, 200, 0.2);
         --glass-menu-btn-bg: rgba(30, 40, 56, 0.7);
@@ -16552,10 +16602,9 @@ const styles: Record<string, any> = {
     width: "100%",
     padding: "14px 16px",
     borderRadius: 22,
-    border: "1px solid rgba(164, 191, 232, 0.46)",
-    background:
-      "radial-gradient(circle at top left, rgba(126, 155, 255, 0.18), transparent 32%), linear-gradient(135deg, rgba(248, 251, 255, 0.98), rgba(235, 244, 255, 0.94))",
-    boxShadow: "0 18px 40px rgba(133, 168, 223, 0.12)",
+    border: "1px solid var(--story-trigger-border)",
+    background: "var(--story-trigger-bg)",
+    boxShadow: "var(--story-trigger-shadow)",
     textAlign: "left",
     cursor: "pointer",
     display: "flex",
@@ -16617,8 +16666,7 @@ const styles: Record<string, any> = {
     position: "fixed",
     inset: 0,
     zIndex: 120,
-    background:
-      "radial-gradient(circle at top, rgba(124, 173, 255, 0.18), transparent 36%), linear-gradient(180deg, rgba(246, 250, 255, 0.98), rgba(235, 244, 255, 0.98))",
+    background: "var(--story-overlay-bg)",
     backdropFilter: "blur(14px)",
     padding: "18px 16px 24px",
     userSelect: "none",
@@ -16644,7 +16692,7 @@ const styles: Record<string, any> = {
   storyTutorialProgressTrack: {
     height: 4,
     borderRadius: 999,
-    background: "rgba(17, 24, 39, 0.09)",
+    background: "var(--story-progress-track)",
     overflow: "hidden",
   },
   storyTutorialProgressFill: {
@@ -16658,7 +16706,7 @@ const styles: Record<string, any> = {
     alignSelf: "flex-end",
     marginTop: 12,
     border: "1px solid var(--glass-pill-border)",
-    background: "rgba(255, 255, 255, 0.82)",
+    background: "var(--story-close-bg)",
     color: "var(--text-primary)",
     borderRadius: 999,
     padding: "8px 14px",
@@ -16680,8 +16728,8 @@ const styles: Record<string, any> = {
     alignSelf: "flex-start",
     borderRadius: 999,
     padding: "8px 14px",
-    background: "rgba(96, 133, 255, 0.14)",
-    color: "var(--primary)",
+    background: "var(--story-badge-bg)",
+    color: "var(--story-badge-text)",
     fontSize: 12,
     fontWeight: 800,
     letterSpacing: 0.3,
@@ -16715,7 +16763,7 @@ const styles: Record<string, any> = {
     width: 260,
     height: 260,
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(120, 170, 255, 0.32), rgba(120, 170, 255, 0))",
+    background: "var(--story-glow)",
     filter: "blur(8px)",
   },
   storyTutorialPhone: {
@@ -16723,9 +16771,9 @@ const styles: Record<string, any> = {
     width: 260,
     height: 420,
     borderRadius: 34,
-    border: "1px solid rgba(132, 171, 224, 0.55)",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(233, 243, 255, 0.92))",
-    boxShadow: "0 22px 50px rgba(86, 133, 196, 0.18)",
+    border: "1px solid var(--story-phone-border)",
+    background: "var(--story-phone-bg)",
+    boxShadow: "var(--story-phone-shadow)",
     padding: 16,
     overflow: "hidden",
     zIndex: 1,
@@ -16768,7 +16816,7 @@ const styles: Record<string, any> = {
     width: "42%",
     height: 14,
     borderRadius: 999,
-    background: "rgba(190, 213, 243, 0.75)",
+    background: "var(--story-header-line)",
   },
   storyClientCardLarge: {
     display: "flex",
@@ -16812,26 +16860,27 @@ const styles: Record<string, any> = {
     gap: 10,
     padding: "10px 12px",
     borderRadius: 18,
-    background: "rgba(255,255,255,0.84)",
-    border: "1px solid rgba(132, 171, 224, 0.35)",
+    background: "var(--story-surface-bg)",
+    border: "1px solid var(--story-surface-border)",
+    boxShadow: "var(--story-surface-shadow)",
   },
   storyAvatarSmall: {
     width: 28,
     height: 28,
     borderRadius: "50%",
-    background: "rgba(144, 176, 230, 0.55)",
+    background: "var(--story-soft-line-2)",
   },
   storyLineFill: {
     height: 10,
     flex: 1,
     borderRadius: 999,
-    background: "rgba(151, 174, 218, 0.58)",
+    background: "var(--story-soft-line)",
   },
   storyLineFillSoft: {
     height: 10,
     width: "72%",
     borderRadius: 999,
-    background: "rgba(196, 213, 238, 0.86)",
+    background: "var(--story-soft-line-2)",
   },
   storyCalendarHeader: {
     display: "flex",
@@ -16842,13 +16891,13 @@ const styles: Record<string, any> = {
     width: 82,
     height: 14,
     borderRadius: 999,
-    background: "rgba(151, 174, 218, 0.6)",
+    background: "var(--story-soft-line)",
   },
   storyLineSoftShort: {
     width: 48,
     height: 10,
     borderRadius: 999,
-    background: "rgba(196, 213, 238, 0.86)",
+    background: "var(--story-soft-line-2)",
   },
   storyCalendarGrid: {
     display: "grid",
@@ -16858,12 +16907,12 @@ const styles: Record<string, any> = {
   storyCalendarSlot: {
     height: 58,
     borderRadius: 18,
-    border: "1px dashed rgba(142, 170, 214, 0.55)",
-    background: "rgba(255,255,255,0.74)",
+    border: "1px dashed var(--story-slot-border)",
+    background: "var(--story-slot-bg)",
   },
   storyCalendarSlotBusy: {
-    border: "1px solid rgba(110, 135, 220, 0.44)",
-    background: "linear-gradient(135deg, rgba(121, 148, 255, 0.22), rgba(102, 210, 233, 0.18))",
+    border: "1px solid var(--story-slot-busy-border)",
+    background: "var(--story-slot-busy-bg)",
   },
   storyTimelineBar: {
     height: 18,
@@ -16911,20 +16960,20 @@ const styles: Record<string, any> = {
     gap: 12,
     padding: 14,
     borderRadius: 24,
-    background: "rgba(255,255,255,0.84)",
-    border: "1px solid rgba(132, 171, 224, 0.35)",
-    boxShadow: "0 18px 34px rgba(106, 155, 225, 0.12)",
+    background: "var(--story-surface-bg)",
+    border: "1px solid var(--story-surface-border)",
+    boxShadow: "var(--story-surface-shadow)",
   },
   storyFormField: {
     height: 48,
     borderRadius: 16,
-    background: "rgba(214, 227, 247, 0.9)",
+    background: "var(--story-soft-block)",
   },
   storyFormFieldShort: {
     height: 48,
     width: "58%",
     borderRadius: 16,
-    background: "rgba(214, 227, 247, 0.9)",
+    background: "var(--story-soft-block)",
   },
   storyFormPills: {
     display: "flex",
@@ -16934,7 +16983,7 @@ const styles: Record<string, any> = {
     width: 70,
     height: 36,
     borderRadius: 999,
-    background: "rgba(214, 227, 247, 0.9)",
+    background: "var(--story-soft-block)",
   },
   storyFormPillActive: {
     width: 86,
@@ -16984,25 +17033,26 @@ const styles: Record<string, any> = {
     gap: 10,
     padding: 14,
     borderRadius: 22,
-    background: "rgba(255,255,255,0.82)",
-    border: "1px solid rgba(132, 171, 224, 0.35)",
+    background: "var(--story-surface-bg)",
+    border: "1px solid var(--story-surface-border)",
+    boxShadow: "var(--story-surface-shadow)",
   },
   storyDonePreviewBar: {
     height: 42,
     borderRadius: 16,
-    background: "rgba(212, 226, 247, 0.9)",
+    background: "var(--story-soft-block)",
   },
   storyDonePreviewLine: {
     height: 12,
     width: "72%",
     borderRadius: 999,
-    background: "rgba(151, 174, 218, 0.58)",
+    background: "var(--story-soft-line)",
   },
   storyDonePreviewLineSoft: {
     height: 12,
     width: "48%",
     borderRadius: 999,
-    background: "rgba(196, 213, 238, 0.86)",
+    background: "var(--story-soft-line-2)",
   },
   storyTutorialFoot: {
     alignSelf: "center",
