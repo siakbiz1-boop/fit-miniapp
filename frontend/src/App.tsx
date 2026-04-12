@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import WebApp from "@twa-dev/sdk";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Home08Icon, Calendar04Icon, UserMultiple02Icon, Settings01Icon, UserAdd02Icon } from "@hugeicons/core-free-icons";
-
-const SUBSCRIPTION_CLIENT_LIMIT = 9999;
 let currentLanguage: "ru" | "en" = "ru";
 
 function getRoleStorageKey(base: string, role: Role | null) {
@@ -143,6 +141,7 @@ type TrainerClientInvite = {
   activeSubscriptionHistoryId?: string;
   subscriptionHistory?: SubscriptionHistoryItem[];
   archived?: boolean;
+  planLocked?: boolean;
   clientProfile?: {
     fitnessClub?: string;
     specialization?: string;
@@ -281,6 +280,22 @@ type BillingSubscriptionItem = {
   status: string;
   nextBillingAt?: string;
   lastPaidAt?: string | null;
+  retryCount?: number;
+  pendingPlanId?: string | null;
+  pendingPlanName?: string | null;
+  pendingMonths?: number | null;
+  pendingApplyAt?: string | null;
+};
+
+type EffectiveBillingPlanItem = {
+  planId: string;
+  planName: string;
+  clientLimit: number | null;
+  monthlySessionsLimit: number | null;
+  activeClientsCount: number;
+  sessionsThisMonth: number;
+  allowedActiveClientIds: string[];
+  isFallbackToFree?: boolean;
 };
 
 
@@ -2169,6 +2184,7 @@ function TrainerHome({
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<PaymentMethodItem[]>([]);
   const [billingSubscription, setBillingSubscription] = useState<BillingSubscriptionItem | null>(null);
+  const [effectiveBillingPlan, setEffectiveBillingPlan] = useState<EffectiveBillingPlanItem | null>(null);
   const [introOfferEligible, setIntroOfferEligible] = useState(false);
   const paymentWidgetContainerRef = useRef<HTMLDivElement | null>(null);
   const paymentPollRef = useRef<number | null>(null);
@@ -2352,15 +2368,18 @@ function TrainerHome({
         const data = (await res.json()) as {
           introOfferEligible?: boolean;
           subscription?: BillingSubscriptionItem | null;
+          effectivePlan?: EffectiveBillingPlanItem | null;
         };
         if (!cancelled) {
           setIntroOfferEligible(Boolean(data.introOfferEligible));
           setBillingSubscription(data.subscription || null);
+          setEffectiveBillingPlan(data.effectivePlan || null);
         }
       } catch {
         if (!cancelled) {
           setIntroOfferEligible(false);
           setBillingSubscription(null);
+          setEffectiveBillingPlan(null);
         }
       }
     })();
@@ -2432,9 +2451,11 @@ function TrainerHome({
             const billingData = (await billingRes.json()) as {
               introOfferEligible?: boolean;
               subscription?: BillingSubscriptionItem | null;
+              effectivePlan?: EffectiveBillingPlanItem | null;
             };
             setIntroOfferEligible(Boolean(billingData.introOfferEligible));
             setBillingSubscription(billingData.subscription || null);
+            setEffectiveBillingPlan(billingData.effectivePlan || null);
           } catch {
             // ignore
           }
@@ -2460,6 +2481,12 @@ function TrainerHome({
       }
     };
   }, [paymentWidgetId, paymentWidgetOpen, token, apiBase, tr]);
+  useEffect(() => {
+    if (!billingSubscription) return;
+    if (billingSubscription.months === 1) setTariffPeriod("month");
+    else if (billingSubscription.months === 3) setTariffPeriod("quarter");
+    else if (billingSubscription.months === 12) setTariffPeriod("year");
+  }, [billingSubscription?.months]);
   const todayKey = formatDateKey(now);
   const allSessions = Object.values(sessionsByDate).flat();
   const doneSessions = allSessions.filter((s) => sessionEndTime(s).getTime() <= now.getTime());
@@ -2476,9 +2503,15 @@ function TrainerHome({
     const end = sessionEndTime(s);
     return end.getTime() <= now.getTime() && end.getTime() >= weekStart.getTime() && end.getTime() <= weekEnd.getTime();
   }).length;
-  const subscriptionNextBilling = billingSubscription?.nextBillingAt
-    ? formatDateShort(new Date(billingSubscription.nextBillingAt))
-    : tr("Неопределена", "Not set");
+  const subscriptionNextBilling =
+    effectiveBillingPlan?.planId === "free" &&
+    (!billingSubscription ||
+      billingSubscription.status === "canceled" ||
+      (billingSubscription.status === "past_due" && (billingSubscription.retryCount || 0) >= 2))
+      ? tr("Неопределена", "Not set")
+      : billingSubscription?.nextBillingAt
+        ? formatDateShort(new Date(billingSubscription.nextBillingAt))
+        : tr("Неопределена", "Not set");
   const subscriptionStatusInfo = (() => {
     if (!billingSubscription) {
       return { label: tr("Нет подписки", "No subscription"), color: "var(--muted)" };
@@ -2487,20 +2520,29 @@ function TrainerHome({
       return { label: tr("Пробный период", "Trial period"), color: "var(--primary)" };
     }
     if (billingSubscription.status === "past_due") {
+      if ((billingSubscription.retryCount || 0) >= 2) {
+        return { label: tr("Переведена на Free", "Switched to Free"), color: "#d95f5f" };
+      }
       return { label: tr("Ошибка списания", "Charge failed"), color: "#d95f5f" };
     }
     return { label: tr("Активна", "Active"), color: "#1f9d6a" };
   })();
-  const subscriptionPlanName = billingSubscription?.planName || "—";
-  const subscriptionConnectedClients = clients.filter((c) => !c.archived).length;
-  const subscriptionClientLimitLabel = "∞";
+  const subscriptionPlanName = effectiveBillingPlan?.planName || billingSubscription?.planName || "Free";
+  const subscriptionConnectedClients =
+    effectiveBillingPlan?.activeClientsCount ?? clients.filter((c) => c.status === "active" && !c.archived).length;
+  const subscriptionClientLimitLabel =
+    effectiveBillingPlan?.clientLimit === null ? "∞" : String(effectiveBillingPlan?.clientLimit ?? 1);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const completedThisMonth = allSessions.filter((s) => {
     const end = sessionEndTime(s);
     return end.getTime() <= now.getTime() && end.getTime() >= monthStart.getTime() && end.getTime() <= monthEnd.getTime();
   }).length;
-  const subscriptionMonthlyLimitLabel = "∞";
+  const currentMonthSessions = effectiveBillingPlan?.sessionsThisMonth ?? completedThisMonth;
+  const subscriptionMonthlyLimitLabel =
+    effectiveBillingPlan?.monthlySessionsLimit === null
+      ? "∞"
+      : String(effectiveBillingPlan?.monthlySessionsLimit ?? 10);
   const tariffPeriodMeta: Record<
     TariffPeriod,
     { months: number; discount: number; label: string; toggleLabel: string }
@@ -2699,6 +2741,36 @@ function TrainerHome({
     setPaymentError(null);
     return value;
   };
+  const refreshBillingState = async () => {
+    if (!token) return;
+    try {
+      const [methodsRes, billingRes] = await Promise.all([
+        fetch(`${apiBase}/billing/payment-methods`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${apiBase}/billing/subscription`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const methodsData = (await methodsRes.json()) as { methods?: PaymentMethodItem[] };
+      const billingData = (await billingRes.json()) as {
+        introOfferEligible?: boolean;
+        subscription?: BillingSubscriptionItem | null;
+        effectivePlan?: EffectiveBillingPlanItem | null;
+      };
+      setSavedPaymentMethods(Array.isArray(methodsData.methods) ? methodsData.methods : []);
+      setIntroOfferEligible(Boolean(billingData.introOfferEligible));
+      setBillingSubscription(billingData.subscription || null);
+      setEffectiveBillingPlan(billingData.effectivePlan || null);
+    } catch {
+      // ignore
+    }
+  };
+  const getPlanRank = (planId: string) => {
+    if (planId === "ultimate") return 2;
+    if (planId === "basic") return 1;
+    return 0;
+  };
   const tariffPlans = [
     {
       id: "free",
@@ -2748,6 +2820,96 @@ function TrainerHome({
     strikeMonthly: number;
     strikeByPeriod?: Partial<Record<TariffPeriod, number>>;
   }) => plan.strikeByPeriod?.[tariffPeriod] ?? plan.strikeMonthly * activeTariffPeriodMeta.months;
+  const currentPlanId = effectiveBillingPlan?.planId || "free";
+  const currentPlanMonths = billingSubscription?.months ?? 1;
+  const pendingPlanId = billingSubscription?.pendingPlanId || null;
+  const pendingPlanMonths = billingSubscription?.pendingMonths ?? null;
+  const handleTariffSelect = async (plan: {
+    id: string;
+    name: string;
+    priceMonthly: number;
+    priceByPeriod?: Partial<Record<TariffPeriod, number>>;
+  }) => {
+    const targetMonths = activeTariffPeriodMeta.months;
+    const currentRank = getPlanRank(currentPlanId);
+    const targetRank = getPlanRank(plan.id);
+    const hasActivePaidPlan =
+      !!billingSubscription &&
+      (billingSubscription.status === "active" ||
+        billingSubscription.status === "trialing" ||
+        (billingSubscription.status === "past_due" && (billingSubscription.retryCount || 0) < 2)) &&
+      currentPlanId !== "free";
+    const isCurrentSelection = plan.id === currentPlanId && (currentPlanId === "free" || targetMonths === currentPlanMonths);
+    if (isCurrentSelection) {
+      if (!pendingPlanId) return;
+      if (!token) return;
+      setPaymentSubmitting(true);
+      setPaymentError(null);
+      try {
+        const res = await fetch(`${apiBase}/billing/subscription/change`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            planId: plan.id,
+            planName: plan.name,
+            months: plan.id === "free" ? undefined : targetMonths,
+            amount: plan.id === "free" ? 0 : getTariffTotal(plan),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.message || "change reset failed");
+        }
+        await refreshBillingState();
+        alert(tr("Запланированная смена тарифа отменена.", "The scheduled plan change has been cancelled."));
+      } catch (err: any) {
+        const message = err?.message || tr("Не удалось обновить тариф.", "Failed to update the plan.");
+        setPaymentError(message);
+        window.alert(message);
+      } finally {
+        setPaymentSubmitting(false);
+      }
+      return;
+    }
+    const isDowngrade =
+      hasActivePaidPlan &&
+      (targetRank < currentRank || (targetRank === currentRank && targetMonths < currentPlanMonths));
+    if (isDowngrade) {
+      if (!token) return;
+      setPaymentSubmitting(true);
+      setPaymentError(null);
+      try {
+        const res = await fetch(`${apiBase}/billing/subscription/change`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            planId: plan.id,
+            planName: plan.name,
+            months: plan.id === "free" ? undefined : targetMonths,
+            amount: plan.id === "free" ? 0 : getTariffTotal(plan),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.ok) {
+          throw new Error(data?.message || "change schedule failed");
+        }
+        await refreshBillingState();
+        alert(
+          plan.id === "free"
+            ? tr("Переход на Free запланирован на конец текущего периода.", "Switch to Free is scheduled for the end of the current period.")
+            : tr("Смена тарифа запланирована на конец текущего периода.", "The plan change is scheduled for the end of the current period.")
+        );
+      } catch (err: any) {
+        const message = err?.message || tr("Не удалось запланировать смену тарифа.", "Failed to schedule the plan change.");
+        setPaymentError(message);
+        window.alert(message);
+      } finally {
+        setPaymentSubmitting(false);
+      }
+      return;
+    }
+    openPrepay(plan);
+  };
   const openPrepay = (plan: { id: string; name: string; priceMonthly: number; priceByPeriod?: Partial<Record<TariffPeriod, number>> }) => {
     if (plan.id === "free") return;
     const regularTotal = getTariffTotal(plan);
@@ -3769,10 +3931,12 @@ function TrainerHome({
                   const billingData = (await billingRes.json()) as {
                     introOfferEligible?: boolean;
                     subscription?: BillingSubscriptionItem | null;
+                    effectivePlan?: EffectiveBillingPlanItem | null;
                   };
                   setSavedPaymentMethods(Array.isArray(methodsData.methods) ? methodsData.methods : []);
                   setIntroOfferEligible(Boolean(billingData.introOfferEligible));
                   setBillingSubscription(billingData.subscription || null);
+                  setEffectiveBillingPlan(billingData.effectivePlan || null);
                 } catch {
                   // ignore
                 }
@@ -3856,10 +4020,12 @@ function TrainerHome({
                   const billingData = (await billingRes.json()) as {
                     introOfferEligible?: boolean;
                     subscription?: BillingSubscriptionItem | null;
+                    effectivePlan?: EffectiveBillingPlanItem | null;
                   };
                   setSavedPaymentMethods(Array.isArray(methodsData.methods) ? methodsData.methods : []);
                   setIntroOfferEligible(Boolean(billingData.introOfferEligible));
                   setBillingSubscription(billingData.subscription || null);
+                  setEffectiveBillingPlan(billingData.effectivePlan || null);
                 } catch {
                   // ignore
                 }
@@ -4463,12 +4629,23 @@ function TrainerHome({
                 <div style={styles.homeSubscriptionLabel}>{tr("Дата следующего списания", "Next charge date")}</div>
                 <div style={styles.homeSubscriptionValue}>{subscriptionNextBilling}</div>
               </div>
+              {billingSubscription?.pendingPlanId ? (
+                <div style={styles.homeSubscriptionRow}>
+                  <div style={styles.homeSubscriptionLabel}>{tr("Запланированная смена", "Scheduled change")}</div>
+                  <div style={styles.homeSubscriptionValue}>
+                    {billingSubscription.pendingPlanName || billingSubscription.pendingPlanId}
+                    {billingSubscription.pendingMonths
+                      ? ` • ${billingSubscription.pendingMonths} ${tr("мес", "mo")}`
+                      : ""}
+                  </div>
+                </div>
+              ) : null}
               <div style={styles.homeSubscriptionRow}>
                 <div style={styles.homeSubscriptionLabel}>
                   {tr("Тренировок в этом месяце", "Sessions this month")}
                 </div>
                 <div style={styles.homeSubscriptionValue}>
-                  {completedThisMonth} {tr("из", "of")} {subscriptionMonthlyLimitLabel}
+                  {currentMonthSessions} {tr("из", "of")} {subscriptionMonthlyLimitLabel}
                 </div>
               </div>
               <div style={styles.homeSubscriptionRow}>
@@ -4502,8 +4679,32 @@ function TrainerHome({
                 const total = getTariffTotal(plan);
                 const firstCharge = getTariffFirstCharge(plan);
                 const strikeTotal = getTariffStrikeTotal(plan);
-                const isSelected = plan.id === "ultimate";
+                const isSelected = plan.id === currentPlanId && (plan.id === "free" || currentPlanMonths === activeTariffPeriodMeta.months);
+                const isPendingChange =
+                  pendingPlanId === plan.id &&
+                  (plan.id === "free" || pendingPlanMonths === activeTariffPeriodMeta.months);
                 const showIntroOffer = introOfferEligible && plan.id !== "free";
+                const currentRank = getPlanRank(currentPlanId);
+                const targetRank = getPlanRank(plan.id);
+                const hasActivePaidPlan =
+                  !!billingSubscription &&
+                  (billingSubscription.status === "active" ||
+                    billingSubscription.status === "trialing" ||
+                    (billingSubscription.status === "past_due" && (billingSubscription.retryCount || 0) < 2)) &&
+                  currentPlanId !== "free";
+                const isDowngrade =
+                  hasActivePaidPlan &&
+                  (targetRank < currentRank ||
+                    (targetRank === currentRank && activeTariffPeriodMeta.months < currentPlanMonths));
+                const buttonLabel = isSelected
+                  ? tr("Выбран", "Selected")
+                  : isPendingChange
+                    ? tr("Запланирован", "Scheduled")
+                    : isDowngrade
+                      ? tr("Снизить позже", "Downgrade later")
+                      : plan.id === "free" && hasActivePaidPlan
+                        ? tr("На Free позже", "Free later")
+                        : tr("Выбрать", "Choose");
                 return (
                   <div key={plan.id} style={styles.tariffCard}>
                     <div style={{ ...styles.tariffBadge, background: plan.badgeColor, color: plan.badgeText }}>
@@ -4529,10 +4730,18 @@ function TrainerHome({
                         borderColor: isSelected ? "var(--primary)" : "var(--border)",
                         color: isSelected ? "var(--primary)" : "var(--text)",
                       }}
-                      onClick={() => openPrepay(plan)}
+                      onClick={() => void handleTariffSelect(plan)}
+                      disabled={paymentSubmitting}
                     >
-                      <div>{isSelected ? tr("Выбран", "Selected") : tr("Выбрать", "Choose")}</div>
-                      {showIntroOffer ? (
+                      <div>{buttonLabel}</div>
+                      {isPendingChange && billingSubscription?.pendingApplyAt ? (
+                        <div style={styles.tariffChooseHint}>
+                          {tr(
+                            `С ${formatDateShort(new Date(billingSubscription.pendingApplyAt))}`,
+                            `From ${formatDateShort(new Date(billingSubscription.pendingApplyAt))}`
+                          )}
+                        </div>
+                      ) : showIntroOffer ? (
                         <div style={styles.tariffChooseHint}>
                           {tr(`Первые ${introOfferDays} дней за ${introOfferPrice} ₽`, `First ${introOfferDays} days for ${introOfferPrice} RUB`)}
                         </div>
@@ -9180,10 +9389,32 @@ function TrainerClients(props: {
     onSaveClientExercises,
   } = props;
   const tr = useTr();
+  const [effectiveBillingPlan, setEffectiveBillingPlan] = useState<EffectiveBillingPlanItem | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [clientsTab, setClientsTab] = useState<"my" | "pending" | "archive">("my");
-  const activeClientsCount = invites.filter((c) => !c.archived).length;
-  const limitReached = activeClientsCount >= SUBSCRIPTION_CLIENT_LIMIT;
+  const activeClientsCount = effectiveBillingPlan?.activeClientsCount ?? invites.filter((c) => c.status === "active" && !c.archived).length;
+  const clientLimit = effectiveBillingPlan?.clientLimit ?? null;
+  const limitReached = clientLimit !== null && activeClientsCount >= clientLimit;
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiBase}/billing/subscription`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { effectivePlan?: EffectiveBillingPlanItem | null };
+        if (!cancelled) setEffectiveBillingPlan(data.effectivePlan || null);
+      } catch {
+        if (!cancelled) setEffectiveBillingPlan(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, apiBase, invites.length]);
 
   useEffect(() => {
     if (screen !== "detail") return;
@@ -9238,7 +9469,12 @@ function TrainerClients(props: {
         body: JSON.stringify({ username }),
       });
       const data = (await res.json()) as { ok: boolean; client?: any; existing?: boolean };
-      if (!res.ok || !data?.client) return null;
+      if (!res.ok || !data?.client) {
+        if (data && (data as any).message === "plan client limit reached") {
+          showLimitWarning();
+        }
+        return null;
+      }
       const mapped = mapClientFromApi(data.client);
       if (!data.existing) {
         setInvites((prev) => [mapped, ...prev]);
@@ -9258,7 +9494,12 @@ function TrainerClients(props: {
         body: JSON.stringify({ fullName }),
       });
       const data = (await res.json()) as { ok: boolean; client?: any };
-      if (!res.ok || !data?.client) return null;
+      if (!res.ok || !data?.client) {
+        if (data && (data as any).message === "plan client limit reached") {
+          showLimitWarning();
+        }
+        return null;
+      }
       const mapped = mapClientFromApi(data.client);
       setInvites((prev) => [mapped, ...prev]);
       return mapped;
@@ -9310,7 +9551,8 @@ function TrainerClients(props: {
     return (
       <AddClientScreen
         onBack={() => setScreen("list")}
-        existingInvites={invites}
+        clientLimit={clientLimit}
+        activeClientsCount={activeClientsCount}
         onCreate={createClient}
         onCreateLocal={createLocalClient}
       />
@@ -9488,6 +9730,10 @@ function TrainerClients(props: {
                               <span>{tr("Ожидает активации", "Pending activation")}</span>
                             ) : clientsTab === "archive" ? (
                               <span style={{ opacity: 0.7 }}>{tr("Архивирован", "Archived")}</span>
+                            ) : inv.planLocked ? (
+                              <span style={styles.subscriptionWarningText}>
+                                {tr("Недоступен на текущем тарифе", "Unavailable on the current plan")}
+                              </span>
                             ) : shouldWarn ? (
                               <span style={styles.subscriptionWarningText}>
                                 {tr("Необходимо продлить абонемент", "Subscription renewal required")}
@@ -9531,9 +9777,10 @@ function AddClientScreen(props: {
   onBack: () => void;
   onCreate: (username: string) => Promise<{ client: TrainerClientInvite; existing?: boolean } | null>;
   onCreateLocal: (fullName: string) => Promise<TrainerClientInvite | null>;
-  existingInvites: TrainerClientInvite[];
+  clientLimit: number | null;
+  activeClientsCount: number;
 }) {
-  const { onBack, onCreate, onCreateLocal, existingInvites } = props;
+  const { onBack, onCreate, onCreateLocal, clientLimit, activeClientsCount } = props;
   const tr = useTr();
 
   const [input, setInput] = useState<string>("@");
@@ -9541,8 +9788,7 @@ function AddClientScreen(props: {
   const [created, setCreated] = useState<TrainerClientInvite | null>(null);
   const [mode, setMode] = useState<"telegram" | "local">("telegram");
   const [localName, setLocalName] = useState<string>("");
-  const activeClientsCount = existingInvites.filter((c) => !c.archived).length;
-  const limitReached = activeClientsCount >= SUBSCRIPTION_CLIENT_LIMIT;
+  const limitReached = clientLimit !== null && activeClientsCount >= clientLimit;
 
   const showLimitWarning = () => {
     const message =
@@ -13773,6 +14019,7 @@ function mapClientFromApi(c: any): TrainerClientInvite {
         : Boolean(c.subscriptionStart || c.subscriptionEnd || c.subscriptionPrice || c.subscriptionTotal || c.subscriptionLeft),
     subscriptionHistory: parseSubscriptionHistory(c.subscriptionHistory),
     archived: Boolean(c.archived),
+    planLocked: Boolean(c.planLocked),
   };
 }
 

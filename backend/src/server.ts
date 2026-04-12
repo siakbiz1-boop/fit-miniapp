@@ -267,6 +267,83 @@ function serializeBillingSubscription(subscription: any) {
   };
 }
 
+const TRAINER_PLAN_CONFIG = {
+  free: { planId: "free", planName: "Free", clientLimit: 1, monthlySessionsLimit: 10, rank: 0 },
+  basic: { planId: "basic", planName: "Basic", clientLimit: 5, monthlySessionsLimit: null, rank: 1 },
+  ultimate: { planId: "ultimate", planName: "Ultimate", clientLimit: null, monthlySessionsLimit: null, rank: 2 },
+} as const;
+
+function getTrainerPlanConfig(planId: string | null | undefined) {
+  const normalized = String(planId || "").trim().toLowerCase();
+  if (normalized === "basic") return TRAINER_PLAN_CONFIG.basic;
+  if (normalized === "ultimate") return TRAINER_PLAN_CONFIG.ultimate;
+  return TRAINER_PLAN_CONFIG.free;
+}
+
+function isBillingSubscriptionEffective(subscription: any) {
+  if (!subscription) return false;
+  if (subscription.status === "active" || subscription.status === "trialing") return true;
+  if (subscription.status === "past_due" && Number(subscription.retryCount || 0) < 2) return true;
+  return false;
+}
+
+function getMonthBounds(date = new Date()) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 1, 0, 0, 0, 0);
+  return { start, end };
+}
+
+async function getTrainerPlanState(userId: number, trainerTgUserId?: bigint | null, now = new Date()) {
+  const subscription = await prismaAny.billingSubscription.findUnique({
+    where: { userId },
+  });
+  const effectiveConfig = isBillingSubscriptionEffective(subscription)
+    ? getTrainerPlanConfig(subscription.planId)
+    : TRAINER_PLAN_CONFIG.free;
+  if (!trainerTgUserId) {
+    return {
+      subscription,
+      effectivePlan: {
+        ...effectiveConfig,
+        activeClientsCount: 0,
+        sessionsThisMonth: 0,
+        allowedActiveClientIds: [] as string[],
+        isFallbackToFree: effectiveConfig.planId === "free" && Boolean(subscription),
+      },
+    };
+  }
+  const activeClients = await prismaAny.trainerClient.findMany({
+    where: {
+      trainerTgUserId,
+      status: "active",
+      archived: false,
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { id: true },
+  });
+  const { start, end } = getMonthBounds(now);
+  const sessionsThisMonth = await prismaAny.trainingSession.count({
+    where: {
+      trainerTgUserId,
+      startAt: { gte: start, lt: end },
+    },
+  });
+  const allowedActiveClientIds =
+    effectiveConfig.clientLimit === null
+      ? activeClients.map((client: any) => client.id)
+      : activeClients.slice(0, effectiveConfig.clientLimit).map((client: any) => client.id);
+  return {
+    subscription,
+    effectivePlan: {
+      ...effectiveConfig,
+      activeClientsCount: activeClients.length,
+      sessionsThisMonth,
+      allowedActiveClientIds,
+      isFallbackToFree: effectiveConfig.planId === "free" && Boolean(subscription),
+    },
+  };
+}
+
 function addMonthsClamped(date: Date, months: number) {
   const out = new Date(date);
   const day = out.getDate();
@@ -522,6 +599,11 @@ async function activatePromoBillingSubscription(params: {
       planName: params.planName,
       months: params.months,
       amountValue: params.regularAmountValue,
+      pendingPlanId: null,
+      pendingPlanName: null,
+      pendingMonths: null,
+      pendingAmountValue: null,
+      pendingApplyAt: null,
       currency: params.currency || "RUB",
       status: "active",
       currentPeriodStart: paidAt,
@@ -537,6 +619,11 @@ async function activatePromoBillingSubscription(params: {
       planName: params.planName,
       months: params.months,
       amountValue: params.regularAmountValue,
+      pendingPlanId: null,
+      pendingPlanName: null,
+      pendingMonths: null,
+      pendingAmountValue: null,
+      pendingApplyAt: null,
       currency: params.currency || "RUB",
       status: "active",
       startedAt: paidAt,
@@ -618,6 +705,11 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
           planName: payment.planName,
           months: payment.months,
           amountValue: regularAmountValue,
+          pendingPlanId: null,
+          pendingPlanName: null,
+          pendingMonths: null,
+          pendingAmountValue: null,
+          pendingApplyAt: null,
           currency: payment.currency || "RUB",
           status: "trialing",
           receiptEmail: paymentData?.metadata?.receiptEmail
@@ -637,6 +729,11 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
           planName: payment.planName,
           months: payment.months,
           amountValue: regularAmountValue,
+          pendingPlanId: null,
+          pendingPlanName: null,
+          pendingMonths: null,
+          pendingAmountValue: null,
+          pendingApplyAt: null,
           currency: payment.currency || "RUB",
           status: "trialing",
           receiptEmail: paymentData?.metadata?.receiptEmail
@@ -664,6 +761,11 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
         planName: payment.planName,
         months: payment.months,
         amountValue: payment.amountValue,
+        pendingPlanId: null,
+        pendingPlanName: null,
+        pendingMonths: null,
+        pendingAmountValue: null,
+        pendingApplyAt: null,
         currency: payment.currency || "RUB",
         status: "active",
         receiptEmail: paymentData?.metadata?.receiptEmail
@@ -683,6 +785,11 @@ async function syncPaymentFromYooKassa(userId: number, paymentData: any) {
         planName: payment.planName,
         months: payment.months,
         amountValue: payment.amountValue,
+        pendingPlanId: null,
+        pendingPlanName: null,
+        pendingMonths: null,
+        pendingAmountValue: null,
+        pendingApplyAt: null,
         currency: payment.currency || "RUB",
         status: "active",
         receiptEmail: paymentData?.metadata?.receiptEmail
@@ -711,6 +818,26 @@ async function chargeBillingSubscription(subscriptionId: string, now = new Date(
   if (subscription.lastAttemptAt && now.getTime() - subscription.lastAttemptAt.getTime() < 24 * 60 * 60 * 1000) {
     return;
   }
+  if (
+    subscription.pendingPlanId === "free" &&
+    subscription.pendingApplyAt &&
+    subscription.pendingApplyAt.getTime() <= now.getTime()
+  ) {
+    await prismaAny.billingSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        status: "canceled",
+        paymentMethodId: null,
+        pendingPlanId: null,
+        pendingPlanName: null,
+        pendingMonths: null,
+        pendingAmountValue: null,
+        pendingApplyAt: null,
+        lastAttemptAt: now,
+      },
+    });
+    return;
+  }
   if (!subscription.paymentMethod || !subscription.paymentMethod.active) {
     await prismaAny.billingSubscription.update({
       where: { id: subscription.id },
@@ -724,17 +851,33 @@ async function chargeBillingSubscription(subscriptionId: string, now = new Date(
   }
 
   try {
-    const description = `Подписка ${subscription.planName} на ${subscription.months} мес.`;
+    const nextPlanId =
+      subscription.pendingPlanId && subscription.pendingApplyAt && subscription.pendingApplyAt.getTime() <= now.getTime()
+        ? subscription.pendingPlanId
+        : subscription.planId;
+    const nextPlanName =
+      subscription.pendingPlanName && subscription.pendingApplyAt && subscription.pendingApplyAt.getTime() <= now.getTime()
+        ? subscription.pendingPlanName
+        : subscription.planName;
+    const nextMonths =
+      subscription.pendingMonths && subscription.pendingApplyAt && subscription.pendingApplyAt.getTime() <= now.getTime()
+        ? subscription.pendingMonths
+        : subscription.months;
+    const nextAmountValue =
+      subscription.pendingAmountValue && subscription.pendingApplyAt && subscription.pendingApplyAt.getTime() <= now.getTime()
+        ? subscription.pendingAmountValue
+        : subscription.amountValue;
+    const description = `Подписка ${nextPlanName} на ${nextMonths} мес.`;
     const paymentData = await yookassaRequest(
       "/payments",
       {
         method: "POST",
         body: JSON.stringify({
-          amount: { value: subscription.amountValue, currency: subscription.currency || "RUB" },
+          amount: { value: nextAmountValue, currency: subscription.currency || "RUB" },
           capture: true,
           payment_method_id: subscription.paymentMethod.providerMethodId,
           receipt: buildYooKassaReceipt(
-            subscription.amountValue,
+            nextAmountValue,
             description,
             subscription.receiptEmail || ""
           ),
@@ -743,10 +886,11 @@ async function chargeBillingSubscription(subscriptionId: string, now = new Date(
             userId: String(subscription.userId),
             tgUserId: String(subscription.user.tgUserId),
             kind: "subscription",
-            planId: subscription.planId,
-            planName: subscription.planName,
-            months: String(subscription.months),
+            planId: nextPlanId,
+            planName: nextPlanName,
+            months: String(nextMonths),
             receiptEmail: subscription.receiptEmail || "",
+            regularAmountValue: nextAmountValue,
           },
         }),
       },
@@ -1434,10 +1578,8 @@ app.get("/billing/subscription", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
 
-  const [subscription, introOfferEligible] = await Promise.all([
-    prismaAny.billingSubscription.findUnique({
-      where: { userId: dbUser.id },
-    }),
+  const [{ subscription, effectivePlan }, introOfferEligible] = await Promise.all([
+    getTrainerPlanState(dbUser.id, dbUser.role === "trainer" ? dbUser.tgUserId : null),
     isIntroOfferEligible(dbUser.id),
   ]);
 
@@ -1445,7 +1587,69 @@ app.get("/billing/subscription", async (req, reply) => {
     ok: true,
     introOfferEligible,
     subscription: subscription ? serializeBillingSubscription(subscription) : null,
+    effectivePlan,
   };
+});
+
+app.post("/billing/subscription/change", async (req, reply) => {
+  const dbUser = await getAuthUser(req, reply);
+  if (!dbUser) return;
+
+  const body = req.body as any;
+  const planId = String(body?.planId || "").trim().toLowerCase();
+  const planName = String(body?.planName || "").trim();
+  const months = parseInt(String(body?.months || ""), 10);
+  const amountValue = planId === "free" ? "0.00" : parseAmountToKopecString(body?.amount);
+  if (!planId) return reply.code(400).send({ message: "planId required" });
+
+  const subscription = await prismaAny.billingSubscription.findUnique({
+    where: { userId: dbUser.id },
+  });
+  if (!subscription || !isBillingSubscriptionEffective(subscription)) {
+    if (planId === "free") return { ok: true, scheduled: false };
+    return reply.code(400).send({ message: "active subscription required" });
+  }
+
+  const currentConfig = getTrainerPlanConfig(subscription.planId);
+  const targetConfig = getTrainerPlanConfig(planId);
+  if (
+    planId === subscription.planId &&
+    ((planId === "free") || (Number.isFinite(months) && months === subscription.months))
+  ) {
+    const updated = await prismaAny.billingSubscription.update({
+      where: { userId: dbUser.id },
+      data: {
+        pendingPlanId: null,
+        pendingPlanName: null,
+        pendingMonths: null,
+        pendingAmountValue: null,
+        pendingApplyAt: null,
+      },
+    });
+    return { ok: true, scheduled: false, subscription: serializeBillingSubscription(updated) };
+  }
+  const currentRank = currentConfig.rank;
+  const targetRank = targetConfig.rank;
+  const isUpgrade = targetRank > currentRank || (targetRank === currentRank && months > subscription.months);
+  if (isUpgrade) {
+    return reply.code(400).send({ message: "upgrade should be paid immediately" });
+  }
+  if (planId !== "free" && (!planName || !Number.isFinite(months) || months <= 0 || !amountValue)) {
+    return reply.code(400).send({ message: "planName/months/amount required" });
+  }
+
+  const updated = await prismaAny.billingSubscription.update({
+    where: { userId: dbUser.id },
+    data: {
+      pendingPlanId: planId,
+      pendingPlanName: planId === "free" ? "Free" : planName,
+      pendingMonths: planId === "free" ? null : months,
+      pendingAmountValue: planId === "free" ? null : amountValue,
+      pendingApplyAt: subscription.nextBillingAt,
+    },
+  });
+
+  return { ok: true, scheduled: true, subscription: serializeBillingSubscription(updated) };
 });
 
 app.post("/billing/payment-methods/:id/default", async (req, reply) => {
@@ -1985,6 +2189,8 @@ app.post("/role/reset", async (req, reply) => {
 app.get("/clients", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
+  const { effectivePlan } = await getTrainerPlanState(dbUser.id, dbUser.tgUserId);
+  const allowedClientIds = new Set(effectivePlan.allowedActiveClientIds);
 
   let list = await prismaAny.trainerClient.findMany({
     where: { trainerTgUserId: dbUser.tgUserId },
@@ -2029,7 +2235,13 @@ app.get("/clients", async (req, reply) => {
         ? [user.firstName, user.lastName].filter(Boolean).join(" ") || null
         : null;
       const clientPhotoUrl = (user as any)?.photoUrl || null;
-      return { ...base, clientName, photoUrl: clientPhotoUrl, clientProfile: buildProfilePayload(profile) };
+      return {
+        ...base,
+        clientName,
+        photoUrl: clientPhotoUrl,
+        clientProfile: buildProfilePayload(profile),
+        planLocked: c.status === "active" && !c.archived && !allowedClientIds.has(c.id),
+      };
     }),
   };
 });
@@ -2037,6 +2249,10 @@ app.get("/clients", async (req, reply) => {
 app.post("/clients", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
+  const { effectivePlan } = await getTrainerPlanState(dbUser.id, dbUser.tgUserId);
+  if (effectivePlan.clientLimit !== null && effectivePlan.activeClientsCount >= effectivePlan.clientLimit) {
+    return reply.code(403).send({ message: "plan client limit reached" });
+  }
 
   const body = req.body as any;
   const username = normalizeUsername(body?.username || "");
@@ -2092,6 +2308,10 @@ app.post("/clients", async (req, reply) => {
 app.post("/clients/local", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
+  const { effectivePlan } = await getTrainerPlanState(dbUser.id, dbUser.tgUserId);
+  if (effectivePlan.clientLimit !== null && effectivePlan.activeClientsCount >= effectivePlan.clientLimit) {
+    return reply.code(403).send({ message: "plan client limit reached" });
+  }
 
   const body = req.body as any;
   const fullName = String(body?.fullName || "").trim();
@@ -2866,6 +3086,16 @@ app.post("/clients/activate", async (req, reply) => {
   if (normalizeUsername(record.clientUsername || "").toLowerCase() !== incomingUsername) {
     return reply.code(403).send({ message: "username mismatch" });
   }
+  const trainerUser = await prisma.user.findUnique({ where: { tgUserId: record.trainerTgUserId } });
+  if (!trainerUser) return reply.code(404).send({ message: "trainer not found" });
+  const { effectivePlan } = await getTrainerPlanState(trainerUser.id, record.trainerTgUserId);
+  if (
+    record.status !== "active" &&
+    effectivePlan.clientLimit !== null &&
+    effectivePlan.activeClientsCount >= effectivePlan.clientLimit
+  ) {
+    return reply.code(403).send({ message: "plan client limit reached" });
+  }
 
   const updated = await prismaAny.trainerClient.update({
     where: { id: record.id },
@@ -3177,6 +3407,8 @@ app.delete("/slots/:id", async (req, reply) => {
 app.post("/slots/:id/assign", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
+  const { effectivePlan } = await getTrainerPlanState(dbUser.id, dbUser.tgUserId);
+  const allowedClientIds = new Set(effectivePlan.allowedActiveClientIds);
 
   const id = String((req.params as any)?.id || "");
   const clientId = String((req.body as any)?.clientId || "");
@@ -3196,6 +3428,9 @@ app.post("/slots/:id/assign", async (req, reply) => {
     },
   });
   if (!client) return reply.code(404).send({ message: "client not found" });
+  if (!allowedClientIds.has(client.id)) {
+    return reply.code(403).send({ message: "plan client unavailable" });
+  }
   const activeSubscriptionHistoryId = getActiveSubscriptionHistoryId(client);
 
   const day = parseDateKey(slot.dateKey);
@@ -3216,6 +3451,13 @@ app.post("/slots/:id/assign", async (req, reply) => {
   const bookingState = await getSubscriptionBookingState(client, new Date(), startAt);
   if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
+  }
+  if (
+    !slot.sessionId &&
+    effectivePlan.monthlySessionsLimit !== null &&
+    effectivePlan.sessionsThisMonth >= effectivePlan.monthlySessionsLimit
+  ) {
+    return reply.code(403).send({ message: "plan session limit reached" });
   }
 
   const reminderHours = (dbUser as any)?.reminderHours ?? 1;
@@ -3354,9 +3596,14 @@ app.post("/book", async (req, reply) => {
   const profile = trainer
     ? await prismaAny.trainerProfile.findUnique({ where: { userId: trainer.id } })
     : null;
+  const trainerPlanState = trainer ? await getTrainerPlanState(trainer.id, trainerTgUserId) : null;
+  const allowedClientIds = new Set(trainerPlanState?.effectivePlan.allowedActiveClientIds || []);
   const bookingMode = profile?.bookingMode || "trainer";
   if (bookingMode !== "both") {
     return reply.code(403).send({ message: "booking disabled" });
+  }
+  if (!allowedClientIds.has(relation.id)) {
+    return reply.code(403).send({ message: "plan client unavailable" });
   }
 
   const slot = await prismaAny.trainingSlot.findFirst({
@@ -3393,6 +3640,15 @@ app.post("/book", async (req, reply) => {
   const bookingState = await getSubscriptionBookingState(relation, new Date(), startAt);
   if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
+  }
+  const trainerMonthlyLimit = trainerPlanState?.effectivePlan.monthlySessionsLimit ?? null;
+  const trainerSessionsThisMonth = trainerPlanState?.effectivePlan.sessionsThisMonth ?? 0;
+  if (
+    !slot.sessionId &&
+    trainerMonthlyLimit !== null &&
+    trainerSessionsThisMonth >= trainerMonthlyLimit
+  ) {
+    return reply.code(403).send({ message: "plan session limit reached" });
   }
   const reminderHours = (trainer as any)?.reminderHours ?? 1;
   const remindAt = computeRemindAt(startAt, reminderHours);
@@ -3525,6 +3781,8 @@ app.get("/sessions", async (req, reply) => {
 app.post("/sessions", async (req, reply) => {
   const dbUser = await getAuthUser(req, reply);
   if (!dbUser) return;
+  const { effectivePlan } = await getTrainerPlanState(dbUser.id, dbUser.tgUserId);
+  const allowedClientIds = new Set(effectivePlan.allowedActiveClientIds);
 
   const body = req.body as any;
   const dateKey = String(body?.dateKey || "");
@@ -3580,6 +3838,12 @@ app.post("/sessions", async (req, reply) => {
   if (Date.now() >= startAt.getTime()) {
     return reply.code(403).send({ message: "session already started" });
   }
+  if (
+    effectivePlan.monthlySessionsLimit !== null &&
+    effectivePlan.sessionsThisMonth >= effectivePlan.monthlySessionsLimit
+  ) {
+    return reply.code(403).send({ message: "plan session limit reached" });
+  }
 
   let relation = null as any;
   let groupClients: any[] = [];
@@ -3595,6 +3859,9 @@ app.post("/sessions", async (req, reply) => {
     });
     if (groupClients.length !== groupClientIds.length) {
       return reply.code(404).send({ message: "client not found" });
+    }
+    if (groupClients.some((client: any) => !allowedClientIds.has(client.id))) {
+      return reply.code(403).send({ message: "plan client unavailable" });
     }
     const bookingStates = await Promise.all(
       groupClients.map((client: any) => getSubscriptionBookingState(client, new Date(), startAt))
@@ -3621,6 +3888,9 @@ app.post("/sessions", async (req, reply) => {
     if (!relation) return reply.code(404).send({ message: "client not found" });
     if (relation.status !== "active" || relation.archived) {
       return reply.code(403).send({ message: "client inactive" });
+    }
+    if (!allowedClientIds.has(relation.id)) {
+      return reply.code(403).send({ message: "plan client unavailable" });
     }
     const bookingState = await getSubscriptionBookingState(relation, new Date(), startAt);
     if (!bookingState.allowed) {
@@ -3961,6 +4231,8 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
   if (dbUser.role !== "trainer") {
     return reply.code(403).send({ message: "Only trainers can update group sessions" });
   }
+  const { effectivePlan } = await getTrainerPlanState(dbUser.id, dbUser.tgUserId);
+  const allowedClientIds = new Set(effectivePlan.allowedActiveClientIds);
 
   const id = String((req.params as any)?.id || "");
   const body = req.body as any;
@@ -3987,6 +4259,9 @@ app.post("/sessions/:id/group/add", async (req, reply) => {
     },
   });
   if (!client) return reply.code(404).send({ message: "client not found" });
+  if (!allowedClientIds.has(client.id)) {
+    return reply.code(403).send({ message: "plan client unavailable" });
+  }
   const bookingState = await getSubscriptionBookingState(client, new Date(), new Date(session.startAt));
   if (!bookingState.allowed) {
     return reply.code(403).send({ message: "subscription limit reached" });
