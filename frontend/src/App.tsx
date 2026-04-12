@@ -2823,7 +2823,51 @@ function TrainerHome({
   const currentPlanId = effectiveBillingPlan?.planId || "free";
   const currentPlanMonths = billingSubscription?.months ?? 1;
   const pendingPlanId = billingSubscription?.pendingPlanId || null;
-  const pendingPlanMonths = billingSubscription?.pendingMonths ?? null;
+  const hasActivePaidPlan =
+    !!billingSubscription &&
+    (billingSubscription.status === "active" ||
+      billingSubscription.status === "trialing" ||
+      (billingSubscription.status === "past_due" && (billingSubscription.retryCount || 0) < 2)) &&
+    currentPlanId !== "free";
+  const currentPlanRank = getPlanRank(currentPlanId);
+  const cancelAtPeriodEndScheduled = pendingPlanId === "free";
+  const handleSubscriptionCancellation = async () => {
+    if (!token || !hasActivePaidPlan) return;
+    setPaymentSubmitting(true);
+    setPaymentError(null);
+    try {
+      const res = await fetch(`${apiBase}/billing/subscription/change`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(
+          cancelAtPeriodEndScheduled
+            ? {
+                planId: currentPlanId,
+                planName: billingSubscription?.planName || subscriptionPlanName,
+                months: currentPlanMonths,
+                amount: Number(billingSubscription?.amountValue || getTariffTotal(tariffPlans.find((item) => item.id === currentPlanId) || tariffPlans[1])),
+              }
+            : { planId: "free", planName: "Free" }
+        ),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.message || "subscription change failed");
+      }
+      await refreshBillingState();
+      alert(
+        cancelAtPeriodEndScheduled
+          ? tr("Автопродление снова включено.", "Auto-renew has been enabled again.")
+          : tr("Подписка будет активна до конца периода, затем переключится на Free.", "The subscription will stay active until the end of the period, then switch to Free.")
+      );
+    } catch (err: any) {
+      const message = err?.message || tr("Не удалось обновить подписку.", "Failed to update the subscription.");
+      setPaymentError(message);
+      window.alert(message);
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
   const handleTariffSelect = async (plan: {
     id: string;
     name: string;
@@ -2831,83 +2875,10 @@ function TrainerHome({
     priceByPeriod?: Partial<Record<TariffPeriod, number>>;
   }) => {
     const targetMonths = activeTariffPeriodMeta.months;
-    const currentRank = getPlanRank(currentPlanId);
     const targetRank = getPlanRank(plan.id);
-    const hasActivePaidPlan =
-      !!billingSubscription &&
-      (billingSubscription.status === "active" ||
-        billingSubscription.status === "trialing" ||
-        (billingSubscription.status === "past_due" && (billingSubscription.retryCount || 0) < 2)) &&
-      currentPlanId !== "free";
     const isCurrentSelection = plan.id === currentPlanId && (currentPlanId === "free" || targetMonths === currentPlanMonths);
-    if (isCurrentSelection) {
-      if (!pendingPlanId) return;
-      if (!token) return;
-      setPaymentSubmitting(true);
-      setPaymentError(null);
-      try {
-        const res = await fetch(`${apiBase}/billing/subscription/change`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            planId: plan.id,
-            planName: plan.name,
-            months: plan.id === "free" ? undefined : targetMonths,
-            amount: plan.id === "free" ? 0 : getTariffTotal(plan),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data?.ok) {
-          throw new Error(data?.message || "change reset failed");
-        }
-        await refreshBillingState();
-        alert(tr("Запланированная смена тарифа отменена.", "The scheduled plan change has been cancelled."));
-      } catch (err: any) {
-        const message = err?.message || tr("Не удалось обновить тариф.", "Failed to update the plan.");
-        setPaymentError(message);
-        window.alert(message);
-      } finally {
-        setPaymentSubmitting(false);
-      }
-      return;
-    }
-    const isDowngrade =
-      hasActivePaidPlan &&
-      (targetRank < currentRank || (targetRank === currentRank && targetMonths < currentPlanMonths));
-    if (isDowngrade) {
-      if (!token) return;
-      setPaymentSubmitting(true);
-      setPaymentError(null);
-      try {
-        const res = await fetch(`${apiBase}/billing/subscription/change`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            planId: plan.id,
-            planName: plan.name,
-            months: plan.id === "free" ? undefined : targetMonths,
-            amount: plan.id === "free" ? 0 : getTariffTotal(plan),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data?.ok) {
-          throw new Error(data?.message || "change schedule failed");
-        }
-        await refreshBillingState();
-        alert(
-          plan.id === "free"
-            ? tr("Переход на Free запланирован на конец текущего периода.", "Switch to Free is scheduled for the end of the current period.")
-            : tr("Смена тарифа запланирована на конец текущего периода.", "The plan change is scheduled for the end of the current period.")
-        );
-      } catch (err: any) {
-        const message = err?.message || tr("Не удалось запланировать смену тарифа.", "Failed to schedule the plan change.");
-        setPaymentError(message);
-        window.alert(message);
-      } finally {
-        setPaymentSubmitting(false);
-      }
-      return;
-    }
+    if (isCurrentSelection || plan.id === "free") return;
+    if (hasActivePaidPlan && targetRank <= currentPlanRank && targetMonths <= currentPlanMonths) return;
     openPrepay(plan);
   };
   const openPrepay = (plan: { id: string; name: string; priceMonthly: number; priceByPeriod?: Partial<Record<TariffPeriod, number>> }) => {
@@ -4629,14 +4600,11 @@ function TrainerHome({
                 <div style={styles.homeSubscriptionLabel}>{tr("Дата следующего списания", "Next charge date")}</div>
                 <div style={styles.homeSubscriptionValue}>{subscriptionNextBilling}</div>
               </div>
-              {billingSubscription?.pendingPlanId ? (
+              {cancelAtPeriodEndScheduled ? (
                 <div style={styles.homeSubscriptionRow}>
-                  <div style={styles.homeSubscriptionLabel}>{tr("Запланированная смена", "Scheduled change")}</div>
+                  <div style={styles.homeSubscriptionLabel}>{tr("Автопродление", "Auto-renew")}</div>
                   <div style={styles.homeSubscriptionValue}>
-                    {billingSubscription.pendingPlanName || billingSubscription.pendingPlanId}
-                    {billingSubscription.pendingMonths
-                      ? ` • ${billingSubscription.pendingMonths} ${tr("мес", "mo")}`
-                      : ""}
+                    {tr("Отключено", "Disabled")}
                   </div>
                 </div>
               ) : null}
@@ -4680,31 +4648,17 @@ function TrainerHome({
                 const firstCharge = getTariffFirstCharge(plan);
                 const strikeTotal = getTariffStrikeTotal(plan);
                 const isSelected = plan.id === currentPlanId && (plan.id === "free" || currentPlanMonths === activeTariffPeriodMeta.months);
-                const isPendingChange =
-                  pendingPlanId === plan.id &&
-                  (plan.id === "free" || pendingPlanMonths === activeTariffPeriodMeta.months);
                 const showIntroOffer = introOfferEligible && plan.id !== "free";
-                const currentRank = getPlanRank(currentPlanId);
                 const targetRank = getPlanRank(plan.id);
-                const hasActivePaidPlan =
-                  !!billingSubscription &&
-                  (billingSubscription.status === "active" ||
-                    billingSubscription.status === "trialing" ||
-                    (billingSubscription.status === "past_due" && (billingSubscription.retryCount || 0) < 2)) &&
-                  currentPlanId !== "free";
-                const isDowngrade =
+                const isDisabledChoice =
                   hasActivePaidPlan &&
-                  (targetRank < currentRank ||
-                    (targetRank === currentRank && activeTariffPeriodMeta.months < currentPlanMonths));
+                  plan.id !== currentPlanId &&
+                  (plan.id === "free" || (targetRank <= currentPlanRank && activeTariffPeriodMeta.months <= currentPlanMonths));
                 const buttonLabel = isSelected
                   ? tr("Выбран", "Selected")
-                  : isPendingChange
-                    ? tr("Запланирован", "Scheduled")
-                    : isDowngrade
-                      ? tr("Снизить позже", "Downgrade later")
-                      : plan.id === "free" && hasActivePaidPlan
-                        ? tr("На Free позже", "Free later")
-                        : tr("Выбрать", "Choose");
+                  : isDisabledChoice
+                    ? tr("Недоступно", "Unavailable")
+                    : tr("Выбрать", "Choose");
                 return (
                   <div key={plan.id} style={styles.tariffCard}>
                     <div style={{ ...styles.tariffBadge, background: plan.badgeColor, color: plan.badgeText }}>
@@ -4731,17 +4685,10 @@ function TrainerHome({
                         color: isSelected ? "var(--primary)" : "var(--text)",
                       }}
                       onClick={() => void handleTariffSelect(plan)}
-                      disabled={paymentSubmitting}
+                      disabled={paymentSubmitting || isDisabledChoice}
                     >
                       <div>{buttonLabel}</div>
-                      {isPendingChange && billingSubscription?.pendingApplyAt ? (
-                        <div style={styles.tariffChooseHint}>
-                          {tr(
-                            `С ${formatDateShort(new Date(billingSubscription.pendingApplyAt))}`,
-                            `From ${formatDateShort(new Date(billingSubscription.pendingApplyAt))}`
-                          )}
-                        </div>
-                      ) : showIntroOffer ? (
+                      {showIntroOffer ? (
                         <div style={styles.tariffChooseHint}>
                           {tr(`Первые ${introOfferDays} дней за ${introOfferPrice} ₽`, `First ${introOfferDays} days for ${introOfferPrice} RUB`)}
                         </div>
@@ -4751,6 +4698,30 @@ function TrainerHome({
                         </div>
                       ) : null}
                     </button>
+                    {isSelected && hasActivePaidPlan ? (
+                      <button
+                        type="button"
+                        style={{
+                          ...styles.tariffChoose,
+                          marginTop: 10,
+                          borderColor: cancelAtPeriodEndScheduled ? "rgba(240, 184, 92, 0.5)" : "rgba(255,255,255,0.16)",
+                          color: cancelAtPeriodEndScheduled ? "#f0b85c" : "var(--text)",
+                        }}
+                        onClick={() => void handleSubscriptionCancellation()}
+                        disabled={paymentSubmitting}
+                      >
+                        <div>
+                          {cancelAtPeriodEndScheduled
+                            ? tr("Возобновить подписку", "Resume subscription")
+                            : tr("Отменить подписку", "Cancel subscription")}
+                        </div>
+                        <div style={styles.tariffChooseHint}>
+                          {cancelAtPeriodEndScheduled
+                            ? tr("Автосписания снова включатся", "Auto-renew will be enabled again")
+                            : tr("До конца периода тариф останется активным", "The plan stays active until the end of the period")}
+                        </div>
+                      </button>
+                    ) : null}
                   </div>
                 );
               })}
