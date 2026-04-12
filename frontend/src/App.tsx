@@ -2741,6 +2741,15 @@ function TrainerHome({
     setPaymentError(null);
     return value;
   };
+  const closePaymentWidget = () => {
+    forceDismissVirtualKeyboard();
+    setPaymentWidgetOpen(false);
+    setPaymentWidgetToken(null);
+    setPaymentWidgetId(null);
+    setPaymentSubmitting(false);
+    window.setTimeout(() => forceDismissVirtualKeyboard(), 0);
+    window.setTimeout(() => forceDismissVirtualKeyboard(), 120);
+  };
   const refreshBillingState = async () => {
     if (!token) return;
     try {
@@ -2905,6 +2914,20 @@ function TrainerHome({
 
   useEffect(() => {
     if (!hasTgBack) return;
+    if (paymentWidgetOpen) {
+      const handler = () => {
+        closePaymentWidget();
+      };
+      WebApp.BackButton.show();
+      WebApp.BackButton.onClick(handler);
+      return () => {
+        try {
+          WebApp.BackButton.offClick(handler);
+        } catch {
+          // ignore
+        }
+      };
+    }
     if (!prepayOpen) {
       WebApp.BackButton.hide();
       return;
@@ -2919,7 +2942,7 @@ function TrainerHome({
         // ignore
       }
     };
-  }, [hasTgBack, prepayOpen]);
+  }, [hasTgBack, prepayOpen, paymentWidgetOpen]);
 
   const todayStart = startOfDay(now);
   const statsAnchorStart = startOfDay(statsDate);
@@ -4026,13 +4049,7 @@ function TrainerHome({
                 <button
                   type="button"
                   style={styles.paymentWidgetClose}
-                  onClick={() => {
-                    forceDismissVirtualKeyboard();
-                    setPaymentWidgetOpen(false);
-                    setPaymentSubmitting(false);
-                    setPaymentWidgetToken(null);
-                    setPaymentWidgetId(null);
-                  }}
+                  onClick={closePaymentWidget}
                 >
                   {tr("Закрыть", "Close")}
                 </button>
