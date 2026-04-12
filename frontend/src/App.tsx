@@ -443,19 +443,10 @@ export default function App() {
     }
   });
 
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [keyboardInset, setKeyboardInset] = useState(0);
   const pendingFocusRef = useRef<HTMLElement | null>(null);
   const hasTgBack = typeof WebApp?.BackButton?.show === "function";
   const KEYBOARD_OPEN_THRESHOLD = 120;
-  const isKeyboardVisible = keyboardInset > KEYBOARD_OPEN_THRESHOLD || keyboardOpen;
-  const hideBottomNav = keyboardOpen;
-
-  const scrollAreaStyle = {
-    ...styles.scrollArea,
-    paddingBottom: isKeyboardVisible ? 16 : 80,
-    scrollPaddingBottom: isKeyboardVisible ? 16 : 32,
-  };
+  const scrollAreaStyle = styles.scrollArea;
 
   // ----- Clients state (локально, без бэка)
   const [clientsScreen, setClientsScreen] = useState<ClientsScreen>("list");
@@ -1184,7 +1175,6 @@ export default function App() {
       if (!target) return;
       const tag = target.tagName;
       if (tag !== "INPUT" && tag !== "TEXTAREA") return;
-      setKeyboardOpen(true);
       pendingFocusRef.current = target;
       if (!window.visualViewport) {
         requestAnimationFrame(() => ensureInputVisible(target));
@@ -1198,15 +1188,6 @@ export default function App() {
     };
     const onFocusOut = () => {
       pendingFocusRef.current = null;
-      const el = document.activeElement as HTMLElement | null;
-      if (!el) {
-        setKeyboardOpen(false);
-        return;
-      }
-      const tag = el.tagName;
-      if (tag !== "INPUT" && tag !== "TEXTAREA") {
-        setKeyboardOpen(false);
-      }
     };
     document.addEventListener("focusin", onFocusIn);
     document.addEventListener("focusout", onFocusOut);
@@ -1222,8 +1203,6 @@ export default function App() {
     const onResize = () => {
       const inset = Math.max(0, window.innerHeight - vv.height);
       const effectiveInset = inset > KEYBOARD_OPEN_THRESHOLD ? inset : 0;
-      setKeyboardInset(effectiveInset);
-      setKeyboardOpen(effectiveInset > 0);
       try {
         document.documentElement.style.setProperty("--keyboard-inset", `${effectiveInset}px`);
       } catch {
@@ -1262,7 +1241,14 @@ export default function App() {
     };
     onResize();
     vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      try {
+        document.documentElement.style.setProperty("--keyboard-inset", "0px");
+      } catch {
+        // ignore
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -1743,7 +1729,7 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ ...styles.bottomNav, display: hideBottomNav ? "none" : "flex" }}>
+            <div style={styles.bottomNav}>
               <button
                 onClick={() => setActiveTab("home")}
                 style={styles.navBtn}
@@ -2018,7 +2004,6 @@ export default function App() {
         <BottomNav
           active={clientTab}
           onChange={(t) => setClientTab(t as ClientTab)}
-          hidden={hideBottomNav}
           items={[
             { id: "home", label: t.navHome, icon: <IconHome /> },
             { id: "schedule", label: t.navSchedule, icon: <IconCalendar /> },
@@ -15059,6 +15044,7 @@ const styles: Record<string, any> = {
     maxWidth: 520,
     margin: "0 auto",
     height: "var(--tg-viewport-stable-height, 100vh)",
+    position: "relative",
     display: "flex",
     flexDirection: "column",
     background: "var(--bg)",
@@ -15068,7 +15054,9 @@ const styles: Record<string, any> = {
   scrollArea: {
     flex: 1,
     overflowY: "scroll",
-    paddingBottom: 72,
+    minHeight: 0,
+    paddingBottom: "calc(env(safe-area-inset-bottom) + 118px)",
+    scrollPaddingBottom: "calc(env(safe-area-inset-bottom) + 118px)",
     background: "var(--bg)",
     overflowX: "hidden",
     scrollbarGutter: "stable",
@@ -20533,10 +20521,11 @@ const styles: Record<string, any> = {
   },
 
   bottomNav: {
-    position: "fixed",
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
+    width: "100%",
     height: 88,
     background: "var(--bottom-nav-bg)",
     borderTop: "1px solid var(--bottom-nav-border)",
@@ -20552,6 +20541,7 @@ const styles: Record<string, any> = {
     boxSizing: "border-box",
     zIndex: 10,
     backdropFilter: "blur(14px)",
+    WebkitBackdropFilter: "blur(14px)",
   },
   navBtn: {
     flex: 1,
